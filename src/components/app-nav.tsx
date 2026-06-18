@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Sunrise,
   LayoutDashboard,
@@ -13,7 +13,7 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/actions/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -30,14 +30,6 @@ const links = [
 
 export function AppNav() {
   const pathname = usePathname();
-  const router = useRouter();
-
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
 
   return (
     <>
@@ -70,10 +62,12 @@ export function AppNav() {
 
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
-              <LogOut aria-hidden />
-              <span className="hidden sm:inline">Sign out</span>
-            </Button>
+            <form action={signOut}>
+              <Button type="submit" variant="ghost" size="sm" aria-label="Sign out">
+                <LogOut aria-hidden />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            </form>
           </div>
         </div>
       </header>

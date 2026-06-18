@@ -1,16 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Mail, KeyRound, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { signOut } from "@/actions/auth";
 import { publicEnv } from "@/env";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export function AccountCard({ email }: { email: string }) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function sendReset() {
@@ -23,13 +22,6 @@ export function AccountCard({ email }: { email: string }) {
     setPending(false);
     if (error) toast.error(error.message);
     else toast.success("Password reset link sent to your email.");
-  }
-
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
   }
 
   return (
@@ -48,9 +40,11 @@ export function AccountCard({ email }: { email: string }) {
           <Button variant="outline" onClick={sendReset} disabled={pending}>
             <KeyRound className="h-4 w-4" aria-hidden /> {pending ? "Sending…" : "Change password"}
           </Button>
-          <Button variant="ghost" onClick={signOut}>
-            <LogOut className="h-4 w-4" aria-hidden /> Sign out
-          </Button>
+          <form action={signOut}>
+            <Button type="submit" variant="ghost">
+              <LogOut className="h-4 w-4" aria-hidden /> Sign out
+            </Button>
+          </form>
         </div>
       </CardContent>
     </Card>
