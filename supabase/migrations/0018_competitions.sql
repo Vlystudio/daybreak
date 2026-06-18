@@ -15,13 +15,6 @@ create table public.competitions (
   check (end_date >= start_date)
 );
 alter table public.competitions enable row level security;
-create policy "competitions: read" on public.competitions for select using (
-  creator_id = (select auth.uid())
-  or exists (
-    select 1 from public.competition_participants p
-    where p.competition_id = id and p.user_id = (select auth.uid())
-  )
-);
 create policy "competitions: insert" on public.competitions
   for insert with check (creator_id = (select auth.uid()));
 create policy "competitions: update" on public.competitions
@@ -46,3 +39,12 @@ create policy "competition_participants: update own" on public.competition_parti
   for update using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 create index competition_participants_comp_idx on public.competition_participants (competition_id);
 create index competition_participants_user_idx on public.competition_participants (user_id);
+
+-- Read policy is created last because it references competition_participants.
+create policy "competitions: read" on public.competitions for select using (
+  creator_id = (select auth.uid())
+  or exists (
+    select 1 from public.competition_participants p
+    where p.competition_id = id and p.user_id = (select auth.uid())
+  )
+);
