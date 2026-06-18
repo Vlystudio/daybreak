@@ -131,6 +131,39 @@ export interface ChoreEntry {
   frequency: ChoreFrequency;
 }
 
+export interface WorkoutExercise {
+  name: string;
+  sets?: string;
+  reps?: string;
+  notes?: string;
+}
+export interface WorkoutDay {
+  day: string;
+  focus?: string;
+  exercises: WorkoutExercise[];
+  cardio?: string;
+}
+export interface WorkoutProgram {
+  split: string;
+  days: WorkoutDay[];
+  notes?: string;
+}
+export interface NutritionGuide {
+  strategy: string;
+  guidance: string[];
+  sampleDay: { meal: string; idea: string }[];
+}
+export interface FitnessPlan {
+  summary: string;
+  calorie_target: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  workout: WorkoutProgram;
+  nutrition: NutritionGuide;
+  generated_at: string;
+}
+
 export interface UserPreferences {
   work_type: string | null;
   work_title: string | null;

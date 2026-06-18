@@ -2,6 +2,7 @@ import "server-only";
 import OpenAI from "openai";
 import { serverEnv } from "@/env";
 import type { WeatherSnapshot } from "@/lib/integrations/weather";
+import type { WorkoutProgram, NutritionGuide } from "@/lib/planning";
 
 /**
  * AI morning briefing via the OpenAI API. Health data is sent to OpenAI to
@@ -218,6 +219,124 @@ export async function generateWeeklyPlan(input: {
     return blocks;
   } catch (err) {
     console.error("[ai] plan generation failed:", err instanceof Error ? err.message : "unknown");
+    return null;
+  }
+}
+
+export interface FitnessPlanContent {
+  summary: string;
+  workout: WorkoutProgram;
+  nutrition: NutritionGuide;
+}
+
+const TRAINER_SYSTEM_PROMPT = `You are a knowledgeable, encouraging personal trainer and nutrition coach inside Daybreak. You are not a doctor; give general fitness/nutrition guidance only, and remind people to consult a professional for medical concerns.
+
+You receive the person's body stats, goal, activity level, weekly training availability, dietary restrictions, and pre-computed daily calorie and macro targets. Build:
+1) A realistic weekly WORKOUT program matched to their goal and how many days they can train (respect exercise_frequency). Use a sensible split with specific exercises and set/rep ranges. Scale complexity to their activity level (beginners get simpler movements). Include brief progression/warmup notes.
+2) NUTRITION guidance that hits the provided calorie/macro targets and STRICTLY respects every dietary restriction/allergy listed. Give practical guidance bullets and a simple sample day of meals.
+
+Respond with JSON exactly:
+{
+  "summary": "2-3 sentences framing the plan and goal",
+  "workout": {
+    "split": "e.g. Upper/Lower 4-day",
+    "days": [ { "day": "Day 1 — Upper", "focus": "short focus", "exercises": [ { "name": "...", "sets": "3", "reps": "8-12", "notes": "optional" } ], "cardio": "optional cardio note" } ],
+    "notes": "progression/warmup/rest guidance"
+  },
+  "nutrition": {
+    "strategy": "one line: deficit/surplus/maintenance and why",
+    "guidance": ["practical bullet tips that respect the restrictions"],
+    "sampleDay": [ { "meal": "Breakfast", "idea": "restriction-safe meal idea" } ]
+  }
+}
+Never suggest foods that violate the listed restrictions. Keep it under ~600 words.`;
+
+export async function generateFitnessPlan(input: {
+  profile: {
+    age: number | null;
+    sex: string | null;
+    heightIn: number;
+    weightLb: number;
+    activityLevel: string | null;
+    goal: string | null;
+    exerciseFrequency: string | null;
+    dietaryRestrictions: string[];
+  };
+  targets: { calories: number; protein: number; carbs: number; fat: number };
+}): Promise<FitnessPlanContent | null> {
+  const apiKey = serverEnv().OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const client = new OpenAI({ apiKey });
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
+      max_tokens: 2000,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: TRAINER_SYSTEM_PROMPT },
+        { role: "user", content: JSON.stringify(input) },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof parsed.summary !== "string") return null;
+
+    const workoutRaw = (parsed.workout ?? {}) as Record<string, unknown>;
+    const daysRaw = Array.isArray(workoutRaw.days) ? (workoutRaw.days as unknown[]) : [];
+    const days = daysRaw.map((d) => {
+      const day = d as Record<string, unknown>;
+      const exRaw = Array.isArray(day.exercises) ? (day.exercises as unknown[]) : [];
+      return {
+        day: typeof day.day === "string" ? day.day : "Workout",
+        focus: typeof day.focus === "string" ? day.focus : undefined,
+        cardio: typeof day.cardio === "string" ? day.cardio : undefined,
+        exercises: exRaw.map((e) => {
+          const ex = e as Record<string, unknown>;
+          return {
+            name: typeof ex.name === "string" ? ex.name : "Exercise",
+            sets: ex.sets != null ? String(ex.sets) : undefined,
+            reps: ex.reps != null ? String(ex.reps) : undefined,
+            notes: typeof ex.notes === "string" ? ex.notes : undefined,
+          };
+        }),
+      };
+    });
+
+    const nutritionRaw = (parsed.nutrition ?? {}) as Record<string, unknown>;
+    const guidance = Array.isArray(nutritionRaw.guidance)
+      ? (nutritionRaw.guidance as unknown[]).filter((g): g is string => typeof g === "string")
+      : [];
+    const sampleDayRaw = Array.isArray(nutritionRaw.sampleDay) ? (nutritionRaw.sampleDay as unknown[]) : [];
+    const sampleDay = sampleDayRaw
+      .map((m) => {
+        const meal = m as Record<string, unknown>;
+        return {
+          meal: typeof meal.meal === "string" ? meal.meal : "",
+          idea: typeof meal.idea === "string" ? meal.idea : "",
+        };
+      })
+      .filter((m) => m.meal && m.idea);
+
+    return {
+      summary: parsed.summary,
+      workout: {
+        split: typeof workoutRaw.split === "string" ? workoutRaw.split : "Custom",
+        days,
+        notes: typeof workoutRaw.notes === "string" ? workoutRaw.notes : undefined,
+      },
+      nutrition: {
+        strategy: typeof nutritionRaw.strategy === "string" ? nutritionRaw.strategy : "",
+        guidance,
+        sampleDay,
+      },
+    };
+  } catch (err) {
+    console.error("[ai] fitness plan generation failed:", err instanceof Error ? err.message : "unknown");
     return null;
   }
 }

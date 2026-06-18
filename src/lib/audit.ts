@@ -20,6 +20,7 @@ export type AuditAction =
   | "profile.updated"
   | "preferences.updated"
   | "plan.generated"
+  | "fitness_plan.generated"
   | "cron.morning_sync"
   | "cron.calendar_sync"
   | "cron.data_sync";
