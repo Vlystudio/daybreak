@@ -46,6 +46,16 @@ Respond with JSON matching exactly this shape:
 }
 Provide 2-4 recommendations. Keep the total under 250 words.`;
 
+/** Stable numeric seed from input content, so identical inputs reproduce the
+ *  same generation (OpenAI `seed` is best-effort, but combined with a low
+ *  temperature it keeps plans consistent unless the user's data changes). */
+function seedFrom(payload: unknown): number {
+  const s = JSON.stringify(payload);
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 export async function generateMorningBriefing(input: {
   displayName: string;
   todayMetrics: MetricsForPrompt | null;
@@ -177,7 +187,8 @@ export async function generateWeeklyPlan(input: {
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.6,
+      temperature: 0.2,
+      seed: seedFrom(input),
       max_tokens: 2000,
       response_format: { type: "json_object" },
       messages: [
@@ -272,7 +283,8 @@ export async function generateFitnessPlan(input: {
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.6,
+      temperature: 0.3,
+      seed: seedFrom(input),
       max_tokens: 2000,
       response_format: { type: "json_object" },
       messages: [
