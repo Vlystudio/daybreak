@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Sunrise,
   LayoutDashboard,
+  Activity,
   CalendarDays,
   ClipboardList,
   Dumbbell,
@@ -19,6 +20,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 const links = [
   { href: "/dashboard", label: "Today", icon: LayoutDashboard },
+  { href: "/health", label: "Health", icon: Activity },
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/onboarding", label: "Plan", icon: ClipboardList },
   { href: "/coach", label: "Coach", icon: Dumbbell },

@@ -14,6 +14,7 @@ export type AuditAction =
   | "schedule.deleted"
   | "calendar.synced"
   | "summary.generated"
+  | "health.analyzed"
   | "household.created"
   | "household.joined"
   | "household.left"
