@@ -36,6 +36,18 @@ export interface DailySummary {
 
 export type EventColor = "honey" | "sage" | "sky" | "peach";
 
+/** A recipe attached to a planned-meal schedule event, shown when it's opened. */
+export interface MealRecipe {
+  sourceId: number | null;
+  title: string;
+  image: string | null;
+  sourceUrl: string | null;
+  readyInMinutes: number | null;
+  servings: number | null;
+  ingredients: string[];
+  steps: string[];
+}
+
 export interface ScheduleEvent {
   id: string;
   user_id: string;
@@ -51,6 +63,7 @@ export interface ScheduleEvent {
   completed_at: string | null;
   plan_type: string | null;
   workout_id: string | null;
+  recipe: MealRecipe | null;
 }
 
 export interface Connection {

@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createScheduleEvent, updateScheduleEvent, deleteScheduleEvent } from "@/actions/schedule";
+import { RecipeDetails } from "@/components/schedule/recipe-details";
 import type { ScheduleEvent, EventColor } from "@/lib/types";
 
 const formSchema = z
@@ -152,13 +153,17 @@ export function EventEditor({
         <DialogHeader>
           <DialogTitle>{event ? "Edit event" : "Add to your day"}</DialogTitle>
           <DialogDescription>
-            {isGoogleEvent
-              ? "This event is synced from Google Calendar — edits here apply only inside Daybreak."
-              : "Shape your day around how you feel."}
+            {event?.recipe
+              ? "Here's how to make it. Adjust the time below if you like."
+              : isGoogleEvent
+                ? "This event is synced from Google Calendar — edits here apply only inside Daybreak."
+                : "Shape your day around how you feel."}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {event?.recipe && <RecipeDetails recipe={event.recipe} />}
+
+        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4 space-y-4" noValidate>
           <div className="space-y-1.5">
             <Label htmlFor="event-title">Title</Label>
             <Input id="event-title" placeholder="Morning walk" {...form.register("title")} />

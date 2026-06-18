@@ -112,8 +112,20 @@ export async function rateRecipe(input: {
   return { ok: true };
 }
 
-/** Add a recipe to today's schedule as a planned dinner. */
-export async function addMealToSchedule(input: { recipeId: number; title: string }): Promise<ActionResult> {
+/** Add a recipe to today's schedule as a planned dinner, carrying its
+ *  ingredients + instructions so they show when the event is opened. */
+export async function addMealToSchedule(input: {
+  recipeId: number;
+  title: string;
+  recipe?: {
+    image?: string | null;
+    sourceUrl?: string | null;
+    readyInMinutes?: number | null;
+    servings?: number | null;
+    ingredients?: string[];
+    steps?: string[];
+  };
+}): Promise<ActionResult> {
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -121,6 +133,30 @@ export async function addMealToSchedule(input: { recipeId: number; title: string
 
   const title = String(input.title || "").trim().slice(0, 180);
   if (!title) return { ok: false, error: "Invalid recipe." };
+
+  const ready =
+    typeof input.recipe?.readyInMinutes === "number" && Number.isFinite(input.recipe.readyInMinutes)
+      ? Math.min(180, Math.max(15, Math.round(input.recipe.readyInMinutes)))
+      : 45;
+
+  const recipe = input.recipe
+    ? {
+        sourceId: input.recipeId,
+        title,
+        image: input.recipe.image ?? null,
+        sourceUrl: input.recipe.sourceUrl ?? null,
+        readyInMinutes: input.recipe.readyInMinutes ?? null,
+        servings: input.recipe.servings ?? null,
+        ingredients: (input.recipe.ingredients ?? [])
+          .map((s) => String(s).trim().slice(0, 200))
+          .filter(Boolean)
+          .slice(0, 40),
+        steps: (input.recipe.steps ?? [])
+          .map((s) => String(s).trim().slice(0, 600))
+          .filter(Boolean)
+          .slice(0, 30),
+      }
+    : null;
 
   const supabase = await createClient();
   const { data: profile } = await supabase
@@ -130,7 +166,7 @@ export async function addMealToSchedule(input: { recipeId: number; title: string
     .maybeSingle<{ timezone: string }>();
   const tz = profile?.timezone || "UTC";
   const start = zonedToUtc(localToday(tz), "18:00", tz);
-  const end = new Date(start.getTime() + 45 * 60_000);
+  const end = new Date(start.getTime() + ready * 60_000);
 
   const { error } = await supabase.from("schedule_events").insert({
     user_id: user.id,
@@ -141,6 +177,7 @@ export async function addMealToSchedule(input: { recipeId: number; title: string
     all_day: false,
     source: "manual",
     color: "honey",
+    recipe,
   });
   if (error) return { ok: false, error: "Couldn't add the meal." };
 

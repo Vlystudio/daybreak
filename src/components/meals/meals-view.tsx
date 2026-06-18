@@ -72,8 +72,19 @@ export function MealsView({
 
   function planMeal(r: RecipeSuggestion) {
     startMutate(async () => {
-      const res = await addMealToSchedule({ recipeId: r.id, title: r.title });
-      if (res.ok) toast.success("Added to today's schedule.");
+      const res = await addMealToSchedule({
+        recipeId: r.id,
+        title: r.title,
+        recipe: {
+          image: r.image,
+          sourceUrl: r.sourceUrl,
+          readyInMinutes: r.readyInMinutes,
+          servings: r.servings,
+          ingredients: r.ingredients,
+          steps: r.steps,
+        },
+      });
+      if (res.ok) toast.success("Added to your schedule — open it there for the recipe.");
       else toast.error(res.error);
     });
   }
