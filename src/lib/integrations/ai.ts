@@ -199,6 +199,54 @@ export async function analyzeHealthTrends(input: {
   }
 }
 
+export interface CheckinTurn {
+  role: "assistant" | "user";
+  content: string;
+}
+
+const CHECKIN_SYSTEM_PROMPT = `You are a thoughtful health coach inside Daybreak, having a SHORT, real back-and-forth check-in with someone about their Oura data. You are NOT a doctor: never diagnose or name conditions; suggest a professional for anything genuinely concerning.
+
+You're given their recent daily metrics + pre-computed trend flags + the conversation so far.
+
+How to respond:
+- If the conversation is just starting (no messages yet), OPEN with ONE specific, curious question grounded in a real pattern in their data — cite the actual numbers ("Your deep sleep dropped to ~35 min the last three nights, down from your usual ~70 — did anything change with your evenings or stress?"). Ask, don't lecture.
+- Otherwise, respond to what they just said: briefly reflect it, connect it to their data, and then EITHER give one concrete, specific suggestion OR ask one sharper follow-up question. Two to four sentences.
+- Always be specific with their numbers. NEVER use generic filler ("drink water", "get more sleep", "manage stress", "stay hydrated"). Warm, concise, genuinely useful — like a smart friend who has the data in front of them.
+Return ONLY your next message as plain text — no JSON, no labels, no preamble.`;
+
+/** One coach turn: returns the assistant's next message (plain text). */
+export async function healthCheckinReply(input: {
+  metrics: Record<string, unknown>[];
+  flags: { title: string; detail: string }[];
+  history: CheckinTurn[];
+}): Promise<string | null> {
+  const apiKey = serverEnv().OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const client = new OpenAI({ apiKey });
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 300,
+      messages: [
+        { role: "system", content: CHECKIN_SYSTEM_PROMPT },
+        {
+          role: "system",
+          content: `Their data — recentMetrics: ${JSON.stringify(input.metrics)}; trendFlags: ${JSON.stringify(input.flags)}`,
+        },
+        ...input.history.map((t) => ({ role: t.role, content: t.content })),
+      ],
+    });
+    const text = completion.choices[0]?.message?.content?.trim();
+    return text || null;
+  } catch (err) {
+    console.error("[ai] health check-in failed:", err instanceof Error ? err.message : "unknown");
+    return null;
+  }
+}
+
 export type PlanBlockType =
   | "workout"
   | "chore"

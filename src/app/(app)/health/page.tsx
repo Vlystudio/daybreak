@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { computeHeadsUp } from "@/lib/health-insights";
 import { HealthDashboard } from "@/components/health/health-dashboard";
+import type { CheckinMessage } from "@/actions/health";
 import type { HealthMetric } from "@/lib/types";
 
 export const metadata = { title: "Health · Daybreak" };
@@ -17,7 +18,7 @@ export default async function HealthPage() {
   const supabase = await createClient();
   const since = isoDaysAgo(120);
 
-  const [{ data: metrics }, { data: connections }] = await Promise.all([
+  const [{ data: metrics }, { data: connections }, { data: checkin }] = await Promise.all([
     supabase
       .from("health_metrics")
       .select(
@@ -28,6 +29,13 @@ export default async function HealthPage() {
       .order("date", { ascending: true })
       .returns<HealthMetric[]>(),
     supabase.rpc("my_connections"),
+    supabase
+      .from("health_checkins")
+      .select("id, messages")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string; messages: CheckinMessage[] }>(),
   ]);
 
   const m = metrics ?? [];
@@ -43,7 +51,7 @@ export default async function HealthPage() {
           Your Oura data, the trends behind it, and what it means — in one place.
         </p>
       </div>
-      <HealthDashboard metrics={m} flags={flags} hasOura={hasOura} />
+      <HealthDashboard metrics={m} flags={flags} hasOura={hasOura} checkin={checkin ?? null} />
     </div>
   );
 }

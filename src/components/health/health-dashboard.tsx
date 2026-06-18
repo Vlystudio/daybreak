@@ -20,9 +20,10 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { TrendChart } from "@/components/health/trend-chart";
+import { HealthCheckin } from "@/components/health/health-checkin";
 import { metricStat, type HeadsUp, type HeadsUpSeverity, type MetricKey } from "@/lib/health-insights";
 import { syncNow } from "@/actions/settings";
-import { analyzeHealth } from "@/actions/health";
+import { analyzeHealth, type CheckinMessage } from "@/actions/health";
 import type { HealthAnalysis } from "@/lib/integrations/ai";
 import type { HealthMetric } from "@/lib/types";
 
@@ -90,10 +91,12 @@ export function HealthDashboard({
   metrics,
   flags,
   hasOura,
+  checkin,
 }: {
   metrics: HealthMetric[];
   flags: HeadsUp[];
   hasOura: boolean;
+  checkin: { id: string; messages: CheckinMessage[] } | null;
 }) {
   const router = useRouter();
   const [range, setRange] = useState<(typeof RANGES)[number]>(30);
@@ -256,6 +259,9 @@ export function HealthDashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* Conversational check-in */}
+      <HealthCheckin initial={checkin} hasData={metrics.length >= 3} />
 
       {/* Trends */}
       <section className="space-y-2">
