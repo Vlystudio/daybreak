@@ -46,7 +46,7 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
           </h2>
           <p className="mt-1 max-w-md text-sm opacity-80">
             {ready
-              ? "Build your upcoming days — workouts, chores, hobbies, and downtime — around your calendar and recent recovery. Added straight to your schedule."
+              ? "Build your upcoming days around your work hours, calendar, and recovery. Each morning, today's plan auto-refreshes from your latest Oura sleep/energy and the day's weather."
               : "Answer the questions below and save first, then come back here to generate your plan."}
           </p>
         </div>
