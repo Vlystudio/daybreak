@@ -40,6 +40,21 @@ export default async function SchedulePage() {
           Click an empty slot to plan something, or an event to edit it.
         </p>
       </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-honey" aria-hidden /> Meals &amp; focus
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-sage" aria-hidden /> Workouts &amp; recovery
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-peach" aria-hidden /> Chores &amp; errands
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-sky" aria-hidden /> Google calendar
+        </span>
+        <span className="opacity-70">Faded = done</span>
+      </div>
       <WeekCalendar
         events={events ?? []}
         currentUserId={user.id}

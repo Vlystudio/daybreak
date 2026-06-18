@@ -65,6 +65,24 @@ export async function createScheduleEvent(input: ScheduleEventInput): Promise<Ac
   return { ok: true };
 }
 
+export async function toggleEventCompleted(eventId: string, completed: boolean): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!uuidSchema.safeParse(eventId).success) return { ok: false, error: "Invalid event" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schedule_events")
+    .update({ completed_at: completed ? new Date().toISOString() : null })
+    .eq("id", eventId)
+    .eq("user_id", user.id);
+
+  if (error) return { ok: false, error: "Couldn't update that." };
+
+  revalidatePath("/dashboard");
+  revalidatePath("/schedule");
+  return { ok: true };
+}
+
 export async function updateScheduleEvent(
   eventId: string,
   input: ScheduleEventInput

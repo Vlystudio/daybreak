@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
@@ -11,6 +11,7 @@ import { generatePlan, clearPlan } from "@/actions/plan";
 export function GeneratePlanCard({ ready }: { ready: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   function run() {
     startTransition(async () => {
@@ -25,7 +26,13 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
     });
   }
 
-  function clear() {
+  function clearClick() {
+    if (!confirmingClear) {
+      setConfirmingClear(true);
+      setTimeout(() => setConfirmingClear(false), 4000);
+      return;
+    }
+    setConfirmingClear(false);
     startTransition(async () => {
       const res = await clearPlan();
       if (res.ok) {
@@ -51,8 +58,12 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <Button onClick={clear} disabled={!ready || pending} variant="outline">
-            Clear
+          <Button
+            onClick={clearClick}
+            disabled={!ready || pending}
+            variant={confirmingClear ? "destructive" : "outline"}
+          >
+            {confirmingClear ? "Tap to confirm" : "Clear"}
           </Button>
           <Button onClick={run} disabled={!ready || pending} className="shadow-soft">
             {pending ? "Planning…" : "Generate my plan"}

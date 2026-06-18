@@ -91,12 +91,18 @@ export function WeekCalendar({
             onSelectEvent={onSelectEvent}
             popup
             scrollToTime={new Date(1970, 0, 1, 7)}
-            eventPropGetter={(event: CalendarEvent) => ({
-              style: {
-                backgroundColor: colorMap[event.resource.color ?? "honey"],
-                opacity: event.resource.user_id === currentUserId ? 1 : 0.65,
-              },
-            })}
+            tooltipAccessor={(event: CalendarEvent) => event.resource.description || event.title}
+            eventPropGetter={(event: CalendarEvent) => {
+              const e = event.resource;
+              const done = e.completed_at != null;
+              return {
+                style: {
+                  backgroundColor: colorMap[e.color ?? "honey"],
+                  opacity: done ? 0.45 : e.user_id === currentUserId ? 1 : 0.65,
+                  textDecoration: done ? "line-through" : undefined,
+                },
+              };
+            }}
           />
         </div>
       </CardContent>

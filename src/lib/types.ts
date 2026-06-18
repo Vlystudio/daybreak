@@ -48,6 +48,7 @@ export interface ScheduleEvent {
   all_day: boolean;
   source: "manual" | "google" | "plan";
   color: EventColor | null;
+  completed_at: string | null;
 }
 
 export interface Connection {
