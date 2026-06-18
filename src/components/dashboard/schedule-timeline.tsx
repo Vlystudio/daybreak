@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { CalendarDays, Plus, MapPin, ArrowRight, Circle, CheckCircle2, Dumbbell } from "lucide-react";
@@ -33,6 +33,12 @@ export function ScheduleTimeline({
   const [done, setDone] = useState<Record<string, boolean>>(
     () => Object.fromEntries(events.map((e) => [e.id, e.completed_at != null]))
   );
+  // Mount-time clock, refreshed each minute, so the "now" highlight stays pure.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   function openNew() {
     setEditing(null);
@@ -56,7 +62,6 @@ export function ScheduleTimeline({
   }
 
   // Highlight the event happening now, or the next upcoming one if none is.
-  const now = Date.now();
   const currentId = events.find(
     (e) => !e.all_day && new Date(e.starts_at).getTime() <= now && new Date(e.ends_at).getTime() > now
   )?.id;

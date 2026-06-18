@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -141,9 +141,10 @@ export function EventEditor({
   }
 
   const { errors } = form.formState;
-  const color = form.watch("color");
-  const shareWithHousehold = form.watch("shareWithHousehold");
-  const allDay = form.watch("allDay");
+  const control = form.control;
+  const color = useWatch({ control, name: "color" });
+  const shareWithHousehold = useWatch({ control, name: "shareWithHousehold" });
+  const allDay = useWatch({ control, name: "allDay" });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

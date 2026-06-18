@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Calendar, dateFnsLocalizer, type View, type SlotInfo } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { format, parse, startOfWeek, getDay } from "date-fns";
@@ -58,7 +58,11 @@ export function WeekCalendar({
 
   // Local copy so drags reflect immediately; resync when server data changes.
   const [items, setItems] = useState<ScheduleEvent[]>(events);
-  useEffect(() => setItems(events), [events]);
+  const [prevEvents, setPrevEvents] = useState(events);
+  if (events !== prevEvents) {
+    setPrevEvents(events);
+    setItems(events);
+  }
 
   const calendarEvents = useMemo<CalendarEvent[]>(
     () =>
