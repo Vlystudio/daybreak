@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { ProfileForm } from "@/components/settings/profile-form";
+import { AccountCard } from "@/components/settings/account-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ export default async function SettingsPage() {
       </div>
 
       <ProfileForm profile={data.profile} />
+      <AccountCard email={user.email ?? ""} />
       <CalendarSyncCard connections={data.connections} calendarSync={data.calendarSync} />
       <HouseholdCard household={data.household} householdEvents={[]} />
 
