@@ -9,6 +9,7 @@ const PROTECTED_PREFIXES = [
   "/coach",
   "/grocery",
   "/health",
+  "/friends",
   "/settings",
   "/account",
 ];

@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Dumbbell,
   ShoppingBasket,
+  Users,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const links = [
   { href: "/onboarding", label: "Plan", icon: ClipboardList },
   { href: "/coach", label: "Coach", icon: Dumbbell },
   { href: "/grocery", label: "Grocery", icon: ShoppingBasket },
+  { href: "/friends", label: "Friends", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

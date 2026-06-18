@@ -31,6 +31,10 @@ export type AuditAction =
   | "shopping_list.created"
   | "shopping_list.updated"
   | "meal_plan.generated"
+  | "friend.requested"
+  | "friend.accepted"
+  | "competition.created"
+  | "competition.joined"
   | "cron.morning_sync"
   | "cron.calendar_sync"
   | "cron.data_sync";
