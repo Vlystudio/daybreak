@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
-import { refreshTodayPlanForUser } from "@/lib/planner";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
@@ -40,12 +39,6 @@ export async function GET(request: NextRequest) {
     try {
       if (providers.has("oura")) await syncOuraForUser(userId, 7);
       if (providers.has("google")) await syncCalendarForUser(userId);
-      // Rebuild today's plan from the freshly-synced recovery + weather.
-      try {
-        await refreshTodayPlanForUser(userId);
-      } catch (err) {
-        console.error("[cron] plan refresh failed for a user:", err);
-      }
       await generateSummaryForUser(userId);
       synced++;
     } catch (err) {

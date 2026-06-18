@@ -293,10 +293,15 @@ export async function generatePlanForUser(userId: string): Promise<number | null
     .maybeSingle<{ timezone: string }>();
   const tz = profile?.timezone || "UTC";
 
-  return planDays(userId, planningDays(prefs.planning_scope, tz));
+  const count = await planDays(userId, planningDays(prefs.planning_scope, tz));
+  if (count !== null) {
+    // Mark today as planned so the hourly job doesn't clobber a manual plan.
+    await admin.from("user_preferences").update({ last_planned_date: localToday(tz) }).eq("user_id", userId);
+  }
+  return count;
 }
 
-/** Re-plan only TODAY from fresh data — called each morning after Oura sync. */
+/** Re-plan only TODAY from fresh data. */
 export async function refreshTodayPlanForUser(userId: string): Promise<number | null> {
   const admin = createAdminClient();
   const { data: profile } = await admin
@@ -309,4 +314,43 @@ export async function refreshTodayPlanForUser(userId: string): Promise<number | 
   const todayStr = localToday(tz);
   const dow = new Date(`${todayStr}T12:00:00Z`).getUTCDay();
   return planDays(userId, [{ date: todayStr, weekday: WEEKDAYS[dow] }]);
+}
+
+/**
+ * Hourly entry point: refresh today's plan exactly once per local day, only
+ * after that day's Oura recovery has been synced. Skips users who have already
+ * planned today (manually or earlier) or whose recovery isn't in yet.
+ */
+export async function maybeRefreshTodayPlanForUser(userId: string): Promise<number | null> {
+  const admin = createAdminClient();
+
+  const { data: prefs } = await admin
+    .from("user_preferences")
+    .select("onboarding_completed, last_planned_date")
+    .eq("user_id", userId)
+    .maybeSingle<{ onboarding_completed: boolean; last_planned_date: string | null }>();
+  if (!prefs || !prefs.onboarding_completed) return null;
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("timezone")
+    .eq("id", userId)
+    .maybeSingle<{ timezone: string }>();
+  const tz = profile?.timezone || "UTC";
+  const todayStr = localToday(tz);
+
+  if (prefs.last_planned_date === todayStr) return null; // already planned today
+
+  // Only plan once today's recovery has actually landed.
+  const { data: metric } = await admin
+    .from("health_metrics")
+    .select("readiness_score")
+    .eq("user_id", userId)
+    .eq("date", todayStr)
+    .maybeSingle<{ readiness_score: number | null }>();
+  if (!metric || metric.readiness_score == null) return null;
+
+  const count = await refreshTodayPlanForUser(userId);
+  await admin.from("user_preferences").update({ last_planned_date: todayStr }).eq("user_id", userId);
+  return count;
 }

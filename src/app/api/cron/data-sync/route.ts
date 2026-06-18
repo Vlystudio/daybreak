@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncCalendarForUser } from "@/lib/sync";
+import { maybeRefreshTodayPlanForUser } from "@/lib/planner";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
@@ -42,6 +43,12 @@ export async function GET(request: NextRequest) {
       // Pull the last 2 days for intraday refresh (the morning job backfills 7).
       if (providers.has("oura")) await syncOuraForUser(userId, 2);
       if (providers.has("google")) await syncCalendarForUser(userId);
+      // Rebuild today's plan once that day's recovery is in (gated internally).
+      try {
+        await maybeRefreshTodayPlanForUser(userId);
+      } catch (err) {
+        console.error("[cron] plan refresh failed for a user:", err);
+      }
       synced++;
     } catch (err) {
       failed++;
