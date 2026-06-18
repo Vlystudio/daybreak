@@ -115,3 +115,109 @@ export async function generateMorningBriefing(input: {
     return null;
   }
 }
+
+export type PlanBlockType =
+  | "workout"
+  | "chore"
+  | "errand"
+  | "hobby"
+  | "social"
+  | "meal"
+  | "wind_down"
+  | "focus";
+
+export interface PlanBlock {
+  date: string; // YYYY-MM-DD (from the provided days)
+  start: string; // HH:MM, 24-hour, local
+  durationMin: number;
+  title: string;
+  type: PlanBlockType;
+  note?: string;
+}
+
+const PLAN_SYSTEM_PROMPT = `You are the planning engine inside Daybreak, a warm wellness app. You build a realistic, balanced schedule for a person from their lifestyle, goals, and existing commitments. You are not a doctor; keep any fitness guidance gentle and general.
+
+You receive: the person's preferences, the days to plan (with weekday names), the times they are already busy, and their recent recovery (Oura readiness/sleep, 0-100).
+
+Rules:
+- NEVER overlap a "busy" block or another block you create; leave a little buffer.
+- Respect their work type and work_schedule. If planning_scope is "after_hours", only place blocks before work or in the evening. If "weekends", only use the weekend days provided.
+- Workouts: match their exercise_frequency and fitness_goal across the days (muscle_gain -> strength; weight_loss/endurance -> a mix of cardio and strength; general_fitness -> varied; maintain -> light/steady). If a recent readiness score is low (under 60), make that day lighter (mobility, a walk, or rest) rather than intense.
+- Chores: schedule each listed chore consistent with its frequency over the window ("daily" most days, "weekly" once, etc.).
+- Hobbies & downtime: include their hobbies and genuine rest. Homebody -> favor at-home activities; social -> include getting-out/social time.
+- Be humane: do not overload a day. Aim for 3-6 blocks per day at sensible local times.
+
+Respond with JSON exactly:
+{ "blocks": [ { "date": "YYYY-MM-DD", "start": "HH:MM", "durationMin": <integer 10-240>, "title": "short title", "type": "workout|chore|errand|hobby|social|meal|wind_down|focus", "note": "optional one-line tip" } ] }
+Only use dates from the provided list. Keep under 40 blocks total.`;
+
+export async function generateWeeklyPlan(input: {
+  preferences: Record<string, unknown>;
+  days: { date: string; weekday: string }[];
+  busy: { date: string; start: string; end: string; title: string }[];
+  recent: { date: string; readiness: number | null; sleep: number | null }[];
+}): Promise<PlanBlock[] | null> {
+  const apiKey = serverEnv().OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const client = new OpenAI({ apiKey });
+  const validDates = new Set(input.days.map((d) => d.date));
+  const validTypes = new Set<string>([
+    "workout",
+    "chore",
+    "errand",
+    "hobby",
+    "social",
+    "meal",
+    "wind_down",
+    "focus",
+  ]);
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.6,
+      max_tokens: 2000,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: PLAN_SYSTEM_PROMPT },
+        { role: "user", content: JSON.stringify(input) },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { blocks?: unknown };
+    if (!Array.isArray(parsed.blocks)) return null;
+
+    const blocks: PlanBlock[] = [];
+    for (const item of parsed.blocks as unknown[]) {
+      const b = item as Record<string, unknown>;
+      if (typeof b.date !== "string" || !validDates.has(b.date)) continue;
+      if (typeof b.start !== "string" || !/^\d{2}:\d{2}$/.test(b.start)) continue;
+      if (typeof b.title !== "string" || !b.title.trim()) continue;
+
+      let dur = Number(b.durationMin);
+      if (!Number.isFinite(dur)) dur = 30;
+      dur = Math.min(240, Math.max(10, Math.round(dur)));
+
+      const type = (typeof b.type === "string" && validTypes.has(b.type) ? b.type : "focus") as PlanBlockType;
+
+      blocks.push({
+        date: b.date,
+        start: b.start,
+        durationMin: dur,
+        title: b.title.trim().slice(0, 120),
+        type,
+        note: typeof b.note === "string" && b.note.trim() ? b.note.trim().slice(0, 200) : undefined,
+      });
+      if (blocks.length >= 40) break;
+    }
+
+    return blocks;
+  } catch (err) {
+    console.error("[ai] plan generation failed:", err instanceof Error ? err.message : "unknown");
+    return null;
+  }
+}

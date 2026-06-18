@@ -46,7 +46,7 @@ export interface ScheduleEvent {
   starts_at: string;
   ends_at: string;
   all_day: boolean;
-  source: "manual" | "google";
+  source: "manual" | "google" | "plan";
   color: EventColor | null;
 }
 
