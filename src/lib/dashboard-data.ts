@@ -24,6 +24,7 @@ export interface DashboardData {
   weather: WeatherSnapshot | null;
   calendarSync: CalendarSyncSettings | null;
   onboardingCompleted: boolean;
+  adherence: { total: number; done: number; streak: number };
 }
 
 function isoDate(d: Date): string {
@@ -53,6 +54,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: membership },
     { data: calendarSync },
     { data: prefs },
+    { data: weekEvents },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -97,6 +99,12 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .select("onboarding_completed")
       .eq("user_id", userId)
       .maybeSingle<{ onboarding_completed: boolean }>(),
+    supabase
+      .from("schedule_events")
+      .select("starts_at, ends_at, completed_at")
+      .eq("user_id", userId)
+      .gte("starts_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+      .returns<{ starts_at: string; ends_at: string; completed_at: string | null }[]>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -142,6 +150,23 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
 
   const todayMetric = (metrics ?? []).find((m) => m.date === todayStr) ?? null;
 
+  // Adherence over the last 7 days, plus a current daily streak.
+  const tz = profile?.timezone || "UTC";
+  const localDay = (d: Date) =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const week = weekEvents ?? [];
+  const pastEvents = week.filter((e) => new Date(e.ends_at).getTime() <= Date.now());
+  const doneCount = pastEvents.filter((e) => e.completed_at != null).length;
+  const completedDays = new Set(
+    week.filter((e) => e.completed_at != null).map((e) => localDay(new Date(e.starts_at)))
+  );
+  let streak = 0;
+  for (let i = 0; i <= 14; i++) {
+    if (completedDays.has(localDay(new Date(Date.now() - i * 86_400_000)))) streak++;
+    else break;
+  }
+  const adherence = { total: pastEvents.length, done: doneCount, streak };
+
   return {
     profile: profile ?? null,
     metrics: metrics ?? [],
@@ -154,5 +179,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     weather,
     calendarSync: calendarSync ?? null,
     onboardingCompleted: prefs?.onboarding_completed ?? false,
+    adherence,
   };
 }

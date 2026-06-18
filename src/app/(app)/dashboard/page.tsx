@@ -10,6 +10,7 @@ import { HrvCard } from "@/components/dashboard/hrv-card";
 import { WeatherCard } from "@/components/dashboard/weather-card";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
+import { AdherenceCard } from "@/components/dashboard/adherence-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
@@ -63,6 +64,13 @@ export default async function DashboardPage() {
           <ScheduleTimeline events={data.todayEvents} hasHousehold={data.household !== null} />
         </FadeIn>
         <div className="space-y-4">
+          <FadeIn delay={0.33}>
+            <AdherenceCard
+              total={data.adherence.total}
+              done={data.adherence.done}
+              streak={data.adherence.streak}
+            />
+          </FadeIn>
           <FadeIn delay={0.35}>
             <CalendarSyncCard connections={data.connections} calendarSync={data.calendarSync} />
           </FadeIn>

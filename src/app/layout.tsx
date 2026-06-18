@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   },
   description:
     "Wake up to a personal morning briefing: sleep, readiness, HRV, weather, and a schedule shaped around how you actually feel.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Daybreak" },
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
 };
 
 export const viewport: Viewport = {
