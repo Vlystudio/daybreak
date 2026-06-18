@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase access token (management API) — never commit
+.supabase-token
+.secrets/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
