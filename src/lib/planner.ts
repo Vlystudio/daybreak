@@ -316,6 +316,24 @@ export async function refreshTodayPlanForUser(userId: string): Promise<number | 
   return planDays(userId, [{ date: todayStr, weekday: WEEKDAYS[dow] }]);
 }
 
+/** Manual "Plan today" — (re)build just today now and mark the day planned. */
+export async function generateTodayPlanForUser(userId: string): Promise<number | null> {
+  const count = await refreshTodayPlanForUser(userId);
+  if (count !== null) {
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("timezone")
+      .eq("id", userId)
+      .maybeSingle<{ timezone: string }>();
+    await admin
+      .from("user_preferences")
+      .update({ last_planned_date: localToday(profile?.timezone || "UTC") })
+      .eq("user_id", userId);
+  }
+  return count;
+}
+
 /**
  * Hourly entry point: refresh today's plan exactly once per local day, only
  * after that day's Oura recovery has been synced. Skips users who have already

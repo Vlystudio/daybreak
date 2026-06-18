@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { generatePlan, clearPlan } from "@/actions/plan";
+import { generatePlan, generateTodayPlan, clearPlan } from "@/actions/plan";
 
 export function GeneratePlanCard({ ready }: { ready: boolean }) {
   const router = useRouter();
@@ -19,6 +19,19 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
       if (res.ok) {
         toast.success("Your week is planned — added to your schedule.");
         router.push("/schedule");
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function planToday() {
+    startTransition(async () => {
+      const res = await generateTodayPlan();
+      if (res.ok) {
+        toast.success("Today's plan is ready.");
+        router.push("/dashboard");
         router.refresh();
       } else {
         toast.error(res.error);
@@ -53,17 +66,20 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
           </h2>
           <p className="mt-1 max-w-md text-sm opacity-80">
             {ready
-              ? "Build your upcoming days around your work hours, calendar, and recovery. Each morning, today's plan auto-refreshes from your latest Oura sleep/energy and the day's weather."
+              ? "Plan today rebuilds just today; Generate my plan builds your whole scope. Either way, today auto-refreshes each morning from your latest Oura sleep/energy and the day's weather."
               : "Answer the questions below and save first, then come back here to generate your plan."}
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <Button
             onClick={clearClick}
             disabled={!ready || pending}
             variant={confirmingClear ? "destructive" : "outline"}
           >
             {confirmingClear ? "Tap to confirm" : "Clear"}
+          </Button>
+          <Button onClick={planToday} disabled={!ready || pending} variant="secondary">
+            Plan today
           </Button>
           <Button onClick={run} disabled={!ready || pending} className="shadow-soft">
             {pending ? "Planning…" : "Generate my plan"}

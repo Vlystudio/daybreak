@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
-import { generatePlanForUser } from "@/lib/planner";
+import { generatePlanForUser, generateTodayPlanForUser } from "@/lib/planner";
 import type { ActionResult } from "@/actions/schedule";
 
 /** Remove every AI-planned block (a clean slate), leaving manual/Google events. */
@@ -21,6 +21,29 @@ export async function clearPlan(): Promise<ActionResult> {
   revalidatePath("/dashboard");
   revalidatePath("/schedule");
   return { ok: true };
+}
+
+/** Build (or rebuild) just TODAY's plan, regardless of the saved scope. */
+export async function generateTodayPlan(): Promise<ActionResult> {
+  const user = await requireUser();
+
+  const limited = await rateLimit(`ai:${user.id}`, RATE_LIMITS.aiSummary);
+  if (!limited.ok) {
+    return { ok: false, error: "You've generated a lot recently — give it a few minutes." };
+  }
+
+  try {
+    const count = await generateTodayPlanForUser(user.id);
+    if (count === null) {
+      return { ok: false, error: "Fill out your plan questionnaire and save it first." };
+    }
+    revalidatePath("/dashboard");
+    revalidatePath("/schedule");
+    return { ok: true };
+  } catch (err) {
+    console.error("[plan] today generation failed:", err instanceof Error ? err.message : "unknown");
+    return { ok: false, error: "Couldn't build today's plan — please try again in a minute." };
+  }
 }
 
 /** Build an AI smart plan for the user's upcoming days into their schedule. */
