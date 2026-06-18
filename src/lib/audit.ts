@@ -18,6 +18,7 @@ export type AuditAction =
   | "household.joined"
   | "household.left"
   | "profile.updated"
+  | "preferences.updated"
   | "cron.morning_sync"
   | "cron.calendar_sync"
   | "cron.data_sync";

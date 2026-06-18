@@ -1,0 +1,383 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { saveOnboarding } from "@/actions/onboarding";
+import type { OnboardingInput } from "@/lib/validation";
+import {
+  WORK_TYPES,
+  FITNESS_GOALS,
+  ACTIVITY_LEVELS,
+  EXERCISE_FREQUENCIES,
+  SOCIAL_TENDENCIES,
+  PLANNING_SCOPES,
+  SEXES,
+  CHORE_FREQUENCIES,
+  CHORE_OPTIONS,
+  HOBBY_SUGGESTIONS,
+  DIETARY_OPTIONS,
+  type Option,
+  type ChoreEntry,
+  type ChoreFrequency,
+  type UserPreferences,
+} from "@/lib/planning";
+
+function ChipGroup({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly Option<string>[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          type="button"
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          aria-pressed={value === o.value}
+          className={cn(
+            "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+            value === o.value
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border hover:bg-accent"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MultiChips({
+  options,
+  selected,
+  onToggle,
+}: {
+  options: readonly string[];
+  selected: string[];
+  onToggle: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const active = selected.includes(o);
+        return (
+          <button
+            type="button"
+            key={o}
+            onClick={() => onToggle(o)}
+            aria-pressed={active}
+            className={cn(
+              "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+              active
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border hover:bg-accent"
+            )}
+          >
+            {o}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">{label}</Label>
+      {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {children}
+    </div>
+  );
+}
+
+export function OnboardingForm({ initial }: { initial: UserPreferences | null }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  const [workType, setWorkType] = useState(initial?.work_type ?? "");
+  const [workTitle, setWorkTitle] = useState(initial?.work_title ?? "");
+  const [workSchedule, setWorkSchedule] = useState(initial?.work_schedule ?? "");
+  const [fitnessGoal, setFitnessGoal] = useState(initial?.fitness_goal ?? "");
+  const [activityLevel, setActivityLevel] = useState(initial?.activity_level ?? "");
+  const [exerciseFrequency, setExerciseFrequency] = useState(initial?.exercise_frequency ?? "");
+
+  const initFt = initial?.height_in != null ? Math.floor(initial.height_in / 12) : "";
+  const initIn = initial?.height_in != null ? initial.height_in % 12 : "";
+  const [heightFt, setHeightFt] = useState<string>(String(initFt));
+  const [heightInches, setHeightInches] = useState<string>(String(initIn));
+  const [weightLb, setWeightLb] = useState(initial?.weight_lb != null ? String(initial.weight_lb) : "");
+  const [sex, setSex] = useState(initial?.sex ?? "");
+  const [birthYear, setBirthYear] = useState(initial?.birth_year != null ? String(initial.birth_year) : "");
+
+  const [hobbies, setHobbies] = useState<string[]>(initial?.hobbies ?? []);
+  const [customHobby, setCustomHobby] = useState("");
+  const [socialTendency, setSocialTendency] = useState(initial?.social_tendency ?? "");
+
+  const [chores, setChores] = useState<ChoreEntry[]>(initial?.chores ?? []);
+  const [dietary, setDietary] = useState<string[]>(initial?.dietary_restrictions ?? []);
+  const [dietaryNotes, setDietaryNotes] = useState(initial?.dietary_notes ?? "");
+  const [planningScope, setPlanningScope] = useState(initial?.planning_scope ?? "");
+
+  function toggle(list: string[], setList: (v: string[]) => void, value: string) {
+    setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
+  }
+
+  function addCustomHobby() {
+    const h = customHobby.trim();
+    if (h && !hobbies.includes(h)) setHobbies([...hobbies, h]);
+    setCustomHobby("");
+  }
+
+  function toggleChore(name: string) {
+    setChores((prev) =>
+      prev.some((c) => c.name === name)
+        ? prev.filter((c) => c.name !== name)
+        : [...prev, { name, frequency: "weekly" }]
+    );
+  }
+
+  function setChoreFreq(name: string, frequency: ChoreFrequency) {
+    setChores((prev) => prev.map((c) => (c.name === name ? { ...c, frequency } : c)));
+  }
+
+  const customHobbies = hobbies.filter((h) => !HOBBY_SUGGESTIONS.includes(h as (typeof HOBBY_SUGGESTIONS)[number]));
+
+  function handleSubmit() {
+    if (!workType || !fitnessGoal || !activityLevel || !exerciseFrequency || !socialTendency || !planningScope) {
+      toast.error("Please answer the required questions (marked *).");
+      return;
+    }
+
+    const ft = parseInt(heightFt, 10);
+    const inch = parseInt(heightInches, 10);
+    const heightIn =
+      !Number.isNaN(ft) || !Number.isNaN(inch)
+        ? (Number.isNaN(ft) ? 0 : ft) * 12 + (Number.isNaN(inch) ? 0 : inch)
+        : undefined;
+
+    const input: OnboardingInput = {
+      workType,
+      workTitle,
+      workSchedule,
+      fitnessGoal,
+      activityLevel,
+      exerciseFrequency,
+      heightIn,
+      weightLb: weightLb ? Number(weightLb) : undefined,
+      sex: sex || undefined,
+      birthYear: birthYear ? Number(birthYear) : undefined,
+      hobbies,
+      socialTendency,
+      chores,
+      dietaryRestrictions: dietary,
+      dietaryNotes,
+      planningScope,
+    };
+
+    startTransition(async () => {
+      const res = await saveOnboarding(input);
+      if (res.ok) {
+        toast.success("Your plan profile is saved.");
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Work */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Work *</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="What kind of work do you do?">
+            <ChipGroup options={WORK_TYPES} value={workType} onChange={setWorkType} />
+          </Field>
+          <Field label="What's your role / job title?" hint="Optional — helps tailor suggestions.">
+            <Input value={workTitle} onChange={(e) => setWorkTitle(e.target.value)} placeholder="e.g. Nurse, Software engineer" maxLength={120} />
+          </Field>
+          <Field label="What's your typical work schedule?" hint="Optional — e.g. Mon–Fri 9–5, or rotating shifts.">
+            <Input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="e.g. Mon–Fri, 9am–5pm" maxLength={200} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Fitness */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Fitness *</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="What's your main physical goal?">
+            <ChipGroup options={FITNESS_GOALS} value={fitnessGoal} onChange={setFitnessGoal} />
+          </Field>
+          <Field label="How active are you day to day right now?">
+            <ChipGroup options={ACTIVITY_LEVELS} value={activityLevel} onChange={setActivityLevel} />
+          </Field>
+          <Field label="How often do you exercise or do something that raises your heart rate?">
+            <ChipGroup options={EXERCISE_FREQUENCIES} value={exerciseFrequency} onChange={setExerciseFrequency} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Body metrics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Body basics</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Optional, but the personal trainer needs these to build a workout and nutrition plan.
+          </p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Field label="Height (ft)">
+              <Input type="number" min={3} max={8} value={heightFt} onChange={(e) => setHeightFt(e.target.value)} placeholder="5" />
+            </Field>
+            <Field label="Height (in)">
+              <Input type="number" min={0} max={11} value={heightInches} onChange={(e) => setHeightInches(e.target.value)} placeholder="10" />
+            </Field>
+            <Field label="Weight (lb)">
+              <Input type="number" min={50} max={800} value={weightLb} onChange={(e) => setWeightLb(e.target.value)} placeholder="160" />
+            </Field>
+            <Field label="Birth year">
+              <Input type="number" min={1900} max={2025} value={birthYear} onChange={(e) => setBirthYear(e.target.value)} placeholder="1995" />
+            </Field>
+          </div>
+          <Field label="Sex (for nutrition calculations)">
+            <ChipGroup options={SEXES} value={sex} onChange={setSex} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Hobbies & lifestyle */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Hobbies & lifestyle *</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="What do you enjoy doing?" hint="Pick any that fit — add your own too.">
+            <MultiChips options={HOBBY_SUGGESTIONS} selected={hobbies} onToggle={(v) => toggle(hobbies, setHobbies, v)} />
+            {customHobbies.length > 0 && (
+              <div className="mt-2">
+                <MultiChips options={customHobbies} selected={hobbies} onToggle={(v) => toggle(hobbies, setHobbies, v)} />
+              </div>
+            )}
+            <div className="mt-2 flex gap-2">
+              <Input
+                value={customHobby}
+                onChange={(e) => setCustomHobby(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomHobby();
+                  }
+                }}
+                placeholder="Add another hobby"
+                maxLength={40}
+              />
+              <Button type="button" variant="outline" onClick={addCustomHobby}>
+                Add
+              </Button>
+            </div>
+          </Field>
+          <Field label="Which sounds most like you?">
+            <ChipGroup options={SOCIAL_TENDENCIES} value={socialTendency} onChange={setSocialTendency} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Chores */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Chores</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="Which chores do you handle?" hint="Select the ones you do, then set how often.">
+            <MultiChips
+              options={CHORE_OPTIONS}
+              selected={chores.map((c) => c.name)}
+              onToggle={toggleChore}
+            />
+          </Field>
+          {chores.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              {chores.map((c) => (
+                <div key={c.name} className="flex items-center justify-between gap-3 text-sm">
+                  <span>{c.name}</span>
+                  <select
+                    value={c.frequency}
+                    onChange={(e) => setChoreFreq(c.name, e.target.value as ChoreFrequency)}
+                    className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                  >
+                    {CHORE_FREQUENCIES.map((f) => (
+                      <option key={f.value} value={f.value}>
+                        {f.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Diet */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Diet</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Field label="Any dietary restrictions or allergies?">
+            <MultiChips options={DIETARY_OPTIONS} selected={dietary} onToggle={(v) => toggle(dietary, setDietary, v)} />
+          </Field>
+          <Field label="Anything else about your diet?" hint="Optional — other allergies, dislikes, preferences.">
+            <Textarea
+              value={dietaryNotes}
+              onChange={(e) => setDietaryNotes(e.target.value)}
+              placeholder="e.g. severe sesame allergy, don't like cilantro, trying to cut sugar"
+              maxLength={500}
+              rows={3}
+            />
+          </Field>
+        </CardContent>
+      </Card>
+
+      {/* Planning scope */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Planning *</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Field label="What kind of planning do you want from Daybreak?">
+            <ChipGroup options={PLANNING_SCOPES} value={planningScope} onChange={setPlanningScope} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <div className="sticky bottom-4 flex justify-end">
+        <Button size="lg" onClick={handleSubmit} disabled={pending} className="shadow-soft">
+          {pending ? "Saving…" : "Save my plan profile"}
+        </Button>
+      </div>
+    </div>
+  );
+}
