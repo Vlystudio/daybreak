@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CoachTabs } from "@/components/coach/coach-tabs";
 import type { FitnessPlan } from "@/lib/planning";
+import type { UserWorkout } from "@/lib/fitness";
 
 export const metadata = { title: "Coach · Daybreak" };
 
@@ -9,7 +10,15 @@ export default async function CoachPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const [{ data: plan }, { data: prefs }, { data: groceries }, { data: liked }] = await Promise.all([
+  const [
+    { data: plan },
+    { data: prefs },
+    { data: groceries },
+    { data: liked },
+    { data: workouts },
+    { data: equipment },
+    { data: limitations },
+  ] = await Promise.all([
     supabase.from("fitness_plans").select("*").eq("user_id", user.id).maybeSingle<FitnessPlan>(),
     supabase
       .from("user_preferences")
@@ -29,9 +38,29 @@ export default async function CoachPage() {
       .eq("liked", true)
       .order("created_at", { ascending: false })
       .returns<{ recipe_id: number; title: string }[]>(),
+    supabase
+      .from("user_workouts")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(8)
+      .returns<UserWorkout[]>(),
+    supabase
+      .from("user_equipment")
+      .select("id, name")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .returns<{ id: string; name: string }[]>(),
+    supabase
+      .from("user_limitations")
+      .select("id, description")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .returns<{ id: string; description: string }[]>(),
   ]);
 
   const hasMetrics = prefs?.height_in != null && prefs?.weight_lb != null;
+  const workoutHistory = workouts ?? [];
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -46,6 +75,10 @@ export default async function CoachPage() {
         hasMetrics={hasMetrics}
         groceries={groceries ?? []}
         likedRecipes={liked ?? []}
+        latestWorkout={workoutHistory[0] ?? null}
+        workoutHistory={workoutHistory}
+        equipment={equipment ?? []}
+        limitations={limitations ?? []}
       />
     </div>
   );
