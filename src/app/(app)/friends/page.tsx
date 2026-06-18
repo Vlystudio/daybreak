@@ -1,13 +1,15 @@
 import { requireUser } from "@/lib/auth";
 import { loadFriends } from "@/lib/friends";
+import { loadCompetitions } from "@/lib/competitions";
 import { FriendsView } from "@/components/friends/friends-view";
+import { CompetitionsView } from "@/components/friends/competitions-view";
 
 export const metadata = { title: "Friends · Daybreak" };
 export const dynamic = "force-dynamic";
 
 export default async function FriendsPage() {
   const user = await requireUser();
-  const data = await loadFriends(user.id);
+  const [data, competitions] = await Promise.all([loadFriends(user.id), loadCompetitions(user.id)]);
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
@@ -18,6 +20,10 @@ export default async function FriendsPage() {
         </p>
       </div>
       <FriendsView data={data} />
+      <CompetitionsView
+        competitions={competitions}
+        friends={data.friends.map((f) => ({ userId: f.userId, name: f.name }))}
+      />
     </div>
   );
 }
