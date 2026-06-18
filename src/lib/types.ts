@@ -23,6 +23,15 @@ export interface HealthMetric {
   light_sleep_min: number | null;
   activity_balance: number | null;
   body_temperature_delta: number | null;
+  steps: number | null;
+  active_calories: number | null;
+  total_calories: number | null;
+  activity_score: number | null;
+  spo2_avg: number | null;
+  respiratory_rate: number | null;
+  stress_high_min: number | null;
+  recovery_high_min: number | null;
+  resilience_level: string | null;
 }
 
 export interface DailySummary {

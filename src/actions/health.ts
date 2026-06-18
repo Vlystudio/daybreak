@@ -11,7 +11,7 @@ import type { HealthMetric } from "@/lib/types";
 export type AnalyzeResult = { ok: true; analysis: HealthAnalysis } | { ok: false; error: string };
 
 const METRIC_COLUMNS =
-  "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency, deep_sleep_min, rem_sleep_min, light_sleep_min, body_temperature_delta";
+  "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency, deep_sleep_min, rem_sleep_min, light_sleep_min, body_temperature_delta, steps, active_calories, activity_score, spo2_avg, respiratory_rate, stress_high_min, recovery_high_min, resilience_level";
 
 /** On-demand AI read of the last ~30 days of metrics. Tightly rate-limited. */
 export async function analyzeHealth(): Promise<AnalyzeResult> {

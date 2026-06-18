@@ -56,6 +56,18 @@ const CHARTS: {
     unit: "°C",
     format: (n) => (n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1)),
   },
+  { key: "steps", title: "Steps", color: "var(--primary)", format: (n) => Math.round(n).toLocaleString() },
+  { key: "active_calories", title: "Active calories", color: "var(--peach)", unit: "cal" },
+  { key: "activity_score", title: "Activity score", color: "var(--sage)" },
+  { key: "spo2_avg", title: "Blood oxygen", color: "var(--sky)", unit: "%", format: (n) => n.toFixed(1) },
+  {
+    key: "respiratory_rate",
+    title: "Respiratory rate",
+    color: "var(--sage)",
+    unit: "/min",
+    format: (n) => n.toFixed(1),
+  },
+  { key: "stress_high_min", title: "High-stress time", color: "var(--honey)", unit: "min" },
 ];
 
 const SEV_STYLE: Record<HeadsUpSeverity, string> = {

@@ -79,11 +79,36 @@ interface OuraSleepPeriod {
   average_hrv: number | null;
   average_heart_rate: number | null;
   lowest_heart_rate: number | null;
+  average_breath: number | null; // breaths per minute
   total_sleep_duration: number | null; // seconds
   deep_sleep_duration: number | null;
   rem_sleep_duration: number | null;
   light_sleep_duration: number | null;
   efficiency: number | null;
+}
+
+interface OuraDailyActivity {
+  day: string;
+  score: number | null;
+  steps: number | null;
+  active_calories: number | null;
+  total_calories: number | null;
+}
+
+interface OuraDailySpo2 {
+  day: string;
+  spo2_percentage: { average: number | null } | null;
+}
+
+interface OuraDailyStress {
+  day: string;
+  stress_high: number | null; // seconds
+  recovery_high: number | null; // seconds
+}
+
+interface OuraDailyResilience {
+  day: string;
+  level: string | null;
 }
 
 async function ouraGet<T>(
@@ -109,6 +134,21 @@ async function ouraGet<T>(
   return results;
 }
 
+/** Like ouraGet but never throws — used for newer endpoints that may be empty
+ *  or out of scope for a given account, so one of them can't fail the sync. */
+async function safeGet<T>(
+  accessToken: string,
+  path: string,
+  params: Record<string, string>
+): Promise<T[]> {
+  try {
+    return await ouraGet<T>(accessToken, path, params);
+  } catch (err) {
+    console.error(`[oura] optional endpoint ${path} skipped:`, err instanceof Error ? err.message : "unknown");
+    return [];
+  }
+}
+
 export interface DailyMetrics {
   date: string;
   readiness_score: number | null;
@@ -124,6 +164,15 @@ export interface DailyMetrics {
   body_temperature_delta: number | null;
   bedtime_start: string | null; // ISO datetime they fell asleep
   bedtime_end: string | null; // ISO datetime they woke up
+  steps: number | null;
+  active_calories: number | null;
+  total_calories: number | null;
+  activity_score: number | null;
+  spo2_avg: number | null;
+  respiratory_rate: number | null;
+  stress_high_min: number | null;
+  recovery_high_min: number | null;
+  resilience_level: string | null;
 }
 
 /**
@@ -139,10 +188,14 @@ export async function fetchOuraDailyMetrics(
   if (!accessToken) return null;
 
   const range = { start_date: startDate, end_date: endDate };
-  const [readiness, dailySleep, sleepPeriods] = await Promise.all([
+  const [readiness, dailySleep, sleepPeriods, activity, spo2, stress, resilience] = await Promise.all([
     ouraGet<OuraDailyReadiness>(accessToken, "/usercollection/daily_readiness", range),
     ouraGet<OuraDailySleep>(accessToken, "/usercollection/daily_sleep", range),
     ouraGet<OuraSleepPeriod>(accessToken, "/usercollection/sleep", range),
+    safeGet<OuraDailyActivity>(accessToken, "/usercollection/daily_activity", range),
+    safeGet<OuraDailySpo2>(accessToken, "/usercollection/daily_spo2", range),
+    safeGet<OuraDailyStress>(accessToken, "/usercollection/daily_stress", range),
+    safeGet<OuraDailyResilience>(accessToken, "/usercollection/daily_resilience", range),
   ]);
 
   const byDay = new Map<string, DailyMetrics>();
@@ -164,6 +217,15 @@ export async function fetchOuraDailyMetrics(
         body_temperature_delta: null,
         bedtime_start: null,
         bedtime_end: null,
+        steps: null,
+        active_calories: null,
+        total_calories: null,
+        activity_score: null,
+        spo2_avg: null,
+        respiratory_rate: null,
+        stress_high_min: null,
+        recovery_high_min: null,
+        resilience_level: null,
       };
       byDay.set(date, row);
     }
@@ -193,6 +255,29 @@ export async function fetchOuraDailyMetrics(
     row.light_sleep_min = p.light_sleep_duration ? Math.round(p.light_sleep_duration / 60) : null;
     row.bedtime_start = p.bedtime_start;
     row.bedtime_end = p.bedtime_end;
+    row.respiratory_rate = p.average_breath;
+  }
+
+  for (const a of activity) {
+    const row = day(a.day);
+    row.activity_score = a.score;
+    row.steps = a.steps;
+    row.active_calories = a.active_calories;
+    row.total_calories = a.total_calories;
+  }
+
+  for (const s of spo2) {
+    day(s.day).spo2_avg = s.spo2_percentage?.average ?? null;
+  }
+
+  for (const s of stress) {
+    const row = day(s.day);
+    row.stress_high_min = s.stress_high != null ? Math.round(s.stress_high / 60) : null;
+    row.recovery_high_min = s.recovery_high != null ? Math.round(s.recovery_high / 60) : null;
+  }
+
+  for (const r of resilience) {
+    day(r.day).resilience_level = r.level;
   }
 
   return Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));

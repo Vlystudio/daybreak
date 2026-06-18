@@ -16,7 +16,13 @@ export type MetricKey =
   | "deep_sleep_min"
   | "rem_sleep_min"
   | "light_sleep_min"
-  | "body_temperature_delta";
+  | "body_temperature_delta"
+  | "steps"
+  | "active_calories"
+  | "activity_score"
+  | "spo2_avg"
+  | "respiratory_rate"
+  | "stress_high_min";
 
 export interface MetricStat {
   latest: number | null;
@@ -130,6 +136,39 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
       title: `Body temperature is ${temp.latest > 0 ? "above" : "below"} your baseline`,
       detail:
         "A notable shift in skin temperature can precede illness or reflect your cycle, alcohol, or a warm room. Keep an eye on how you feel.",
+    });
+  }
+
+  const spo2 = metricStat(metrics, "spo2_avg");
+  if (spo2.avg7 != null && spo2.avg7 < 95) {
+    flags.push({
+      id: "spo2-low",
+      severity: spo2.avg7 < 93 ? "alert" : "watch",
+      title: `Overnight blood oxygen is averaging ${Math.round(spo2.avg7)}%`,
+      detail:
+        "Healthy nights usually sit at 95%+. Dips can come from congestion, alcohol, altitude, or disrupted breathing — worth watching, and mentioning to a doctor if it persists.",
+    });
+  }
+
+  const steps = metricStat(metrics, "steps");
+  if (steps.avg7 != null && steps.avg7 < 5000) {
+    flags.push({
+      id: "steps-low",
+      severity: "watch",
+      title: `You're averaging ${Math.round(steps.avg7).toLocaleString()} steps a day`,
+      detail:
+        "That's on the sedentary side. Even a couple of short walks would lift your daily activity and tends to help sleep and mood.",
+    });
+  }
+
+  const stress = metricStat(metrics, "stress_high_min");
+  if (stress.avg7 != null && stress.avg30 != null && stress.avg7 - stress.avg30 >= 20) {
+    flags.push({
+      id: "stress-up",
+      severity: "watch",
+      title: `High-stress time is up ~${Math.round(stress.avg7 - stress.avg30)} min/day`,
+      detail:
+        "Your daytime stress load has climbed above your usual. If it lines up with lower HRV or readiness, build in a few real recovery breaks.",
     });
   }
 
