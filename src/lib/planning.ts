@@ -181,6 +181,8 @@ export interface UserPreferences {
   work_start_time: string | null;
   work_end_time: string | null;
   work_days: string[];
+  wake_time: string | null;
+  sleep_time: string | null;
   fitness_goal: string | null;
   activity_level: string | null;
   exercise_frequency: string | null;

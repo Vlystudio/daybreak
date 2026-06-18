@@ -74,6 +74,8 @@ interface OuraDailySleep {
 interface OuraSleepPeriod {
   day: string;
   type: string;
+  bedtime_start: string | null; // ISO datetime
+  bedtime_end: string | null; // ISO datetime
   average_hrv: number | null;
   average_heart_rate: number | null;
   lowest_heart_rate: number | null;
@@ -120,6 +122,8 @@ export interface DailyMetrics {
   light_sleep_min: number | null;
   activity_balance: number | null;
   body_temperature_delta: number | null;
+  bedtime_start: string | null; // ISO datetime they fell asleep
+  bedtime_end: string | null; // ISO datetime they woke up
 }
 
 /**
@@ -158,6 +162,8 @@ export async function fetchOuraDailyMetrics(
         light_sleep_min: null,
         activity_balance: null,
         body_temperature_delta: null,
+        bedtime_start: null,
+        bedtime_end: null,
       };
       byDay.set(date, row);
     }
@@ -185,6 +191,8 @@ export async function fetchOuraDailyMetrics(
     row.deep_sleep_min = p.deep_sleep_duration ? Math.round(p.deep_sleep_duration / 60) : null;
     row.rem_sleep_min = p.rem_sleep_duration ? Math.round(p.rem_sleep_duration / 60) : null;
     row.light_sleep_min = p.light_sleep_duration ? Math.round(p.light_sleep_duration / 60) : null;
+    row.bedtime_start = p.bedtime_start;
+    row.bedtime_end = p.bedtime_end;
   }
 
   return Array.from(byDay.values()).sort((a, b) => a.date.localeCompare(b.date));

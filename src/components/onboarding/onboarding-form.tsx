@@ -115,6 +115,8 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
   const [workDays, setWorkDays] = useState<string[]>(initial?.work_days ?? []);
   const [workStart, setWorkStart] = useState(initial?.work_start_time ?? "");
   const [workEnd, setWorkEnd] = useState(initial?.work_end_time ?? "");
+  const [wakeTime, setWakeTime] = useState(initial?.wake_time ?? "");
+  const [sleepTime, setSleepTime] = useState(initial?.sleep_time ?? "");
   const [fitnessGoal, setFitnessGoal] = useState(initial?.fitness_goal ?? "");
   const [activityLevel, setActivityLevel] = useState(initial?.activity_level ?? "");
   const [exerciseFrequency, setExerciseFrequency] = useState(initial?.exercise_frequency ?? "");
@@ -179,6 +181,8 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
       workSchedule,
       workStartTime: workStart,
       workEndTime: workEnd,
+      wakeTime,
+      sleepTime,
       workDays,
       fitnessGoal,
       activityLevel,
@@ -254,6 +258,30 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
             <Field label="Work end">
               <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
             </Field>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Daily rhythm */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Daily rhythm</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">When does your day start and end?</p>
+            <p className="-mt-1 text-xs text-muted-foreground">
+              Your goal wake and bedtime — the planner schedules only within this window. If your Oura
+              ring is connected, your actual sleep/wake takes over automatically.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Wake up">
+                <Input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} />
+              </Field>
+              <Field label="Bedtime">
+                <Input type="time" value={sleepTime} onChange={(e) => setSleepTime(e.target.value)} />
+              </Field>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -157,6 +157,7 @@ Rules:
 - Weather (when provided, applies to that day): prefer indoor activities in rain/snow or uncomfortable temperatures, and outdoor options when it's pleasant. Temperatures are in Fahrenheit.
 - Chores: schedule each listed chore consistent with its frequency over the window ("daily" most days, "weekly" once, etc.).
 - Hobbies & downtime: include their hobbies and genuine rest. Homebody -> favor at-home activities; social -> include getting-out/social time.
+- Day window: when dayWindow is provided, ONLY schedule between its wake and sleep times (24h HH:MM). Never place a block before wake or after sleep, and end the day with a short "wind_down" block roughly 30-60 minutes before sleep. This window reflects the person's wearable sleep/wake or their stated goal — honor it as the bounds of their day.
 - Be humane: do not overload a day. Aim for 3-6 blocks per day at sensible local times.
 
 Respond with JSON exactly:
@@ -167,6 +168,7 @@ export async function generateWeeklyPlan(input: {
   preferences: Record<string, unknown>;
   days: { date: string; weekday: string }[];
   busy: { date: string; start: string; end: string; title: string }[];
+  dayWindow?: { wake: string; sleep: string; source: string };
   recent: { date: string; readiness: number | null; sleep: number | null }[];
   weather?: {
     description: string;

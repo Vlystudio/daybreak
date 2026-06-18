@@ -100,6 +100,8 @@ interface DayMetric {
   date: string;
   readiness_score: number | null;
   sleep_score: number | null;
+  bedtime_start: string | null;
+  bedtime_end: string | null;
 }
 
 /**
@@ -145,13 +147,24 @@ async function planDays(
 
   const { data: metrics } = await admin
     .from("health_metrics")
-    .select("date, readiness_score, sleep_score")
+    .select("date, readiness_score, sleep_score, bedtime_start, bedtime_end")
     .eq("user_id", userId)
     .order("date", { ascending: false })
     .limit(10)
     .returns<DayMetric[]>();
   const metricsByDate = new Map((metrics ?? []).map((m) => [m.date, m]));
   const latestMetric = (metrics ?? [])[0] ?? null;
+
+  // Day window the planner schedules within. Prefer the wearable's most recent
+  // actual sleep/wake; fall back to the user's goal times; then sane defaults.
+  const latestSleep = (metrics ?? []).find((m) => m.bedtime_end || m.bedtime_start) ?? null;
+  const actualWake = latestSleep?.bedtime_end ? localTime(latestSleep.bedtime_end, tz) : null;
+  const actualSleep = latestSleep?.bedtime_start ? localTime(latestSleep.bedtime_start, tz) : null;
+  const dayWindow = {
+    wake: actualWake ?? prefs.wake_time ?? "07:00",
+    sleep: actualSleep ?? prefs.sleep_time ?? "22:30",
+    source: actualWake || actualSleep ? "wearable" : prefs.wake_time || prefs.sleep_time ? "goal" : "default",
+  };
 
   const todayStr = localToday(tz);
   const lat = profile?.latitude;
@@ -208,6 +221,7 @@ async function planDays(
       preferences,
       days: [d],
       busy: busyForDay,
+      dayWindow,
       recent,
       weather: weather
         ? {

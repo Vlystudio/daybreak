@@ -30,6 +30,8 @@ export async function saveOnboarding(input: OnboardingInput): Promise<ActionResu
       work_start_time: d.workStartTime || null,
       work_end_time: d.workEndTime || null,
       work_days: d.workDays,
+      wake_time: d.wakeTime || null,
+      sleep_time: d.sleepTime || null,
       fitness_goal: d.fitnessGoal,
       activity_level: d.activityLevel,
       exercise_frequency: d.exerciseFrequency,
