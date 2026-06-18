@@ -232,6 +232,7 @@ body {
   border: none;
   border-radius: 0.6rem;
   padding: 2px 8px;
+  color: #3d3229; /* dark text reads cleanly on the light pastel event colors */
 }
 .rbc-event.rbc-selected {
   background-color: #d8813a;
