@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncCalendarForUser } from "@/lib/sync";
-import { maybeRefreshTodayPlanForUser } from "@/lib/planner";
+import { maybeRefreshTodayPlanForUser, maybeAutoPlanForUser } from "@/lib/planner";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
@@ -56,6 +56,29 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  await audit(null, "cron.data_sync", { metadata: { users: byUser.size, synced, failed } });
-  return NextResponse.json({ users: byUser.size, synced, failed });
+  // Auto-plan pass: regenerate the whole scope for users who opted into a
+  // cadence, independent of integrations. Each call is gated to run at most once
+  // per local day, so checking hourly just catches each user's local morning.
+  let autoPlanned = 0;
+  const { data: cadenceUsers } = await admin
+    .from("user_preferences")
+    .select("user_id")
+    .eq("onboarding_completed", true)
+    .neq("auto_plan_cadence", "off")
+    .not("auto_plan_cadence", "is", null)
+    .returns<{ user_id: string }[]>();
+
+  for (const { user_id } of cadenceUsers ?? []) {
+    try {
+      const count = await maybeAutoPlanForUser(user_id);
+      if (count !== null) autoPlanned++;
+    } catch (err) {
+      console.error("[cron] auto-plan failed for a user:", err);
+    }
+  }
+
+  await audit(null, "cron.data_sync", {
+    metadata: { users: byUser.size, synced, failed, autoPlanned },
+  });
+  return NextResponse.json({ users: byUser.size, synced, failed, autoPlanned });
 }

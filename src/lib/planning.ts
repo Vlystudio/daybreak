@@ -49,6 +49,13 @@ export const PLANNING_SCOPES = [
   { value: "weekends", label: "Mainly weekends" },
 ] as const satisfies readonly Option<string>[];
 
+export const AUTO_PLAN_CADENCES = [
+  { value: "off", label: "Off — I'll build it myself" },
+  { value: "daily", label: "Every day" },
+  { value: "few_times_week", label: "A few times a week" },
+  { value: "weekly", label: "Weekly" },
+] as const satisfies readonly Option<string>[];
+
 export const WORK_DAYS = [
   { value: "Monday", label: "Mon" },
   { value: "Tuesday", label: "Tue" },
@@ -196,5 +203,6 @@ export interface UserPreferences {
   dietary_restrictions: string[];
   dietary_notes: string | null;
   planning_scope: string | null;
+  auto_plan_cadence: string | null;
   onboarding_completed: boolean;
 }

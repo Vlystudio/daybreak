@@ -19,6 +19,7 @@ import {
   EXERCISE_FREQUENCIES,
   SOCIAL_TENDENCIES,
   PLANNING_SCOPES,
+  AUTO_PLAN_CADENCES,
   SEXES,
   CHORE_FREQUENCIES,
   CHORE_OPTIONS,
@@ -137,6 +138,7 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
   const [dietary, setDietary] = useState<string[]>(initial?.dietary_restrictions ?? []);
   const [dietaryNotes, setDietaryNotes] = useState(initial?.dietary_notes ?? "");
   const [planningScope, setPlanningScope] = useState(initial?.planning_scope ?? "");
+  const [autoPlanCadence, setAutoPlanCadence] = useState(initial?.auto_plan_cadence ?? "off");
 
   function toggle(list: string[], setList: (v: string[]) => void, value: string) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -197,6 +199,7 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
       dietaryRestrictions: dietary,
       dietaryNotes,
       planningScope,
+      autoPlanCadence,
     };
 
     startTransition(async () => {
@@ -435,6 +438,12 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
         <CardContent>
           <Field label="What kind of planning do you want from Daybreak?">
             <ChipGroup options={PLANNING_SCOPES} value={planningScope} onChange={setPlanningScope} />
+          </Field>
+          <Field
+            label="Build it for me automatically?"
+            hint="Daybreak can regenerate your plan on this cadence each morning — no need to press Generate. Today still refreshes from your Oura recovery."
+          >
+            <ChipGroup options={AUTO_PLAN_CADENCES} value={autoPlanCadence} onChange={setAutoPlanCadence} />
           </Field>
         </CardContent>
       </Card>

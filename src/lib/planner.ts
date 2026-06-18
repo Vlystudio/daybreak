@@ -433,3 +433,53 @@ export async function maybeRefreshTodayPlanForUser(userId: string): Promise<numb
   await admin.from("user_preferences").update({ last_planned_date: todayStr }).eq("user_id", userId);
   return count;
 }
+
+const CADENCE_MIN_GAP_DAYS: Record<string, number> = { daily: 1, few_times_week: 3, weekly: 7 };
+
+/**
+ * Auto-plan entry point: regenerate the user's whole scope on their chosen
+ * cadence (off/daily/few_times_week/weekly), at most once per local day and only
+ * when enough days have passed. Deliberately does NOT touch last_planned_date,
+ * so the recovery-driven today refresh still sharpens today afterwards.
+ */
+export async function maybeAutoPlanForUser(userId: string): Promise<number | null> {
+  const admin = createAdminClient();
+
+  const { data: prefs } = await admin
+    .from("user_preferences")
+    .select("onboarding_completed, planning_scope, auto_plan_cadence, last_autoplan_date")
+    .eq("user_id", userId)
+    .maybeSingle<{
+      onboarding_completed: boolean;
+      planning_scope: string | null;
+      auto_plan_cadence: string | null;
+      last_autoplan_date: string | null;
+    }>();
+  if (!prefs || !prefs.onboarding_completed) return null;
+
+  const cadence = prefs.auto_plan_cadence ?? "off";
+  const minGap = CADENCE_MIN_GAP_DAYS[cadence];
+  if (!minGap) return null; // "off" or unknown
+
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("timezone")
+    .eq("id", userId)
+    .maybeSingle<{ timezone: string }>();
+  const tz = profile?.timezone || "UTC";
+  const todayStr = localToday(tz);
+
+  if (prefs.last_autoplan_date) {
+    if (prefs.last_autoplan_date === todayStr) return null;
+    const daysSince = Math.round(
+      (Date.parse(`${todayStr}T00:00:00Z`) - Date.parse(`${prefs.last_autoplan_date}T00:00:00Z`)) / 86_400_000
+    );
+    if (daysSince < minGap) return null;
+  }
+
+  const count = await planDays(userId, planningDays(prefs.planning_scope, tz));
+  if (count !== null) {
+    await admin.from("user_preferences").update({ last_autoplan_date: todayStr }).eq("user_id", userId);
+  }
+  return count;
+}

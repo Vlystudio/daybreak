@@ -6,6 +6,7 @@ import {
   EXERCISE_FREQUENCIES,
   SOCIAL_TENDENCIES,
   PLANNING_SCOPES,
+  AUTO_PLAN_CADENCES,
   SEXES,
   CHORE_FREQUENCIES,
   type Option,
@@ -109,6 +110,7 @@ export const onboardingSchema = z.object({
   dietaryRestrictions: z.array(z.string().trim().min(1).max(40)).max(40).default([]),
   dietaryNotes: z.string().trim().max(500).optional().or(z.literal("")),
   planningScope: z.enum(enumValues(PLANNING_SCOPES)),
+  autoPlanCadence: z.enum(enumValues(AUTO_PLAN_CADENCES)).optional(),
 });
 
 export type OnboardingInput = z.input<typeof onboardingSchema>;

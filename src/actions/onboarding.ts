@@ -45,6 +45,7 @@ export async function saveOnboarding(input: OnboardingInput): Promise<ActionResu
       dietary_restrictions: d.dietaryRestrictions,
       dietary_notes: d.dietaryNotes || null,
       planning_scope: d.planningScope,
+      auto_plan_cadence: d.autoPlanCadence ?? "off",
       onboarding_completed: true,
     },
     { onConflict: "user_id" }
