@@ -14,6 +14,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const links = [
   { href: "/dashboard", label: "Today", icon: LayoutDashboard },
@@ -63,10 +64,13 @@ export function AppNav() {
             ))}
           </nav>
 
-          <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
-            <LogOut aria-hidden />
-            <span className="hidden sm:inline">Sign out</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" onClick={signOut} aria-label="Sign out">
+              <LogOut aria-hidden />
+              <span className="hidden sm:inline">Sign out</span>
+            </Button>
+          </div>
         </div>
       </header>
 
