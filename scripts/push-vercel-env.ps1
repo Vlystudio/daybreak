@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 $wanted = @(
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "NEXT_PUBLIC_APP_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "TOKEN_ENCRYPTION_KEY",
   "CRON_SECRET",
@@ -27,10 +28,10 @@ Get-Content .env.local | ForEach-Object {
 foreach ($name in $wanted) {
   $val = $map[$name]
   if ([string]::IsNullOrWhiteSpace($val)) { Write-Host "skip  $name (empty / not set)"; continue }
-  foreach ($target in @("production", "preview", "development")) {
-    try { vercel env rm $name $target --yes 2>$null | Out-Null } catch {}
-    $val | vercel env add $name $target | Out-Null
-  }
+  # Production only — that's what the live site uses. Remove any existing value
+  # first so re-runs update (add alone errors if the var already exists).
+  try { vercel env rm $name production --yes 2>$null | Out-Null } catch {}
+  $val | vercel env add $name production 2>$null | Out-Null
   Write-Host "set   $name"
 }
 
