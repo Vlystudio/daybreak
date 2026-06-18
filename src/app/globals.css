@@ -173,6 +173,29 @@ body {
   box-shadow: var(--shadow-lifted);
 }
 
+/* Tactile lift for interactive / clickable cards. */
+.hover-lift {
+  transition:
+    transform 0.2s cubic-bezier(0.21, 0.47, 0.32, 0.98),
+    box-shadow 0.2s ease;
+  will-change: transform;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lifted);
+}
+.hover-lift:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-lift,
+  .hover-lift:hover,
+  .hover-lift:active {
+    transform: none;
+  }
+}
+
 /* Accessible focus outline */
 :focus-visible {
   outline: 2px solid var(--ring);

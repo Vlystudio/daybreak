@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { GrocerySettingsForm } from "@/components/grocery/grocery-settings-form";
 import { StorePicker } from "@/components/grocery/store-picker";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { Card, CardContent } from "@/components/ui/card";
 import type { GrocerySettings, Store } from "@/lib/grocery";
 
@@ -74,27 +75,29 @@ export default async function GroceryPage() {
         </p>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <Stagger className="grid gap-3 sm:grid-cols-2">
         {SECTIONS.map((section) => {
           const Icon = section.icon;
           return (
-            <Link key={section.href} href={section.href} className="block">
-              <Card className="h-full transition-colors hover:bg-accent/50">
-                <CardContent className="flex items-center gap-3 py-4">
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${section.tint}`}>
-                    <Icon className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{section.label}</p>
-                    <p className="text-sm text-muted-foreground">{section.blurb}</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
-                </CardContent>
-              </Card>
-            </Link>
+            <StaggerItem key={section.href} className="h-full">
+              <Link href={section.href} className="block h-full">
+                <Card className="hover-lift h-full transition-colors hover:bg-accent/50">
+                  <CardContent className="flex items-center gap-3 py-4">
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${section.tint}`}>
+                      <Icon className="h-5 w-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium">{section.label}</p>
+                      <p className="text-sm text-muted-foreground">{section.blurb}</p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  </CardContent>
+                </Card>
+              </Link>
+            </StaggerItem>
           );
         })}
-      </div>
+      </Stagger>
 
       <StorePicker stores={stores ?? []} enabledStoreIds={enabledStoreIds} />
       <GrocerySettingsForm settings={settings ?? null} />

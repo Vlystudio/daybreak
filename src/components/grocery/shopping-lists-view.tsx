@@ -72,7 +72,7 @@ export function ShoppingListsView({ lists }: { lists: ShoppingListSummary[] }) {
         <ul className="space-y-2">
           {lists.map((list) => (
             <li key={list.id}>
-              <Card className="transition-colors hover:bg-accent/50">
+              <Card className="hover-lift transition-colors hover:bg-accent/50">
                 <CardContent className="flex items-center gap-3 py-3">
                   <Link href={`/grocery/lists/${list.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="min-w-0 flex-1">
