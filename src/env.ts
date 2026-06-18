@@ -28,6 +28,7 @@ const serverSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   WEATHER_API_KEY: z.string().min(1).optional(),
+  SPOONACULAR_API_KEY: z.string().min(1).optional(),
 });
 
 function formatIssues(error: z.ZodError): string {

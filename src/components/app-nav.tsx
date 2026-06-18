@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Sunrise, LayoutDashboard, CalendarDays, ClipboardList, Dumbbell, Settings, LogOut } from "lucide-react";
+import {
+  Sunrise,
+  LayoutDashboard,
+  CalendarDays,
+  ClipboardList,
+  Dumbbell,
+  ChefHat,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,6 +21,7 @@ const links = [
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/onboarding", label: "Plan", icon: ClipboardList },
   { href: "/trainer", label: "Trainer", icon: Dumbbell },
+  { href: "/meals", label: "Meals", icon: ChefHat },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
