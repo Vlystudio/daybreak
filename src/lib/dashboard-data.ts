@@ -23,6 +23,7 @@ export interface DashboardData {
   connections: Connection[];
   weather: WeatherSnapshot | null;
   calendarSync: CalendarSyncSettings | null;
+  onboardingCompleted: boolean;
 }
 
 function isoDate(d: Date): string {
@@ -51,6 +52,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: connections },
     { data: membership },
     { data: calendarSync },
+    { data: prefs },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -90,6 +92,11 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .select("sync_enabled, google_calendar_id, last_synced_at")
       .eq("user_id", userId)
       .maybeSingle<CalendarSyncSettings>(),
+    supabase
+      .from("user_preferences")
+      .select("onboarding_completed")
+      .eq("user_id", userId)
+      .maybeSingle<{ onboarding_completed: boolean }>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -146,5 +153,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     connections: (connections as Connection[] | null) ?? [],
     weather,
     calendarSync: calendarSync ?? null,
+    onboardingCompleted: prefs?.onboarding_completed ?? false,
   };
 }

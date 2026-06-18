@@ -9,6 +9,7 @@ import { SleepCard } from "@/components/dashboard/sleep-card";
 import { HrvCard } from "@/components/dashboard/hrv-card";
 import { WeatherCard } from "@/components/dashboard/weather-card";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
+import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
@@ -30,6 +31,13 @@ export default async function DashboardPage() {
       </Suspense>
 
       <Greeting name={firstName} timezone={data.profile?.timezone ?? "UTC"} />
+
+      <SetupChecklist
+        onboardingCompleted={data.onboardingCompleted}
+        hasCity={Boolean(data.profile?.city)}
+        hasOura={data.connections.some((c) => c.provider === "oura")}
+        hasGoogle={data.connections.some((c) => c.provider === "google")}
+      />
 
       <FadeIn delay={0.05}>
         <MorningSummary summary={data.summary} />
