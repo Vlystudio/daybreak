@@ -2,9 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { generatePlanForUser } from "@/lib/planner";
 import type { ActionResult } from "@/actions/schedule";
+
+/** Remove every AI-planned block (a clean slate), leaving manual/Google events. */
+export async function clearPlan(): Promise<ActionResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("schedule_events")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("source", "plan");
+  if (error) return { ok: false, error: "Couldn't clear the plan." };
+
+  revalidatePath("/dashboard");
+  revalidatePath("/schedule");
+  return { ok: true };
+}
 
 /** Build an AI smart plan for the user's upcoming days into their schedule. */
 export async function generatePlan(): Promise<ActionResult> {

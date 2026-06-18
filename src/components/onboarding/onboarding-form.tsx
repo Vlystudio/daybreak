@@ -13,6 +13,7 @@ import { saveOnboarding } from "@/actions/onboarding";
 import type { OnboardingInput } from "@/lib/validation";
 import {
   WORK_TYPES,
+  WORK_DAYS,
   FITNESS_GOALS,
   ACTIVITY_LEVELS,
   EXERCISE_FREQUENCIES,
@@ -111,6 +112,9 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
   const [workType, setWorkType] = useState(initial?.work_type ?? "");
   const [workTitle, setWorkTitle] = useState(initial?.work_title ?? "");
   const [workSchedule, setWorkSchedule] = useState(initial?.work_schedule ?? "");
+  const [workDays, setWorkDays] = useState<string[]>(initial?.work_days ?? []);
+  const [workStart, setWorkStart] = useState(initial?.work_start_time ?? "");
+  const [workEnd, setWorkEnd] = useState(initial?.work_end_time ?? "");
   const [fitnessGoal, setFitnessGoal] = useState(initial?.fitness_goal ?? "");
   const [activityLevel, setActivityLevel] = useState(initial?.activity_level ?? "");
   const [exerciseFrequency, setExerciseFrequency] = useState(initial?.exercise_frequency ?? "");
@@ -173,6 +177,9 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
       workType,
       workTitle,
       workSchedule,
+      workStartTime: workStart,
+      workEndTime: workEnd,
+      workDays,
       fitnessGoal,
       activityLevel,
       exerciseFrequency,
@@ -214,9 +221,40 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
           <Field label="What's your role / job title?" hint="Optional — helps tailor suggestions.">
             <Input value={workTitle} onChange={(e) => setWorkTitle(e.target.value)} placeholder="e.g. Nurse, Software engineer" maxLength={120} />
           </Field>
-          <Field label="What's your typical work schedule?" hint="Optional — e.g. Mon–Fri 9–5, or rotating shifts.">
-            <Input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="e.g. Mon–Fri, 9am–5pm" maxLength={200} />
+          <Field label="What's your typical work schedule?" hint="Optional notes — e.g. rotating shifts, on-call.">
+            <Input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="e.g. rotating shifts" maxLength={200} />
           </Field>
+          <Field label="Which days do you work?" hint="Daybreak keeps these hours free of personal plans — no need to put work on Google Calendar.">
+            <div className="flex flex-wrap gap-2">
+              {WORK_DAYS.map((d) => {
+                const active = workDays.includes(d.value);
+                return (
+                  <button
+                    type="button"
+                    key={d.value}
+                    onClick={() => toggle(workDays, setWorkDays, d.value)}
+                    aria-pressed={active}
+                    className={cn(
+                      "rounded-full border px-3.5 py-1.5 text-sm transition-colors",
+                      active
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:bg-accent"
+                    )}
+                  >
+                    {d.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Work start">
+              <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
+            </Field>
+            <Field label="Work end">
+              <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
+            </Field>
+          </div>
         </CardContent>
       </Card>
 

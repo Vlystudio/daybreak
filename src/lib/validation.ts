@@ -75,6 +75,17 @@ export const onboardingSchema = z.object({
   workType: z.enum(enumValues(WORK_TYPES)),
   workTitle: z.string().trim().max(120).optional().or(z.literal("")),
   workSchedule: z.string().trim().max(200).optional().or(z.literal("")),
+  workStartTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM")
+    .optional()
+    .or(z.literal("")),
+  workEndTime: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM")
+    .optional()
+    .or(z.literal("")),
+  workDays: z.array(z.string().trim().min(1).max(12)).max(7).default([]),
   fitnessGoal: z.enum(enumValues(FITNESS_GOALS)),
   activityLevel: z.enum(enumValues(ACTIVITY_LEVELS)),
   exerciseFrequency: z.enum(enumValues(EXERCISE_FREQUENCIES)),

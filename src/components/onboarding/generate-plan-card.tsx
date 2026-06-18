@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { generatePlan } from "@/actions/plan";
+import { generatePlan, clearPlan } from "@/actions/plan";
 
 export function GeneratePlanCard({ ready }: { ready: boolean }) {
   const router = useRouter();
@@ -18,6 +18,18 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
       if (res.ok) {
         toast.success("Your week is planned — added to your schedule.");
         router.push("/schedule");
+        router.refresh();
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function clear() {
+    startTransition(async () => {
+      const res = await clearPlan();
+      if (res.ok) {
+        toast.success("Cleared all planned blocks.");
         router.refresh();
       } else {
         toast.error(res.error);
@@ -38,9 +50,14 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
               : "Answer the questions below and save first, then come back here to generate your plan."}
           </p>
         </div>
-        <Button onClick={run} disabled={!ready || pending} className="shrink-0 shadow-soft">
-          {pending ? "Planning…" : "Generate my plan"}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button onClick={clear} disabled={!ready || pending} variant="outline">
+            Clear
+          </Button>
+          <Button onClick={run} disabled={!ready || pending} className="shadow-soft">
+            {pending ? "Planning…" : "Generate my plan"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

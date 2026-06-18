@@ -119,6 +119,22 @@ export async function generatePlanForUser(userId: string): Promise<number | null
     title: e.title,
   }));
 
+  // Structured work hours -> busy blocks on the user's work days, so the
+  // planner blocks the shift itself without relying on Google Calendar.
+  const workDays = prefs.work_days ?? [];
+  const workBusy =
+    prefs.work_start_time && prefs.work_end_time && workDays.length > 0
+      ? days
+          .filter((d) => workDays.includes(d.weekday))
+          .map((d) => ({
+            date: d.date,
+            start: prefs.work_start_time as string,
+            end: prefs.work_end_time as string,
+            title: "Work",
+          }))
+      : [];
+  const allBusy = [...busy, ...workBusy];
+
   const { data: metrics } = await admin
     .from("health_metrics")
     .select("date, readiness_score, sleep_score")
@@ -147,17 +163,25 @@ export async function generatePlanForUser(userId: string): Promise<number | null
       planning_scope: prefs.planning_scope,
     },
     days,
-    busy,
+    busy: allBusy,
     recent,
   });
   if (!blocks) return null;
 
   // Hard constraint enforced in code (not left to the AI): a plan block may
   // never overlap a fixed event (work, Google, manual) or another plan block.
-  const busyIntervals: [number, number][] = (fixed ?? []).map((e) => [
-    new Date(e.starts_at).getTime(),
-    new Date(e.ends_at).getTime(),
-  ]);
+  const busyIntervals: [number, number][] = [
+    ...(fixed ?? []).map(
+      (e) => [new Date(e.starts_at).getTime(), new Date(e.ends_at).getTime()] as [number, number]
+    ),
+    ...workBusy.map(
+      (w) =>
+        [zonedToUtc(w.date, w.start, tz).getTime(), zonedToUtc(w.date, w.end, tz).getTime()] as [
+          number,
+          number,
+        ]
+    ),
+  ];
   const overlaps = (s: number, e: number, intervals: [number, number][]) =>
     intervals.some(([bs, be]) => s < be && e > bs);
 

@@ -49,6 +49,16 @@ export const PLANNING_SCOPES = [
   { value: "weekends", label: "Mainly weekends" },
 ] as const satisfies readonly Option<string>[];
 
+export const WORK_DAYS = [
+  { value: "Monday", label: "Mon" },
+  { value: "Tuesday", label: "Tue" },
+  { value: "Wednesday", label: "Wed" },
+  { value: "Thursday", label: "Thu" },
+  { value: "Friday", label: "Fri" },
+  { value: "Saturday", label: "Sat" },
+  { value: "Sunday", label: "Sun" },
+] as const satisfies readonly Option<string>[];
+
 export const SEXES = [
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
@@ -168,6 +178,9 @@ export interface UserPreferences {
   work_type: string | null;
   work_title: string | null;
   work_schedule: string | null;
+  work_start_time: string | null;
+  work_end_time: string | null;
+  work_days: string[];
   fitness_goal: string | null;
   activity_level: string | null;
   exercise_frequency: string | null;
