@@ -8,6 +8,7 @@
  * Cream / honey / warm white / soft orange / sage green / muted blue.
  */
 :root {
+  color-scheme: light;
   --background: #fdf9f0; /* cream */
   --foreground: #3d3229; /* warm espresso */
   --card: #fffdf8; /* warm white */
@@ -49,6 +50,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: #1b1712;
   --foreground: #ece3d5;
   --card: #262019;
