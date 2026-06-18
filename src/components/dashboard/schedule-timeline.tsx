@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { CalendarDays, Plus, MapPin, ArrowRight, Circle, CheckCircle2 } from "lucide-react";
+import { CalendarDays, Plus, MapPin, ArrowRight, Circle, CheckCircle2, Dumbbell } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,6 +162,14 @@ export function ScheduleTimeline({
                       {isNext && <Badge variant="outline">Next</Badge>}
                       {event.source === "google" && <Badge variant="sky">Google</Badge>}
                       {event.household_id && <Badge variant="sage">Shared</Badge>}
+                      {event.plan_type === "workout" && (
+                        <Link
+                          href="/coach"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          <Dumbbell className="h-3 w-3" aria-hidden /> Workout
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </li>

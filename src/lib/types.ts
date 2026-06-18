@@ -49,6 +49,8 @@ export interface ScheduleEvent {
   source: "manual" | "google" | "plan";
   color: EventColor | null;
   completed_at: string | null;
+  plan_type: string | null;
+  workout_id: string | null;
 }
 
 export interface Connection {

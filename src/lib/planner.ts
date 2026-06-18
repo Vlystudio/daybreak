@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyPlan, type PlanBlockType } from "@/lib/integrations/ai";
 import { fetchWeather } from "@/lib/integrations/weather";
+import { generateWorkoutForUser } from "@/lib/workout-engine";
 import { audit } from "@/lib/audit";
 import type { UserPreferences } from "@/lib/planning";
 
@@ -92,6 +93,7 @@ type PlanRow = {
   all_day: boolean;
   source: "plan";
   color: "honey" | "sage" | "sky" | "peach";
+  plan_type: string;
 };
 
 interface DayMetric {
@@ -179,6 +181,7 @@ async function planDays(
 
   const allRows: PlanRow[] = [];
   const clearDates: string[] = [];
+  let todayWorkoutAccepted = false;
 
   for (const d of dateList) {
     const isWorkDay = workDays.includes(d.weekday);
@@ -248,7 +251,9 @@ async function planDays(
         all_day: false,
         source: "plan",
         color: COLOR_BY_TYPE[b.type] ?? "honey",
+        plan_type: b.type,
       });
+      if (d.date === todayStr && b.type === "workout") todayWorkoutAccepted = true;
     }
     clearDates.push(d.date);
   }
@@ -273,6 +278,48 @@ async function planDays(
   }
 
   await audit(userId, "plan.generated", { metadata: { days: dateList.length, blocks: allRows.length } });
+
+  // Wire today's workout block to a real structured session (one per day).
+  if (todayWorkoutAccepted) {
+    try {
+      const ds = zonedToUtc(todayStr, "00:00", tz);
+      const de = new Date(ds.getTime() + 86_400_000);
+      const { data: workoutEvent } = await admin
+        .from("schedule_events")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("source", "plan")
+        .eq("plan_type", "workout")
+        .gte("starts_at", ds.toISOString())
+        .lt("starts_at", de.toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(1)
+        .maybeSingle<{ id: string }>();
+
+      if (workoutEvent) {
+        const { data: existing } = await admin
+          .from("user_workouts")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("date", todayStr)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle<{ id: string }>();
+
+        let workoutId = existing?.id ?? null;
+        if (!workoutId) {
+          const res = await generateWorkoutForUser(userId, { date: todayStr });
+          if (res.ok) workoutId = res.workout.id;
+        }
+        if (workoutId) {
+          await admin.from("schedule_events").update({ workout_id: workoutId }).eq("id", workoutEvent.id);
+        }
+      }
+    } catch (err) {
+      console.error("[planner] workout link failed:", err instanceof Error ? err.message : "unknown");
+    }
+  }
+
   return allRows.length;
 }
 
