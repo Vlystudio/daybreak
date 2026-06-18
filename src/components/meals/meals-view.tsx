@@ -2,11 +2,18 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, X, Search, ThumbsUp, ThumbsDown, Clock, ExternalLink, Heart } from "lucide-react";
+import { Plus, X, Search, ThumbsUp, ThumbsDown, Clock, ExternalLink, Heart, CalendarPlus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addGrocery, removeGrocery, getRecipeSuggestions, rateRecipe } from "@/actions/meals";
+import {
+  addGrocery,
+  removeGrocery,
+  getRecipeSuggestions,
+  rateRecipe,
+  addMealToSchedule,
+  addGroceries,
+} from "@/actions/meals";
 import type { RecipeSuggestion } from "@/lib/integrations/recipes";
 
 type Grocery = { id: string; name: string };
@@ -57,6 +64,30 @@ export function MealsView({
       if (res.ok) {
         setRecipes(res.recipes);
         if (res.recipes.length === 0) toast("No recipes matched — try adding a few more groceries.");
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
+
+  function planMeal(r: RecipeSuggestion) {
+    startMutate(async () => {
+      const res = await addMealToSchedule({ recipeId: r.id, title: r.title });
+      if (res.ok) toast.success("Added to today's schedule.");
+      else toast.error(res.error);
+    });
+  }
+
+  function addMissing(r: RecipeSuggestion) {
+    if (r.missed.length === 0) return;
+    startMutate(async () => {
+      const res = await addGroceries(r.missed);
+      if (res.ok) {
+        toast.success("Added missing ingredients to your list.");
+        setGroceries((g) => [
+          ...g,
+          ...r.missed.map((name, i) => ({ id: `tmp-${Date.now()}-${i}`, name })),
+        ]);
       } else {
         toast.error(res.error);
       }
@@ -149,20 +180,26 @@ export function MealsView({
                 {r.missed.length > 0 && (
                   <p className="text-xs text-muted-foreground">You&apos;ll also need: {r.missed.slice(0, 5).join(", ")}</p>
                 )}
-                <div className="flex items-center justify-between pt-1">
-                  {r.sourceUrl ? (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {r.sourceUrl && (
                     <a
                       href={r.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                     >
-                      View recipe <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                      View <ExternalLink className="h-3.5 w-3.5" aria-hidden />
                     </a>
-                  ) : (
-                    <span />
                   )}
-                  <div className="flex gap-1">
+                  <Button type="button" size="sm" variant="outline" onClick={() => planMeal(r)}>
+                    <CalendarPlus className="h-4 w-4" aria-hidden /> Plan meal
+                  </Button>
+                  {r.missed.length > 0 && (
+                    <Button type="button" size="sm" variant="ghost" onClick={() => addMissing(r)}>
+                      + {r.missed.length} to list
+                    </Button>
+                  )}
+                  <div className="ml-auto flex gap-1">
                     <Button
                       type="button"
                       size="sm"
