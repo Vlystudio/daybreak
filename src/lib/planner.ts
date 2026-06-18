@@ -62,13 +62,15 @@ function planningDays(scope: string | null, timeZone: string): { date: string; w
   return days;
 }
 
+// Plan blocks use warm colors so they're visually distinct from Google
+// events (which sync as "sky"/blue).
 const COLOR_BY_TYPE: Record<PlanBlockType, "honey" | "sage" | "sky" | "peach"> = {
   workout: "sage",
   wind_down: "sage",
   chore: "peach",
   errand: "peach",
-  hobby: "sky",
-  social: "sky",
+  hobby: "honey",
+  social: "peach",
   meal: "honey",
   focus: "honey",
 };
@@ -150,20 +152,45 @@ export async function generatePlanForUser(userId: string): Promise<number | null
   });
   if (!blocks) return null;
 
-  const rows = blocks.map((b) => {
+  // Hard constraint enforced in code (not left to the AI): a plan block may
+  // never overlap a fixed event (work, Google, manual) or another plan block.
+  const busyIntervals: [number, number][] = (fixed ?? []).map((e) => [
+    new Date(e.starts_at).getTime(),
+    new Date(e.ends_at).getTime(),
+  ]);
+  const overlaps = (s: number, e: number, intervals: [number, number][]) =>
+    intervals.some(([bs, be]) => s < be && e > bs);
+
+  const accepted: [number, number][] = [];
+  const rows: {
+    user_id: string;
+    title: string;
+    description: string | null;
+    starts_at: string;
+    ends_at: string;
+    all_day: boolean;
+    source: "plan";
+    color: "honey" | "sage" | "sky" | "peach";
+  }[] = [];
+
+  for (const b of blocks) {
     const start = zonedToUtc(b.date, b.start, tz);
-    const end = new Date(start.getTime() + b.durationMin * 60_000);
-    return {
+    const startMs = start.getTime();
+    const endMs = startMs + b.durationMin * 60_000;
+    if (overlaps(startMs, endMs, busyIntervals)) continue; // collides with a real event
+    if (overlaps(startMs, endMs, accepted)) continue; // collides with another plan block
+    accepted.push([startMs, endMs]);
+    rows.push({
       user_id: userId,
       title: b.title.slice(0, 200),
       description: b.note ? b.note.slice(0, 2000) : null,
       starts_at: start.toISOString(),
-      ends_at: end.toISOString(),
+      ends_at: new Date(endMs).toISOString(),
       all_day: false,
-      source: "plan" as const,
+      source: "plan",
       color: COLOR_BY_TYPE[b.type] ?? "honey",
-    };
-  });
+    });
+  }
 
   const { error: delErr } = await admin
     .from("schedule_events")
