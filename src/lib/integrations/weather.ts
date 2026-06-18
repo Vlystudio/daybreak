@@ -122,18 +122,18 @@ function astroTimeToIso(date: string, time12: string): string {
 
 interface WeatherApiResponse {
   current: {
-    temp_c: number;
-    feelslike_c: number;
+    temp_f: number;
+    feelslike_f: number;
     humidity: number;
-    wind_kph: number;
+    wind_mph: number;
     condition: { text: string; code: number };
   };
   forecast: {
     forecastday: {
       date: string;
       day: {
-        maxtemp_c: number;
-        mintemp_c: number;
+        maxtemp_f: number;
+        mintemp_f: number;
         daily_chance_of_rain?: number;
         uv?: number;
       };
@@ -166,14 +166,14 @@ async function fetchFromWeatherApi(
     if (!fc) return null;
 
     return {
-      temperature: json.current.temp_c,
-      apparentTemperature: json.current.feelslike_c,
+      temperature: json.current.temp_f,
+      apparentTemperature: json.current.feelslike_f,
       humidity: json.current.humidity,
-      windSpeed: json.current.wind_kph,
+      windSpeed: json.current.wind_mph,
       weatherCode: WEATHERAPI_TO_WMO[json.current.condition.code] ?? 3,
       description: json.current.condition.text?.trim() || describeWeather(0),
-      tempMax: fc.day.maxtemp_c,
-      tempMin: fc.day.mintemp_c,
+      tempMax: fc.day.maxtemp_f,
+      tempMin: fc.day.mintemp_f,
       sunrise: astroTimeToIso(fc.date, fc.astro.sunrise),
       sunset: astroTimeToIso(fc.date, fc.astro.sunset),
       uvIndexMax: fc.day.uv ?? null,
@@ -194,6 +194,8 @@ async function fetchFromOpenMeteo(
     longitude: String(longitude),
     current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m",
     daily: "temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max",
+    temperature_unit: "fahrenheit",
+    wind_speed_unit: "mph",
     timezone: "auto",
     forecast_days: "1",
   });

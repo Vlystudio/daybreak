@@ -57,7 +57,7 @@ export function WeatherCard({ weather, city }: { weather: WeatherSnapshot | null
                 H {Math.round(weather.tempMax)}° · L {Math.round(weather.tempMin)}°
               </span>
               <span className="flex items-center gap-1">
-                <Wind className="h-3.5 w-3.5" aria-hidden /> {Math.round(weather.windSpeed)} km/h
+                <Wind className="h-3.5 w-3.5" aria-hidden /> {Math.round(weather.windSpeed)} mph
               </span>
               {weather.precipitationChance != null && (
                 <span className="flex items-center gap-1">

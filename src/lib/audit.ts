@@ -19,7 +19,8 @@ export type AuditAction =
   | "household.left"
   | "profile.updated"
   | "cron.morning_sync"
-  | "cron.calendar_sync";
+  | "cron.calendar_sync"
+  | "cron.data_sync";
 
 export async function audit(
   userId: string | null,

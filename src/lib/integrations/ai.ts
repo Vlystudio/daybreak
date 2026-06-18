@@ -67,6 +67,7 @@ export async function generateMorningBriefing(input: {
           temperature: input.weather.temperature,
           high: input.weather.tempMax,
           low: input.weather.tempMin,
+          unit: "fahrenheit",
           precipitationChance: input.weather.precipitationChance,
           sunrise: input.weather.sunrise,
           sunset: input.weather.sunset,
