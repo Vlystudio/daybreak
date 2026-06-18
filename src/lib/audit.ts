@@ -24,6 +24,12 @@ export type AuditAction =
   | "exercises.generated"
   | "workout.generated"
   | "workout.logged"
+  | "grocery.settings_updated"
+  | "pantry.updated"
+  | "price.added"
+  | "shopping_list.created"
+  | "shopping_list.updated"
+  | "meal_plan.generated"
   | "cron.morning_sync"
   | "cron.calendar_sync"
   | "cron.data_sync";

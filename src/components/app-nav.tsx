@@ -8,6 +8,7 @@ import {
   CalendarDays,
   ClipboardList,
   Dumbbell,
+  ShoppingBasket,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const links = [
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/onboarding", label: "Plan", icon: ClipboardList },
   { href: "/coach", label: "Coach", icon: Dumbbell },
+  { href: "/grocery", label: "Grocery", icon: ShoppingBasket },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

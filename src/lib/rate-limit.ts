@@ -48,4 +48,5 @@ export const RATE_LIMITS = {
   oauth: { limit: 10, windowSeconds: 600 },
   sync: { limit: 12, windowSeconds: 3600 },
   aiFitness: { limit: 25, windowSeconds: 86400 }, // daily cap on AI fitness generations
+  aiMeals: { limit: 15, windowSeconds: 86400 }, // daily cap on AI meal-plan generations
 } as const;

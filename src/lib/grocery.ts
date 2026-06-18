@@ -238,6 +238,42 @@ export const pantryItemSchema = z.object({
 });
 export type PantryItemInput = z.input<typeof pantryItemSchema>;
 
+export const productPriceSchema = z.object({
+  storeId: z.string().uuid("Pick a store"),
+  productName: z.string().trim().min(1, "Name the product").max(120),
+  brand: z.string().trim().max(60).optional().or(z.literal("")),
+  price: z.coerce.number().min(0).max(100000),
+  salePrice: z.coerce.number().min(0).max(100000).optional(),
+  unit: z.string().trim().max(20).optional().or(z.literal("")),
+  packageSize: z.string().trim().max(40).optional().or(z.literal("")),
+});
+export type ProductPriceInput = z.input<typeof productPriceSchema>;
+
+export const shoppingListItemSchema = z.object({
+  shoppingListId: z.string().uuid(),
+  name: z.string().trim().min(1, "Name the item").max(120),
+  quantity: z.coerce.number().min(0).max(100000).optional(),
+  unit: z.string().trim().max(20).optional().or(z.literal("")),
+});
+export type ShoppingListItemInput = z.input<typeof shoppingListItemSchema>;
+
+export const SHOPPING_ITEM_STATUSES = [
+  "needed",
+  "owned",
+  "substituted",
+  "manual_price",
+  "purchased",
+] as const;
+export type ShoppingItemStatus = (typeof SHOPPING_ITEM_STATUSES)[number];
+
+export const mealPlanInputSchema = z.object({
+  durationDays: z.coerce.number().int().refine((n) => MEAL_PLAN_DURATIONS.includes(n as 7 | 14 | 30), {
+    message: "Pick a supported duration",
+  }),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a start date"),
+});
+export type MealPlanInput = z.input<typeof mealPlanInputSchema>;
+
 /** Cheapest reasonable price from a set of prices (sale beats regular). */
 export function effectivePrice(p: Pick<ProductPrice, "price" | "sale_price">): number | null {
   if (p.sale_price != null && (p.price == null || p.sale_price < p.price)) return p.sale_price;
