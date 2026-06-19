@@ -141,6 +141,7 @@ RULES — follow strictly:
 - Be SPECIFIC and grounded in THEIR numbers. Cite actual values and concrete changes ("resting HR rose from 54 to 59 over the past week", "REM averaged 1h05m, down from ~1h35m earlier this month"). Never write advice that would apply to a random stranger.
 - The product is the CONNECTIONS between metrics: e.g. later bedtimes → less deep sleep → lower next-day readiness; rising resting HR + falling HRV → accumulating strain. Surface those links.
 - BANNED unless a specific number in their data directly justifies it: "stay hydrated", "drink more water", "manage your stress", "practice sleep hygiene", "get more sleep", "exercise regularly", generic meditation/relaxation tips. This filler is useless — omit it.
+- When you mention a sleep STAGE (deep/REM/light), make clear it's one stage of the night, not total sleep (e.g. "deep sleep, the deepest stage, was ~70 min"). Deep sleep is normally only ~45-90 min, so don't treat a low minute count as alarmingly little sleep.
 - If the data is genuinely steady and healthy, SAY SO plainly and keep suggestions few or empty. Do not manufacture problems.
 - Every suggestion must tie to a specific observation and be concretely doable this week.
 - Write like a smart friend who respects the reader's time. No fluff, no hedging platitudes.
@@ -204,22 +205,43 @@ export interface CheckinTurn {
   content: string;
 }
 
+export interface CheckinAction {
+  title: string;
+  durationMin: number;
+  time: string; // local "HH:MM"
+  daysOfWeek: number[]; // 0=Sun..6=Sat; empty = every day
+}
+
+export interface CheckinReply {
+  message: string;
+  action: CheckinAction | null;
+}
+
 const CHECKIN_SYSTEM_PROMPT = `You are a thoughtful health coach inside Daybreak, having a SHORT, real back-and-forth check-in with someone about their Oura data. You are NOT a doctor: never diagnose or name conditions; suggest a professional for anything genuinely concerning.
 
 You're given their recent daily metrics + pre-computed trend flags + the conversation so far.
 
 How to respond:
-- If the conversation is just starting (no messages yet), OPEN with ONE specific, curious question grounded in a real pattern in their data — cite the actual numbers ("Your deep sleep dropped to ~35 min the last three nights, down from your usual ~70 — did anything change with your evenings or stress?"). Ask, don't lecture.
-- Otherwise, respond to what they just said: briefly reflect it, connect it to their data, and then EITHER give one concrete, specific suggestion OR ask one sharper follow-up question. Two to four sentences.
-- Always be specific with their numbers. NEVER use generic filler ("drink water", "get more sleep", "manage stress", "stay hydrated"). Warm, concise, genuinely useful — like a smart friend who has the data in front of them.
-Return ONLY your next message as plain text — no JSON, no labels, no preamble.`;
+- If the conversation is just starting (no messages yet), OPEN with ONE specific, curious question grounded in a real pattern in their data — cite the actual numbers. Ask, don't lecture.
+- Otherwise, respond to what they just said: briefly reflect it, connect it to their data, and then EITHER give one concrete, specific suggestion OR ask one sharper follow-up. Two to four sentences.
+- Always be specific with their numbers. NEVER use generic filler ("drink water", "get more sleep", "manage stress", "stay hydrated"). Warm, concise — like a smart friend who has the data in front of them.
+- When you mention a sleep STAGE (deep, REM, or light sleep), make clear it's ONE STAGE of the night, not total sleep — e.g. "deep sleep (the deepest stage)". Deep sleep is normally only ~45-90 min per night, so small minute counts are expected.
 
-/** One coach turn: returns the assistant's next message (plain text). */
+Turning talk into action:
+- When the person clearly AGREES to a concrete, schedulable habit (e.g. "a 10-minute walk after dinner a few times this week"), set "action" to that habit AND make your "message" warmly offer to add it to their schedule and invite them to confirm.
+- Otherwise set "action" to null.
+- "action" shape: { "title": short label like "Evening walk", "durationMin": realistic integer 5-180, "time": a sensible local "HH:MM", "daysOfWeek": array of integers 0-6 (0=Sunday) — empty for every day, or ~3-4 days for "a few times a week" }.
+
+Respond with JSON exactly: { "message": "your next message", "action": null OR { "title": "...", "durationMin": 10, "time": "19:30", "daysOfWeek": [1,3,5] } }`;
+
+const VALID_DOW = new Set([0, 1, 2, 3, 4, 5, 6]);
+
+/** One coach turn: returns the assistant's next message + an optional schedulable action. */
 export async function healthCheckinReply(input: {
   metrics: Record<string, unknown>[];
   flags: { title: string; detail: string }[];
   history: CheckinTurn[];
-}): Promise<string | null> {
+}): Promise<CheckinReply | null> {
   const apiKey = serverEnv().OPENAI_API_KEY;
   if (!apiKey) return null;
 
@@ -229,7 +251,8 @@ export async function healthCheckinReply(input: {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.5,
-      max_tokens: 300,
+      max_tokens: 400,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: CHECKIN_SYSTEM_PROMPT },
         {
@@ -239,8 +262,32 @@ export async function healthCheckinReply(input: {
         ...input.history.map((t) => ({ role: t.role, content: t.content })),
       ],
     });
-    const text = completion.choices[0]?.message?.content?.trim();
-    return text || null;
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { message?: unknown; action?: unknown };
+    const message = typeof parsed.message === "string" ? parsed.message.trim() : "";
+    if (!message) return null;
+
+    let action: CheckinAction | null = null;
+    const a = parsed.action as Record<string, unknown> | null | undefined;
+    if (a && typeof a === "object") {
+      const title = typeof a.title === "string" ? a.title.trim().slice(0, 80) : "";
+      const time = typeof a.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time) ? a.time : null;
+      const durationMin = Number(a.durationMin);
+      const days = Array.isArray(a.daysOfWeek)
+        ? (a.daysOfWeek as unknown[]).map((n) => Number(n)).filter((n) => Number.isInteger(n) && VALID_DOW.has(n))
+        : [];
+      if (title && time && Number.isFinite(durationMin)) {
+        action = {
+          title,
+          durationMin: Math.min(180, Math.max(5, Math.round(durationMin))),
+          time,
+          daysOfWeek: Array.from(new Set(days)),
+        };
+      }
+    }
+
+    return { message, action };
   } catch (err) {
     console.error("[ai] health check-in failed:", err instanceof Error ? err.message : "unknown");
     return null;

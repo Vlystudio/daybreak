@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { MessageCircle, Send, Sparkles } from "lucide-react";
+import { MessageCircle, Send, Sparkles, CalendarPlus, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { startCheckin, replyCheckin, type CheckinMessage } from "@/actions/health";
+import { startCheckin, replyCheckin, scheduleCheckinAction, type CheckinMessage } from "@/actions/health";
+
+type CheckinAction = NonNullable<CheckinMessage["action"]>;
 
 export function HealthCheckin({
   initial,
@@ -19,7 +21,20 @@ export function HealthCheckin({
   const [id, setId] = useState<string | null>(initial?.id ?? null);
   const [messages, setMessages] = useState<CheckinMessage[]>(initial?.messages ?? []);
   const [input, setInput] = useState("");
+  const [added, setAdded] = useState<Set<number>>(new Set());
   const [pending, startTransition] = useTransition();
+
+  function addToSchedule(index: number, action: CheckinAction) {
+    startTransition(async () => {
+      const res = await scheduleCheckinAction(action);
+      if (res.ok) {
+        setAdded((s) => new Set(s).add(index));
+        toast.success("Added to your schedule.");
+      } else {
+        toast.error(res.error);
+      }
+    });
+  }
 
   function start() {
     startTransition(async () => {
@@ -68,15 +83,35 @@ export function HealthCheckin({
           <div className="space-y-3">
             <div className="space-y-2">
               {messages.map((m, i) => (
-                <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                  <div
-                    className={cn(
-                      "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
-                      m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-                    )}
-                  >
-                    {m.content}
+                <div key={i} className="space-y-1.5">
+                  <div className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                    <div
+                      className={cn(
+                        "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
+                        m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
+                      )}
+                    >
+                      {m.content}
+                    </div>
                   </div>
+                  {m.role === "assistant" && m.action && (
+                    <div className="flex justify-start">
+                      {added.has(i) ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-sage">
+                          <Check className="h-3.5 w-3.5" aria-hidden /> Added to your schedule
+                        </span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={pending}
+                          onClick={() => addToSchedule(i, m.action!)}
+                        >
+                          <CalendarPlus className="h-4 w-4" aria-hidden /> Add &ldquo;{m.action.title}&rdquo; to my schedule
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               {pending && (

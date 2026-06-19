@@ -1,19 +1,24 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { addDays, format, parseISO } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
+import { zonedToUtc, localToday } from "@/lib/tz";
 import { computeHeadsUp } from "@/lib/health-insights";
 import {
   analyzeHealthTrends,
   healthCheckinReply,
   type HealthAnalysis,
   type CheckinTurn,
+  type CheckinAction,
 } from "@/lib/integrations/ai";
 import type { HealthMetric } from "@/lib/types";
+import type { ActionResult } from "@/actions/schedule";
 
 export type AnalyzeResult = { ok: true; analysis: HealthAnalysis } | { ok: false; error: string };
 
@@ -21,6 +26,7 @@ export interface CheckinMessage {
   role: "assistant" | "user";
   content: string;
   at: string;
+  action?: CheckinAction | null;
 }
 export type CheckinResult =
   | { ok: true; id: string; messages: CheckinMessage[] }
@@ -89,14 +95,16 @@ export async function startCheckin(): Promise<CheckinResult> {
   const { rows, flags } = await recentMetricsAndFlags(supabase, user.id);
   if (rows.length < 3) return { ok: false, error: "Not enough data yet — give Oura a few more nights to sync." };
 
-  const opening = await healthCheckinReply({
+  const reply = await healthCheckinReply({
     metrics: rows as unknown as Record<string, unknown>[],
     flags,
     history: [],
   });
-  if (!opening) return { ok: false, error: "Couldn't start a check-in right now — please try again." };
+  if (!reply) return { ok: false, error: "Couldn't start a check-in right now — please try again." };
 
-  const messages: CheckinMessage[] = [{ role: "assistant", content: opening, at: new Date().toISOString() }];
+  const messages: CheckinMessage[] = [
+    { role: "assistant", content: reply.message, at: new Date().toISOString(), action: reply.action },
+  ];
   const { data, error } = await supabase
     .from("health_checkins")
     .insert({ user_id: user.id, messages })
@@ -139,9 +147,74 @@ export async function replyCheckin(id: string, message: string): Promise<Checkin
   });
   if (!reply) return { ok: false, error: "Couldn't get a reply right now — please try again." };
 
-  const messages: CheckinMessage[] = [...history, { role: "assistant", content: reply, at: new Date().toISOString() }];
+  const messages: CheckinMessage[] = [
+    ...history,
+    { role: "assistant", content: reply.message, at: new Date().toISOString(), action: reply.action },
+  ];
   const { error } = await supabase.from("health_checkins").update({ messages }).eq("id", id);
   if (error) return { ok: false, error: "Couldn't save your reply." };
 
   return { ok: true, id, messages };
+}
+
+/** Add an agreed-upon habit from a check-in onto the schedule for the next week. */
+export async function scheduleCheckinAction(action: CheckinAction): Promise<ActionResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Slow down a moment." };
+
+  const title = String(action?.title ?? "").trim().slice(0, 120);
+  const time = action?.time;
+  if (!title || typeof time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    return { ok: false, error: "That action can't be scheduled." };
+  }
+  const durationMin = Math.min(180, Math.max(5, Math.round(Number(action.durationMin) || 30)));
+  const days = Array.isArray(action.daysOfWeek)
+    ? action.daysOfWeek.filter((n) => Number.isInteger(n) && n >= 0 && n <= 6)
+    : [];
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", user.id)
+    .maybeSingle<{ timezone: string }>();
+  const tz = profile?.timezone || "UTC";
+  const todayStr = localToday(tz);
+
+  const rows: {
+    user_id: string;
+    title: string;
+    description: string;
+    starts_at: string;
+    ends_at: string;
+    all_day: boolean;
+    source: string;
+    color: string;
+  }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const dateStr = format(addDays(parseISO(todayStr), i), "yyyy-MM-dd");
+    const dow = new Date(`${dateStr}T12:00:00Z`).getUTCDay();
+    if (days.length > 0 && !days.includes(dow)) continue;
+    const start = zonedToUtc(dateStr, time, tz);
+    rows.push({
+      user_id: user.id,
+      title,
+      description: "From your health check-in",
+      starts_at: start.toISOString(),
+      ends_at: new Date(start.getTime() + durationMin * 60_000).toISOString(),
+      all_day: false,
+      source: "manual",
+      color: "sage",
+    });
+  }
+  if (rows.length === 0) return { ok: false, error: "Nothing to schedule." };
+
+  const { error } = await supabase.from("schedule_events").insert(rows);
+  if (error) return { ok: false, error: "Couldn't add it to your schedule." };
+
+  await audit(user.id, "schedule.created", { metadata: { from: "checkin", count: rows.length } });
+  revalidatePath("/dashboard");
+  revalidatePath("/schedule");
+  return { ok: true };
 }
