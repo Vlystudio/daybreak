@@ -36,8 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
-# supabase access token (management API) — never commit
+# provider tokens (management/API) — never commit
 .supabase-token
+.resend-token
 .secrets/
 
 # typescript
