@@ -130,13 +130,22 @@ export function CalendarSyncCard({
           )}
         </div>
 
-        {googleConnected && (
-          <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-            {calendarSync?.daybreak_calendar_id
-              ? "↪ Two-way sync on — your Daybreak plan is written to a “Daybreak” calendar in Google."
-              : "↪ To push your plan into Google, disconnect and reconnect (Daybreak now needs calendar write access)."}
-          </p>
-        )}
+        {googleConnected &&
+          (calendarSync?.daybreak_calendar_id ? (
+            <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+              ↪ Two-way sync on — your Daybreak plan is written to a “Daybreak” calendar in Google.
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2">
+              <p className="text-xs text-muted-foreground">
+                Enable two-way sync — let Daybreak push your plan into Google Calendar.
+              </p>
+              <Button size="sm" variant="secondary" asChild>
+                {/* Re-runs OAuth with forced consent, overwriting the old read-only grant */}
+                <a href="/api/oauth/google/start">Reconnect</a>
+              </Button>
+            </div>
+          ))}
       </CardContent>
     </Card>
   );
