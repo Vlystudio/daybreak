@@ -91,7 +91,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       }>(),
     supabase
       .from("calendar_sync_settings")
-      .select("sync_enabled, google_calendar_id, last_synced_at")
+      .select("sync_enabled, google_calendar_id, last_synced_at, daybreak_calendar_id")
       .eq("user_id", userId)
       .maybeSingle<CalendarSyncSettings>(),
     supabase

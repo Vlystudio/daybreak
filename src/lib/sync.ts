@@ -1,7 +1,17 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOuraDailyMetrics } from "@/lib/integrations/oura";
-import { fetchGoogleEvents } from "@/lib/integrations/google-calendar";
+import {
+  fetchGoogleEvents,
+  createDaybreakCalendar,
+  insertGoogleEvent,
+  updateGoogleEvent,
+  deleteGoogleEvent,
+  listDaybreakCalendarEvents,
+  scopeAllowsWrite,
+  type GoogleEventInput,
+} from "@/lib/integrations/google-calendar";
+import { getValidAccessToken } from "@/lib/integrations/tokens";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateMorningBriefing, type MetricsForPrompt } from "@/lib/integrations/ai";
 import { audit } from "@/lib/audit";
@@ -108,6 +118,128 @@ export async function syncCalendarForUser(userId: string): Promise<boolean> {
     );
 
   await audit(userId, "calendar.synced", { metadata: { events: rows.length } });
+
+  try {
+    await exportPlanToGoogle(userId);
+  } catch (err) {
+    console.error("[sync] export to Google failed:", err);
+  }
+  return true;
+}
+
+interface PlanEventRow {
+  id: string;
+  title: string;
+  description: string | null;
+  location: string | null;
+  starts_at: string;
+  ends_at: string;
+  all_day: boolean;
+  google_export_id: string | null;
+  google_exported_at: string | null;
+  updated_at: string;
+}
+
+function toGoogleInput(e: PlanEventRow): GoogleEventInput {
+  const base = {
+    summary: e.title,
+    description: e.description ?? undefined,
+    location: e.location ?? undefined,
+    daybreakId: e.id,
+  };
+  if (e.all_day) {
+    const startDate = e.starts_at.slice(0, 10);
+    const d = new Date(`${startDate}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return { ...base, start: { date: startDate }, end: { date: d.toISOString().slice(0, 10) } };
+  }
+  return { ...base, start: { dateTime: e.starts_at }, end: { dateTime: e.ends_at } };
+}
+
+/**
+ * Mirror Daybreak's own plan/manual events (next 30 days) into a dedicated
+ * "Daybreak" Google calendar: insert new ones, update changed ones, and delete
+ * Google copies whose Daybreak event is gone. No-ops if the connection is
+ * read-only (user needs to reconnect for write access).
+ */
+export async function exportPlanToGoogle(userId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const accessToken = await getValidAccessToken(userId, "google");
+  if (!accessToken) return false;
+
+  const { data: conn } = await admin
+    .from("oauth_connections")
+    .select("scope")
+    .eq("user_id", userId)
+    .eq("provider", "google")
+    .maybeSingle<{ scope: string | null }>();
+  if (!scopeAllowsWrite(conn?.scope)) return false; // read-only connection
+
+  const { data: settings } = await admin
+    .from("calendar_sync_settings")
+    .select("sync_enabled, daybreak_calendar_id")
+    .eq("user_id", userId)
+    .maybeSingle<{ sync_enabled: boolean; daybreak_calendar_id: string | null }>();
+  if (settings && settings.sync_enabled === false) return false;
+
+  let calendarId = settings?.daybreak_calendar_id ?? null;
+  if (!calendarId) {
+    calendarId = await createDaybreakCalendar(accessToken);
+    if (!calendarId) return false;
+    await admin
+      .from("calendar_sync_settings")
+      .upsert({ user_id: userId, daybreak_calendar_id: calendarId }, { onConflict: "user_id" });
+  }
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start.getTime() + 30 * 86_400_000);
+
+  const { data: events } = await admin
+    .from("schedule_events")
+    .select("id, title, description, location, starts_at, ends_at, all_day, google_export_id, google_exported_at, updated_at")
+    .eq("user_id", userId)
+    .in("source", ["manual", "plan"])
+    .gte("starts_at", start.toISOString())
+    .lt("starts_at", end.toISOString())
+    .returns<PlanEventRow[]>();
+
+  const list = events ?? [];
+  const currentIds = new Set(list.map((e) => e.id));
+  const nowIso = new Date().toISOString();
+
+  for (const e of list) {
+    const body = toGoogleInput(e);
+    if (!e.google_export_id) {
+      const gid = await insertGoogleEvent(accessToken, calendarId, body);
+      if (gid) {
+        await admin
+          .from("schedule_events")
+          .update({ google_export_id: gid, google_exported_at: nowIso })
+          .eq("id", e.id);
+      }
+    } else if (!e.google_exported_at || new Date(e.updated_at) > new Date(e.google_exported_at)) {
+      const result = await updateGoogleEvent(accessToken, calendarId, e.google_export_id, body);
+      if (result === "ok") {
+        await admin.from("schedule_events").update({ google_exported_at: nowIso }).eq("id", e.id);
+      } else if (result === "gone") {
+        // The Google copy was deleted out from under us — re-insert next sync.
+        await admin
+          .from("schedule_events")
+          .update({ google_export_id: null, google_exported_at: null })
+          .eq("id", e.id);
+      }
+    }
+  }
+
+  // Remove Google copies whose Daybreak event no longer exists in the window.
+  const exported = await listDaybreakCalendarEvents(accessToken, calendarId, start, end);
+  for (const g of exported) {
+    if (g.daybreakId && !currentIds.has(g.daybreakId)) {
+      await deleteGoogleEvent(accessToken, calendarId, g.id);
+    }
+  }
+
   return true;
 }
 

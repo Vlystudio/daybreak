@@ -92,4 +92,5 @@ export interface CalendarSyncSettings {
   sync_enabled: boolean;
   google_calendar_id: string;
   last_synced_at: string | null;
+  daybreak_calendar_id: string | null;
 }

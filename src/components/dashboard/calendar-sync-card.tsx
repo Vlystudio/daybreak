@@ -129,6 +129,14 @@ export function CalendarSyncCard({
             </Button>
           )}
         </div>
+
+        {googleConnected && (
+          <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            {calendarSync?.daybreak_calendar_id
+              ? "↪ Two-way sync on — your Daybreak plan is written to a “Daybreak” calendar in Google."
+              : "↪ To push your plan into Google, disconnect and reconnect (Daybreak now needs calendar write access)."}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

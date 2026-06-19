@@ -2,14 +2,21 @@ import "server-only";
 import { serverEnv, publicEnv } from "@/env";
 import { getValidAccessToken, type TokenSet } from "@/lib/integrations/tokens";
 
-/** Google Calendar API v3 (OAuth2, read-only scope). */
+/** Google Calendar API v3 (OAuth2). Full calendar scope so we can both read the
+ *  user's events and create/manage a dedicated "Daybreak" calendar for export. */
 
 const AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const API_BASE = "https://www.googleapis.com/calendar/v3";
 
 export const GOOGLE_REDIRECT_PATH = "/api/oauth/google/callback";
-const SCOPES = "https://www.googleapis.com/auth/calendar.readonly";
+const SCOPES = "https://www.googleapis.com/auth/calendar";
+
+/** True if a granted scope string allows writing events (not just read-only). */
+export function scopeAllowsWrite(scope: string | null | undefined): boolean {
+  const s = scope ?? "";
+  return /https:\/\/www\.googleapis\.com\/auth\/calendar(?![.\w])/.test(s) || s.includes("auth/calendar.events");
+}
 
 export function googleAuthorizeUrl(state: string): string {
   const env = serverEnv();
@@ -104,4 +111,133 @@ export async function fetchGoogleEvents(
   } while (pageToken);
 
   return events.filter((e) => e.status !== "cancelled");
+}
+
+// ── Export: write Daybreak's plan into a dedicated Google calendar ────────────
+
+export interface GoogleEventInput {
+  summary: string;
+  description?: string;
+  location?: string;
+  start: { dateTime?: string; date?: string };
+  end: { dateTime?: string; date?: string };
+  daybreakId: string;
+}
+
+function authHeaders(accessToken: string) {
+  return { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
+}
+
+function eventBody(e: GoogleEventInput) {
+  return {
+    summary: e.summary,
+    description: e.description,
+    location: e.location,
+    start: e.start,
+    end: e.end,
+    extendedProperties: { private: { daybreakId: e.daybreakId } },
+  };
+}
+
+/** Create the dedicated "Daybreak" calendar; returns its id (or null on failure). */
+export async function createDaybreakCalendar(accessToken: string): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/calendars`, {
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({
+      summary: "Daybreak",
+      description: "Your Daybreak plan — meals, workouts, chores and focus blocks.",
+    }),
+  });
+  if (!res.ok) {
+    console.error("[google] create calendar failed:", res.status);
+    return null;
+  }
+  const json = (await res.json()) as { id?: string };
+  return json.id ?? null;
+}
+
+export async function insertGoogleEvent(
+  accessToken: string,
+  calendarId: string,
+  e: GoogleEventInput
+): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`, {
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: JSON.stringify(eventBody(e)),
+  });
+  if (!res.ok) {
+    console.error("[google] insert event failed:", res.status);
+    return null;
+  }
+  const json = (await res.json()) as { id?: string };
+  return json.id ?? null;
+}
+
+/** Update a mirrored event. Returns "ok" | "gone" (404/410) | "error". */
+export async function updateGoogleEvent(
+  accessToken: string,
+  calendarId: string,
+  eventId: string,
+  e: GoogleEventInput
+): Promise<"ok" | "gone" | "error"> {
+  const res = await fetch(
+    `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: "PATCH", headers: authHeaders(accessToken), body: JSON.stringify(eventBody(e)) }
+  );
+  if (res.ok) return "ok";
+  if (res.status === 404 || res.status === 410) return "gone";
+  return "error";
+}
+
+export async function deleteGoogleEvent(
+  accessToken: string,
+  calendarId: string,
+  eventId: string
+): Promise<boolean> {
+  const res = await fetch(
+    `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  return res.ok || res.status === 410; // 410 = already gone
+}
+
+export interface ExportedGoogleEvent {
+  id: string;
+  daybreakId: string | null;
+}
+
+/** List events in the Daybreak calendar within a window, with our private id tag. */
+export async function listDaybreakCalendarEvents(
+  accessToken: string,
+  calendarId: string,
+  timeMin: Date,
+  timeMax: Date
+): Promise<ExportedGoogleEvent[]> {
+  const out: ExportedGoogleEvent[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: "true",
+      maxResults: "250",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const res = await fetch(
+      `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!res.ok) return out;
+    const json = (await res.json()) as {
+      items?: { id: string; extendedProperties?: { private?: { daybreakId?: string } } }[];
+      nextPageToken?: string;
+    };
+    for (const it of json.items ?? []) {
+      out.push({ id: it.id, daybreakId: it.extendedProperties?.private?.daybreakId ?? null });
+    }
+    pageToken = json.nextPageToken;
+  } while (pageToken);
+  return out;
 }
