@@ -80,6 +80,34 @@ export interface EveningReview {
   tomorrow_intention: string | null;
 }
 
+export interface Goal {
+  id: string;
+  metric: "weight" | "body_fat";
+  start_value: number;
+  target_value: number;
+  start_date: string;
+  target_date: string | null;
+  status: "active" | "achieved" | "archived";
+}
+
+/** A goal plus its computed, display-ready progress. */
+export interface GoalProgress {
+  id: string;
+  metric: "weight" | "body_fat";
+  unit: string;
+  startDisplay: number;
+  targetDisplay: number;
+  currentDisplay: number;
+  /** 0-1 fraction of the way from start to target. */
+  pctComplete: number;
+  /** 0-1 expected fraction by now given the deadline, or null if no deadline. */
+  expectedPct: number | null;
+  daysLeft: number | null;
+  status: "active" | "achieved" | "archived";
+  onTrack: boolean | null;
+  reached: boolean;
+}
+
 export interface Habit {
   id: string;
   name: string;

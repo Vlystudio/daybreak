@@ -1,7 +1,9 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { NutritionView } from "@/components/nutrition/nutrition-view";
-import type { FoodLog, BodyMeasurement } from "@/lib/types";
+import { GoalsCard } from "@/components/nutrition/goals-card";
+import { computeGoalProgress, KG_PER_LB } from "@/lib/goals";
+import type { FoodLog, BodyMeasurement, Goal } from "@/lib/types";
 
 export const metadata = { title: "Nutrition · Daybreak" };
 export const dynamic = "force-dynamic";
@@ -27,7 +29,7 @@ export default async function NutritionPage() {
     .maybeSingle<{ timezone: string }>();
   const today = localDate(profile?.timezone ?? "UTC");
 
-  const [{ data: foods }, { data: water }, { data: latestBody }] = await Promise.all([
+  const [{ data: foods }, { data: water }, { data: latestBody }, { data: goalRows }] = await Promise.all([
     supabase
       .from("food_logs")
       .select("id, date, meal, description, calories, protein_g, carbs_g, fat_g, source, created_at")
@@ -48,9 +50,25 @@ export default async function NutritionPage() {
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle<BodyMeasurement>(),
+    supabase
+      .from("goals")
+      .select("id, metric, start_value, target_value, start_date, target_date, status")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .returns<Goal[]>(),
   ]);
 
   const waterMl = (water ?? []).reduce((sum, w) => sum + w.amount_ml, 0);
+
+  const goals = (goalRows ?? []).map((g) =>
+    computeGoalProgress(
+      g,
+      g.metric === "weight" ? latestBody?.weight_kg ?? null : latestBody?.body_fat_pct ?? null,
+      today
+    )
+  );
+  const latestWeightLb =
+    latestBody?.weight_kg != null ? Math.round((latestBody.weight_kg / KG_PER_LB) * 10) / 10 : null;
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5">
@@ -60,6 +78,11 @@ export default async function NutritionPage() {
           Snap a photo or log it by hand — Daybreak does the calorie math.
         </p>
       </div>
+      <GoalsCard
+        goals={goals}
+        latestWeightLb={latestWeightLb}
+        latestBodyFat={latestBody?.body_fat_pct ?? null}
+      />
       <NutritionView
         foods={foods ?? []}
         waterMl={waterMl}
