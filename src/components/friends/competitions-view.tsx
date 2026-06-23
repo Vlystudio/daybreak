@@ -15,6 +15,8 @@ import type { CompetitionCard, CompetitionMetric } from "@/lib/competitions";
 const METRICS: { value: CompetitionMetric; label: string; unit: string }[] = [
   { value: "steps", label: "Steps", unit: "steps" },
   { value: "active_calories", label: "Active calories", unit: "cal" },
+  { value: "habits", label: "Habits completed", unit: "done" },
+  { value: "protein", label: "Protein", unit: "g" },
 ];
 const LENGTHS = [7, 14, 30];
 const metricMeta = (m: CompetitionMetric) => METRICS.find((x) => x.value === m) ?? METRICS[0];

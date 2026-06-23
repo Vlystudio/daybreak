@@ -13,7 +13,7 @@ import type { ActionResult } from "@/actions/schedule";
 
 const createSchema = z.object({
   title: z.string().trim().min(1, "Name your challenge").max(100),
-  metric: z.enum(["steps", "active_calories"]),
+  metric: z.enum(["steps", "active_calories", "habits", "protein"]),
   lengthDays: z.coerce.number().int().refine((n) => [7, 14, 30].includes(n), { message: "Pick a length" }),
   friendIds: z.array(z.string().uuid()).min(1, "Invite at least one friend").max(20),
 });

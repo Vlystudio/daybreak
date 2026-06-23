@@ -8,7 +8,45 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * admin client (participants opted in by joining).
  */
 
-export type CompetitionMetric = "steps" | "active_calories";
+export type CompetitionMetric = "steps" | "active_calories" | "habits" | "protein";
+
+/** Sum the chosen metric for a participant over the challenge window. */
+async function scoreParticipant(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  metric: CompetitionMetric,
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  if (metric === "habits") {
+    const { count } = await admin
+      .from("habit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gte("date", startDate)
+      .lte("date", endDate);
+    return count ?? 0;
+  }
+  if (metric === "protein") {
+    const { data } = await admin
+      .from("food_logs")
+      .select("protein_g")
+      .eq("user_id", userId)
+      .gte("date", startDate)
+      .lte("date", endDate)
+      .returns<{ protein_g: number | null }[]>();
+    return (data ?? []).reduce((sum, r) => sum + (r.protein_g ?? 0), 0);
+  }
+  // steps / active_calories come from Oura/Fitbit daily metrics.
+  const { data: hm } = await admin
+    .from("health_metrics")
+    .select(metric)
+    .eq("user_id", userId)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .returns<Record<string, number | null>[]>();
+  return (hm ?? []).reduce((sum, row) => sum + (typeof row[metric] === "number" ? (row[metric] as number) : 0), 0);
+}
 
 export interface Standing {
   userId: string;
@@ -87,17 +125,7 @@ export async function loadCompetitions(userId: string): Promise<CompetitionCard[
     for (const p of members) {
       let score = 0;
       if (p.status === "joined") {
-        const { data: hm } = await admin
-          .from("health_metrics")
-          .select(c.metric)
-          .eq("user_id", p.user_id)
-          .gte("date", c.start_date)
-          .lte("date", c.end_date)
-          .returns<Record<string, number | null>[]>();
-        score = (hm ?? []).reduce(
-          (sum, row) => sum + (typeof row[c.metric] === "number" ? (row[c.metric] as number) : 0),
-          0
-        );
+        score = await scoreParticipant(admin, p.user_id, c.metric, c.start_date, c.end_date);
       }
       standings.push({
         userId: p.user_id,
