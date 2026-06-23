@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
+import { sendMorningEmailForUser } from "@/lib/notifications";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
     try {
       if (providers.has("oura")) await syncOuraForUser(userId, 7);
       if (providers.has("google")) await syncCalendarForUser(userId);
-      await generateSummaryForUser(userId);
+      const briefed = await generateSummaryForUser(userId);
+      if (briefed) await sendMorningEmailForUser(userId);
       synced++;
     } catch (err) {
       failed++;

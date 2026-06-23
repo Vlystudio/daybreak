@@ -1,7 +1,9 @@
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
+import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AccountCard } from "@/components/settings/account-card";
+import { NotificationsCard } from "@/components/settings/notifications-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +16,14 @@ export default async function SettingsPage() {
   const user = await requireUser();
   const data = await loadDashboardData(user.id);
 
+  const supabase = await createClient();
+  const { data: notif } = await supabase
+    .from("notification_settings")
+    .select("morning_email_enabled")
+    .eq("user_id", user.id)
+    .maybeSingle<{ morning_email_enabled: boolean }>();
+  const morningEmailEnabled = notif?.morning_email_enabled ?? true;
+
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
@@ -23,6 +33,7 @@ export default async function SettingsPage() {
 
       <ProfileForm profile={data.profile} />
       <AccountCard email={user.email ?? ""} />
+      <NotificationsCard morningEmailEnabled={morningEmailEnabled} />
       <CalendarSyncCard connections={data.connections} calendarSync={data.calendarSync} />
       <HouseholdCard household={data.household} householdEvents={[]} />
 

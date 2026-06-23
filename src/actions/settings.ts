@@ -74,6 +74,24 @@ export async function setCalendarSyncEnabled(input: { syncEnabled: boolean }): P
   return { ok: true };
 }
 
+export async function setMorningEmailEnabled(input: { enabled: boolean }): Promise<ActionResult> {
+  const user = await requireUser();
+
+  const parsed = z.object({ enabled: z.boolean() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid setting" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("notification_settings").upsert(
+    { user_id: user.id, morning_email_enabled: parsed.data.enabled },
+    { onConflict: "user_id" }
+  );
+
+  if (error) return { ok: false, error: "Couldn't update email settings." };
+
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
 const providerActionSchema = z.enum(["oura", "google"]);
 
 export async function disconnectProvider(provider: string): Promise<ActionResult> {

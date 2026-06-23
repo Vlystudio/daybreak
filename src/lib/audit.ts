@@ -14,6 +14,8 @@ export type AuditAction =
   | "schedule.deleted"
   | "calendar.synced"
   | "summary.generated"
+  | "notification.morning_email_sent"
+  | "notification.unsubscribed"
   | "health.analyzed"
   | "household.created"
   | "household.joined"

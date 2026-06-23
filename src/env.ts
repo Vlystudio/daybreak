@@ -29,6 +29,9 @@ const serverSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   WEATHER_API_KEY: z.string().min(1).optional(),
   SPOONACULAR_API_KEY: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  // Verified sender for transactional email, e.g. "Daybreak <hello@yourdomain.com>".
+  EMAIL_FROM: z.string().min(1).default("Daybreak <onboarding@resend.dev>"),
 });
 
 function formatIssues(error: z.ZodError): string {
@@ -69,4 +72,5 @@ export const integrationsAvailable = {
   oura: () => Boolean(serverEnv().OURA_CLIENT_ID && serverEnv().OURA_CLIENT_SECRET),
   google: () => Boolean(serverEnv().GOOGLE_CLIENT_ID && serverEnv().GOOGLE_CLIENT_SECRET),
   openai: () => Boolean(serverEnv().OPENAI_API_KEY),
+  resend: () => Boolean(serverEnv().RESEND_API_KEY),
 };
