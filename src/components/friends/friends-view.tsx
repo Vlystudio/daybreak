@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { UserPlus, Check, X, Trash2, Footprints, Target, CalendarDays } from "lucide-react";
+import { UserPlus, Check, X, Trash2, Footprints, Target, CalendarDays, Hand } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { FITNESS_GOALS } from "@/lib/planning";
 import { sendFriendRequest, respondToRequest, removeFriend, saveFriendSettings } from "@/actions/friends";
+import { sendNudge } from "@/actions/nudges";
 import type { FriendsData, FriendSettings } from "@/lib/friends";
 
 const goalLabel = (v: string | null) => FITNESS_GOALS.find((g) => g.value === v)?.label ?? v;
@@ -54,6 +55,14 @@ export function FriendsView({ data }: { data: FriendsData }) {
     startTransition(async () => {
       const res = await removeFriend(id);
       if (res.ok) router.refresh();
+      else toast.error(res.error);
+    });
+  }
+
+  function cheer(userId: string, name: string) {
+    startTransition(async () => {
+      const res = await sendNudge({ toUserId: userId, kind: "cheer" });
+      if (res.ok) toast.success(`Cheered ${name} on 💪`);
       else toast.error(res.error);
     });
   }
@@ -168,14 +177,26 @@ export function FriendsView({ data }: { data: FriendsData }) {
                 <li key={f.friendshipId} className="rounded-xl border border-border p-3">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{f.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => remove(f.friendshipId)}
-                      aria-label={`Remove ${f.name}`}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" aria-hidden />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => cheer(f.userId, f.name)}
+                      >
+                        <Hand className="h-4 w-4 text-honey" aria-hidden />
+                        Cheer
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => remove(f.friendshipId)}
+                        aria-label={`Remove ${f.name}`}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                     {f.shares.activity && (

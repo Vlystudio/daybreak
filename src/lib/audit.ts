@@ -23,6 +23,7 @@ export type AuditAction =
   | "review.logged"
   | "habit.created"
   | "goal.created"
+  | "nudge.sent"
   | "health.analyzed"
   | "household.created"
   | "household.joined"

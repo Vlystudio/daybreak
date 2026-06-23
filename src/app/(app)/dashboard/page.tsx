@@ -16,6 +16,7 @@ import { CheckinCard } from "@/components/dashboard/checkin-card";
 import { NutritionCard } from "@/components/dashboard/nutrition-card";
 import { EveningReviewCard } from "@/components/dashboard/evening-review-card";
 import { HabitsCard } from "@/components/dashboard/habits-card";
+import { NudgesCard } from "@/components/dashboard/nudges-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
@@ -44,6 +45,8 @@ export default async function DashboardPage() {
         hasOura={data.connections.some((c) => c.provider === "oura")}
         hasGoogle={data.connections.some((c) => c.provider === "google")}
       />
+
+      <NudgesCard nudges={data.nudges} />
 
       <FadeIn delay={0.05}>
         <MorningSummary summary={data.summary} />

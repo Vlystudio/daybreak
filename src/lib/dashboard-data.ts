@@ -34,6 +34,7 @@ export interface DashboardData {
   todayNutrition: { calories: number; protein: number; count: number } | null;
   todayReview: EveningReview | null;
   habits: HabitStatus[];
+  nudges: { id: string; fromName: string; kind: "cheer" | "reminder"; message: string | null }[];
 }
 
 function isoDate(d: Date): string {
@@ -69,6 +70,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: latestReview },
     { data: habitRows },
     { data: habitLogRows },
+    { data: nudgeRows },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -152,6 +154,14 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .eq("user_id", userId)
       .gte("date", isoDate(new Date(Date.now() - 60 * 86_400_000)))
       .returns<{ habit_id: string; date: string }[]>(),
+    supabase
+      .from("nudges")
+      .select("id, from_user_id, kind, message")
+      .eq("to_user_id", userId)
+      .is("read_at", null)
+      .order("created_at", { ascending: false })
+      .limit(10)
+      .returns<{ id: string; from_user_id: string; kind: "cheer" | "reminder"; message: string | null }[]>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -229,6 +239,26 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     computeHabitStatus(h, logsByHabit.get(h.id) ?? [], localToday)
   );
 
+  // Resolve nudge sender names (admin read, scoped to the senders only).
+  const nudgeList = nudgeRows ?? [];
+  const nudgeNames = new Map<string, string>();
+  if (nudgeList.length) {
+    const admin = createAdminClient();
+    const senderIds = [...new Set(nudgeList.map((n) => n.from_user_id))];
+    const { data: senders } = await admin
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", senderIds)
+      .returns<{ id: string; display_name: string | null }[]>();
+    for (const s of senders ?? []) nudgeNames.set(s.id, s.display_name || "A friend");
+  }
+  const nudges = nudgeList.map((n) => ({
+    id: n.id,
+    fromName: nudgeNames.get(n.from_user_id) ?? "A friend",
+    kind: n.kind,
+    message: n.message,
+  }));
+
   const todaysFood = (foodRows ?? []).filter((f) => f.date === localToday);
   const todayNutrition = todaysFood.length
     ? {
@@ -255,5 +285,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     todayNutrition,
     todayReview: latestReview && latestReview.date === localToday ? latestReview : null,
     habits,
+    nudges,
   };
 }
