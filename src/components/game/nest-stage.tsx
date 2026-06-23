@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { BirdSprite } from "@/components/game/bird-sprite";
 import { archetypeFor, birdLevel, type BirdSpecies } from "@/lib/game/birds";
 import { playBirdCall } from "@/lib/game/bird-sounds";
 import { petBird } from "@/actions/game";
 import type { Mood } from "@/lib/game/mood";
-
-const Bird3D = dynamic(() => import("@/components/game/bird-3d").then((m) => m.Bird3D), { ssr: false });
 
 /** Local hour (0-23.99) in the given timezone. */
 function localHourFrac(tz: string, ms: number): number {
@@ -94,12 +91,6 @@ export function NestStage({
       : "linear-gradient(to bottom,#bfe3f0,#dff1e3 55%,#f3e7c9)";
   const foliage = isNight ? "#3a5a47" : "#9ed089";
 
-  const sprite2D = species ? (
-    <div className="pointer-events-none absolute inset-0 flex items-end justify-center pb-8">
-      <BirdSprite species={species} size={180} mood={mood} sleeping={isNight} />
-    </div>
-  ) : null;
-
   return (
     <div className="relative h-80 overflow-hidden rounded-3xl sm:h-96" style={{ background: sky }}>
       {/* sun or moon + stars */}
@@ -128,10 +119,20 @@ export function NestStage({
 
       {species ? (
         <>
-          {/* rotatable 3D companion (falls back to the 2D plush bird) */}
-          <div className="absolute inset-0 z-10">
-            <Bird3D species={species} sleeping={isNight} night={isNight} onPet={pet} fallback={sprite2D} />
-          </div>
+          {/* the companion — its illustrated sprite, tappable to pet */}
+          <button
+            type="button"
+            onClick={pet}
+            aria-label={`Pet ${nickname || species.name}`}
+            className="absolute inset-0 z-10 flex items-end justify-center pb-6"
+          >
+            <span className="flex flex-col items-center">
+              <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
+                <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} />
+              </span>
+              <span className="-mt-2 h-2.5 w-24 rounded-full bg-black/15 blur-sm" />
+            </span>
+          </button>
 
           {isNight && (
             <span className="pointer-events-none absolute right-1/3 top-10 z-20 text-lg" aria-hidden>
@@ -152,7 +153,7 @@ export function NestStage({
             {isNight ? "😴 fast asleep" : mood === "happy" ? "😊" : mood === "sleepy" ? "😴" : "🙂"} {isNight ? "" : moodLabel}
           </div>
           <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/55 px-2.5 py-0.5 text-[10px] text-[#5a3d1a] backdrop-blur">
-            drag to spin · tap to pet
+            tap to pet
           </div>
         </>
       ) : (

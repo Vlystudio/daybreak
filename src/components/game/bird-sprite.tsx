@@ -1,18 +1,17 @@
+import { cn } from "@/lib/utils";
+import { birdAsset } from "@/data/birds";
 import type { BirdSpecies } from "@/lib/game/birds";
 import { renderBirdArt, type BirdArt } from "@/lib/game/bird-art";
 import type { Mood } from "@/lib/game/mood";
 
 /**
- * Renders a species' `art` recipe (silhouette template + field marks) into a
- * unique SVG via the bird-art engine — the same builder that produces the
- * exported .svg/.png assets, so what you see in-app is the asset. Photographed
- * "wild" birds have no recipe, so they fall back to a generic perched body
- * built from their palette + crest/long-tail flags.
+ * Renders a bird. Catalog species use their illustrated PNG sprite from
+ * `/public/assets/birds/<id>.png`. Photographed "wild" birds (no asset) fall
+ * back to the lightweight procedural SVG built from their palette.
  */
 export function BirdSprite({
   species,
   size = 120,
-  animated = true,
   mood = "content",
   sleeping = false,
   className,
@@ -24,23 +23,25 @@ export function BirdSprite({
   sleeping?: boolean;
   className?: string;
 }) {
-  const uid = species.key.replace(/[^a-z0-9]/gi, "") || "x";
-  const art: BirdArt = species.art ?? fallbackArt(species);
-  const inner = renderBirdArt(species.palette, art, { uid, mood, sleeping, animated });
-
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" className={className} role="img" aria-label={species.name}>
-      <g
-        className={animated && !sleeping ? "bird-bob" : undefined}
-        style={{ transformOrigin: "50px 92px" }}
-        dangerouslySetInnerHTML={{ __html: inner }}
+  const asset = birdAsset(species.key);
+  if (asset) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={asset}
+        alt={species.name}
+        width={size}
+        height={size}
+        draggable={false}
+        className={cn("select-none object-contain", sleeping && "opacity-90 saturate-[0.85]", className)}
+        style={{ width: size, height: size }}
       />
-    </svg>
-  );
-}
+    );
+  }
 
-function fallbackArt(species: BirdSpecies): BirdArt {
-  return {
+  // Wild / photographed birds: procedural SVG from palette.
+  const uid = species.key.replace(/[^a-z0-9]/gi, "") || "x";
+  const art: BirdArt = species.art ?? {
     template: "perch",
     bill: "cone",
     crest: species.crest ? "spike" : "none",
@@ -48,4 +49,10 @@ function fallbackArt(species: BirdSpecies): BirdArt {
     legs: "short",
     marks: [],
   };
+  const inner = renderBirdArt(species.palette, art, { uid, mood, sleeping });
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" className={className} role="img" aria-label={species.name}>
+      <g dangerouslySetInnerHTML={{ __html: inner }} />
+    </svg>
+  );
 }

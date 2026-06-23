@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadGame } from "@/lib/game/rewards";
@@ -44,7 +45,12 @@ export default async function NestPage() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Nest</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Care for yourself, grow your flock.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Care for yourself, grow your flock.{" "}
+            <Link href="/nest/gallery" className="font-medium text-primary hover:underline">
+              See all 60 →
+            </Link>
+          </p>
         </div>
         <div className="rounded-full bg-honey-soft px-4 py-2 text-right">
           <p className="text-xl font-semibold tabular-nums text-[#5a3d1a]">{game.seeds} 🌱</p>
