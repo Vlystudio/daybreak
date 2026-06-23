@@ -24,6 +24,8 @@ const serverSchema = z.object({
   CRON_SECRET: z.string().min(16),
   OURA_CLIENT_ID: z.string().min(1).optional(),
   OURA_CLIENT_SECRET: z.string().min(1).optional(),
+  FITBIT_CLIENT_ID: z.string().min(1).optional(),
+  FITBIT_CLIENT_SECRET: z.string().min(1).optional(),
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
@@ -73,6 +75,7 @@ export function serverEnv(): z.infer<typeof serverSchema> {
 /** True when the given optional integration is configured. */
 export const integrationsAvailable = {
   oura: () => Boolean(serverEnv().OURA_CLIENT_ID && serverEnv().OURA_CLIENT_SECRET),
+  fitbit: () => Boolean(serverEnv().FITBIT_CLIENT_ID && serverEnv().FITBIT_CLIENT_SECRET),
   google: () => Boolean(serverEnv().GOOGLE_CLIENT_ID && serverEnv().GOOGLE_CLIENT_SECRET),
   openai: () => Boolean(serverEnv().OPENAI_API_KEY),
   resend: () => Boolean(serverEnv().RESEND_API_KEY),

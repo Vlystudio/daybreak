@@ -9,7 +9,7 @@ import { serverEnv } from "@/env";
  * the server.
  */
 
-export type Provider = "oura" | "google";
+export type Provider = "oura" | "google" | "fitbit";
 
 export interface TokenSet {
   accessToken: string;
@@ -89,24 +89,31 @@ export async function getValidAccessToken(
   return refreshed.accessToken;
 }
 
+const TOKEN_ENDPOINTS: Record<Provider, string> = {
+  oura: "https://api.ouraring.com/oauth/token",
+  google: "https://oauth2.googleapis.com/token",
+  fitbit: "https://api.fitbit.com/oauth2/token",
+};
+
 async function refreshTokens(provider: Provider, refreshToken: string): Promise<TokenSet | null> {
   const env = serverEnv();
-
-  const endpoint =
-    provider === "oura" ? "https://api.ouraring.com/oauth/token" : "https://oauth2.googleapis.com/token";
 
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    client_id: (provider === "oura" ? env.OURA_CLIENT_ID : env.GOOGLE_CLIENT_ID) ?? "",
-    client_secret: (provider === "oura" ? env.OURA_CLIENT_SECRET : env.GOOGLE_CLIENT_SECRET) ?? "",
   });
+  const headers: Record<string, string> = { "Content-Type": "application/x-www-form-urlencoded" };
 
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  if (provider === "fitbit") {
+    // Fitbit authenticates the token endpoint with HTTP Basic, not body params.
+    const creds = `${env.FITBIT_CLIENT_ID ?? ""}:${env.FITBIT_CLIENT_SECRET ?? ""}`;
+    headers.Authorization = `Basic ${Buffer.from(creds).toString("base64")}`;
+  } else {
+    body.set("client_id", (provider === "oura" ? env.OURA_CLIENT_ID : env.GOOGLE_CLIENT_ID) ?? "");
+    body.set("client_secret", (provider === "oura" ? env.OURA_CLIENT_SECRET : env.GOOGLE_CLIENT_SECRET) ?? "");
+  }
+
+  const res = await fetch(TOKEN_ENDPOINTS[provider], { method: "POST", headers, body });
 
   if (!res.ok) {
     console.error(`[oauth] ${provider} token refresh failed with status ${res.status}`);

@@ -3,13 +3,12 @@ import { z } from "zod";
 import { getUser } from "@/lib/auth";
 import { verifyState } from "@/lib/crypto";
 import { saveConnection } from "@/lib/integrations/tokens";
-import { exchangeOuraCode } from "@/lib/integrations/oura";
-import { exchangeGoogleCode } from "@/lib/integrations/google-calendar";
-import { syncOuraForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
+import { OAUTH_PROVIDERS, OAUTH_PROVIDER_NAMES } from "@/lib/integrations/oauth-providers";
+import { syncWearableForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import { audit } from "@/lib/audit";
 import { publicEnv } from "@/env";
 
-const providerSchema = z.enum(["oura", "google"]);
+const providerSchema = z.enum(OAUTH_PROVIDER_NAMES);
 
 function dashboardRedirect(params: Record<string, string>) {
   const url = new URL("/dashboard", publicEnv.NEXT_PUBLIC_APP_URL);
@@ -51,14 +50,15 @@ export async function GET(
   }
 
   try {
-    const tokens = provider === "oura" ? await exchangeOuraCode(code) : await exchangeGoogleCode(code);
+    const config = OAUTH_PROVIDERS[provider];
+    const tokens = await config.exchangeCode(code);
     await saveConnection(user.id, provider, tokens);
     await audit(user.id, "connection.linked", { entity: "oauth_connection", metadata: { provider } });
 
     // Kick off an initial sync so the dashboard is populated immediately.
     try {
-      if (provider === "oura") {
-        await syncOuraForUser(user.id, 14);
+      if (config.kind === "wearable") {
+        await syncWearableForUser(user.id, provider, 14);
         await generateSummaryForUser(user.id);
       } else {
         await syncCalendarForUser(user.id);

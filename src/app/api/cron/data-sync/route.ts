@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncOuraForUser, syncCalendarForUser } from "@/lib/sync";
+import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser } from "@/lib/sync";
 import { maybeRefreshTodayPlanForUser, maybeAutoPlanForUser } from "@/lib/planner";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   const { data: connections, error } = await admin
     .from("oauth_connections")
     .select("user_id, provider")
-    .returns<{ user_id: string; provider: "oura" | "google" }[]>();
+    .returns<{ user_id: string; provider: "oura" | "google" | "fitbit" }[]>();
 
   if (error) {
     return NextResponse.json({ error: "Failed to list connections" }, { status: 500 });
@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
     try {
       // Pull the last 2 days for intraday refresh (the morning job backfills 7).
       if (providers.has("oura")) await syncOuraForUser(userId, 2);
+      if (providers.has("fitbit")) await syncFitbitForUser(userId, 2);
       if (providers.has("google")) await syncCalendarForUser(userId);
       // Rebuild today's plan once that day's recovery is in (gated internally).
       try {

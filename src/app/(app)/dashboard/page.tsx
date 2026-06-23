@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
+import { integrationsAvailable } from "@/env";
 import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
 import { MorningSummary } from "@/components/dashboard/morning-summary";
@@ -85,7 +86,11 @@ export default async function DashboardPage() {
             <HabitsCard habits={data.habits} />
           </FadeIn>
           <FadeIn delay={0.35}>
-            <CalendarSyncCard connections={data.connections} calendarSync={data.calendarSync} />
+            <CalendarSyncCard
+              connections={data.connections}
+              calendarSync={data.calendarSync}
+              fitbitAvailable={integrationsAvailable.fitbit()}
+            />
           </FadeIn>
           <FadeIn delay={0.4}>
             <HouseholdCard household={data.household} householdEvents={data.householdEvents} />

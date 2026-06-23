@@ -92,7 +92,7 @@ export async function setMorningEmailEnabled(input: { enabled: boolean }): Promi
   return { ok: true };
 }
 
-const providerActionSchema = z.enum(["oura", "google"]);
+const providerActionSchema = z.enum(["oura", "google", "fitbit"]);
 
 export async function disconnectProvider(provider: string): Promise<ActionResult> {
   const user = await requireUser();

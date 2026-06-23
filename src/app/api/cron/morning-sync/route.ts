@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncOuraForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
+import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import { sendMorningEmailForUser } from "@/lib/notifications";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const { data: connections, error } = await admin
     .from("oauth_connections")
     .select("user_id, provider")
-    .returns<{ user_id: string; provider: "oura" | "google" }[]>();
+    .returns<{ user_id: string; provider: "oura" | "google" | "fitbit" }[]>();
 
   if (error) {
     return NextResponse.json({ error: "Failed to list connections" }, { status: 500 });
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
   for (const [userId, providers] of byUser) {
     try {
       if (providers.has("oura")) await syncOuraForUser(userId, 7);
+      if (providers.has("fitbit")) await syncFitbitForUser(userId, 7);
       if (providers.has("google")) await syncCalendarForUser(userId);
       const briefed = await generateSummaryForUser(userId);
       if (briefed) await sendMorningEmailForUser(userId);

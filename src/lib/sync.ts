@@ -11,7 +11,8 @@ import {
   scopeAllowsWrite,
   type GoogleEventInput,
 } from "@/lib/integrations/google-calendar";
-import { getValidAccessToken } from "@/lib/integrations/tokens";
+import { getValidAccessToken, type Provider } from "@/lib/integrations/tokens";
+import { fetchFitbitDailyMetrics } from "@/lib/integrations/fitbit";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateMorningBriefing, type MetricsForPrompt } from "@/lib/integrations/ai";
 import { audit } from "@/lib/audit";
@@ -29,10 +30,31 @@ function isoDate(d: Date): string {
 export async function syncOuraForUser(userId: string, days = 7): Promise<boolean> {
   const end = new Date();
   const start = new Date(end.getTime() - days * 86_400_000);
-
   const metrics = await fetchOuraDailyMetrics(userId, isoDate(start), isoDate(end));
-  if (!metrics) return false;
+  return storeMetrics(userId, metrics);
+}
 
+/** Pull the last `days` days of Fitbit data into health_metrics. */
+export async function syncFitbitForUser(userId: string, days = 7): Promise<boolean> {
+  const end = new Date();
+  const start = new Date(end.getTime() - days * 86_400_000);
+  const metrics = await fetchFitbitDailyMetrics(userId, isoDate(start), isoDate(end));
+  return storeMetrics(userId, metrics);
+}
+
+/** Sync whichever wearable a user has connected (one provider per call). */
+export async function syncWearableForUser(userId: string, provider: Provider, days = 7): Promise<boolean> {
+  if (provider === "fitbit") return syncFitbitForUser(userId, days);
+  if (provider === "oura") return syncOuraForUser(userId, days);
+  return false;
+}
+
+/** Upsert mapped daily metrics (shared by the wearable syncers). */
+async function storeMetrics(
+  userId: string,
+  metrics: Awaited<ReturnType<typeof fetchOuraDailyMetrics>>
+): Promise<boolean> {
+  if (!metrics) return false;
   if (metrics.length > 0) {
     const admin = createAdminClient();
     const { error } = await admin

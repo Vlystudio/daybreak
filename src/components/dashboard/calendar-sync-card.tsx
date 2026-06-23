@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { RefreshCw, Link2, Unlink, Activity, CalendarCheck } from "lucide-react";
+import { RefreshCw, Link2, Unlink, Activity, CalendarCheck, Watch } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,17 @@ import type { Connection, CalendarSyncSettings } from "@/lib/types";
 export function CalendarSyncCard({
   connections,
   calendarSync,
+  fitbitAvailable = false,
 }: {
   connections: Connection[];
   calendarSync: CalendarSyncSettings | null;
+  fitbitAvailable?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
 
   const ouraConnected = connections.some((c) => c.provider === "oura");
   const googleConnected = connections.some((c) => c.provider === "google");
+  const fitbitConnected = connections.some((c) => c.provider === "fitbit");
   const syncEnabled = calendarSync?.sync_enabled ?? true;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
@@ -80,6 +83,40 @@ export function CalendarSyncCard({
             </Button>
           )}
         </div>
+
+        {(fitbitAvailable || fitbitConnected) && (
+          <>
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-peach-soft">
+                  <Watch className="h-4 w-4 text-peach" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">Fitbit</p>
+                  <p className="text-xs text-muted-foreground">
+                    {fitbitConnected ? "Connected — syncs every morning" : "Sleep, heart rate & activity"}
+                  </p>
+                </div>
+              </div>
+              {fitbitConnected ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => run(() => disconnectProvider("fitbit"), "Fitbit disconnected.")}
+                >
+                  <Unlink aria-hidden />
+                  <span className="sr-only">Disconnect Fitbit</span>
+                </Button>
+              ) : (
+                <Button size="sm" asChild>
+                  <a href="/api/oauth/fitbit/start">Connect</a>
+                </Button>
+              )}
+            </div>
+          </>
+        )}
 
         <Separator />
 

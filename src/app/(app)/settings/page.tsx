@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/server";
+import { integrationsAvailable } from "@/env";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AccountCard } from "@/components/settings/account-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
@@ -34,7 +35,11 @@ export default async function SettingsPage() {
       <ProfileForm profile={data.profile} />
       <AccountCard email={user.email ?? ""} />
       <NotificationsCard morningEmailEnabled={morningEmailEnabled} />
-      <CalendarSyncCard connections={data.connections} calendarSync={data.calendarSync} />
+      <CalendarSyncCard
+        connections={data.connections}
+        calendarSync={data.calendarSync}
+        fitbitAvailable={integrationsAvailable.fitbit()}
+      />
       <HouseholdCard household={data.household} householdEvents={[]} />
 
       <Card>

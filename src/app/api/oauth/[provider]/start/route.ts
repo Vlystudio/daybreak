@@ -3,11 +3,10 @@ import { z } from "zod";
 import { getUser } from "@/lib/auth";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { signState, randomToken } from "@/lib/crypto";
-import { ouraAuthorizeUrl } from "@/lib/integrations/oura";
-import { googleAuthorizeUrl } from "@/lib/integrations/google-calendar";
+import { OAUTH_PROVIDERS, OAUTH_PROVIDER_NAMES } from "@/lib/integrations/oauth-providers";
 import { integrationsAvailable, publicEnv } from "@/env";
 
-const providerSchema = z.enum(["oura", "google"]);
+const providerSchema = z.enum(OAUTH_PROVIDER_NAMES);
 
 /**
  * Begins an OAuth flow. The `state` parameter is an HMAC-signed value of
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/oauth/[p
   const nonce = randomToken(16);
   const state = signState(`${user.id}:${nonce}`);
 
-  const authorizeUrl = provider === "oura" ? ouraAuthorizeUrl(state) : googleAuthorizeUrl(state);
+  const authorizeUrl = OAUTH_PROVIDERS[provider].authorizeUrl(state);
 
   const response = NextResponse.redirect(authorizeUrl);
   response.cookies.set(`oauth_nonce_${provider}`, nonce, {

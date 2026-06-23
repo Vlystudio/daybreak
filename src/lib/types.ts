@@ -156,7 +156,7 @@ export interface ScheduleEvent {
 }
 
 export interface Connection {
-  provider: "oura" | "google";
+  provider: "oura" | "google" | "fitbit";
   connected_at: string;
 }
 
