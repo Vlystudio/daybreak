@@ -25,6 +25,72 @@ const TARGETS = [
   { value: 3, label: "3×/wk" },
 ];
 
+interface Preset {
+  name: string;
+  emoji: string;
+  color: EventColor;
+  target: number;
+}
+
+const HABIT_PRESETS: { group: string; items: Preset[] }[] = [
+  {
+    group: "Hygiene",
+    items: [
+      { name: "Brush teeth", emoji: "🦷", color: "sky", target: 7 },
+      { name: "Floss", emoji: "🧵", color: "sky", target: 7 },
+      { name: "Shower", emoji: "🚿", color: "sky", target: 7 },
+      { name: "Wash face", emoji: "🧼", color: "sky", target: 7 },
+      { name: "Skincare", emoji: "✨", color: "peach", target: 7 },
+      { name: "Deodorant", emoji: "🧴", color: "sky", target: 7 },
+    ],
+  },
+  {
+    group: "Health",
+    items: [
+      { name: "Drink water", emoji: "💧", color: "sky", target: 7 },
+      { name: "Take vitamins", emoji: "💊", color: "sage", target: 7 },
+      { name: "8 hours of sleep", emoji: "😴", color: "sky", target: 7 },
+      { name: "Get sunlight", emoji: "🌞", color: "honey", target: 7 },
+      { name: "No screens before bed", emoji: "🌙", color: "peach", target: 5 },
+    ],
+  },
+  {
+    group: "Movement",
+    items: [
+      { name: "Go for a walk", emoji: "🚶", color: "sage", target: 7 },
+      { name: "Stretch", emoji: "🧘", color: "sage", target: 7 },
+      { name: "Workout", emoji: "🏋️", color: "peach", target: 4 },
+      { name: "10k steps", emoji: "👟", color: "sage", target: 5 },
+    ],
+  },
+  {
+    group: "Mind",
+    items: [
+      { name: "Meditate", emoji: "🧘", color: "sage", target: 7 },
+      { name: "Journal", emoji: "✍️", color: "peach", target: 7 },
+      { name: "Read 10 min", emoji: "📖", color: "honey", target: 7 },
+      { name: "Write gratitude", emoji: "🙏", color: "honey", target: 7 },
+    ],
+  },
+  {
+    group: "Home & tasks",
+    items: [
+      { name: "Make the bed", emoji: "🛏️", color: "honey", target: 7 },
+      { name: "Do the dishes", emoji: "🍽️", color: "sky", target: 7 },
+      { name: "Tidy 10 min", emoji: "🧹", color: "sage", target: 7 },
+      { name: "Laundry", emoji: "🧺", color: "sky", target: 1 },
+    ],
+  },
+  {
+    group: "Nutrition",
+    items: [
+      { name: "Eat vegetables", emoji: "🥦", color: "sage", target: 7 },
+      { name: "Cook at home", emoji: "🍳", color: "honey", target: 5 },
+      { name: "No soda", emoji: "🥤", color: "sky", target: 7 },
+    ],
+  },
+];
+
 export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -45,6 +111,15 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
       if (!r.ok) toast.error(r.error);
     });
   }
+  function applyPreset(presetName: string) {
+    const p = HABIT_PRESETS.flatMap((g) => g.items).find((x) => x.name === presetName);
+    if (!p) return;
+    setName(p.name);
+    setEmoji(p.emoji);
+    setColor(p.color);
+    setTarget(p.target);
+  }
+
   function add() {
     const trimmed = name.trim();
     if (!trimmed) return;
@@ -75,6 +150,32 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
       <CardContent className="space-y-2.5 pb-6">
         {adding && (
           <div className="space-y-2.5 rounded-2xl border bg-muted/30 p-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-muted-foreground">Pick a common one</label>
+              <select
+                value=""
+                onChange={(e) => applyPreset(e.target.value)}
+                className="h-9 w-full rounded-lg border border-input bg-background px-2 text-sm"
+              >
+                <option value="" disabled>
+                  Choose from hygiene, health, movement…
+                </option>
+                {HABIT_PRESETS.map((g) => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.items.map((p) => (
+                      <option key={p.name} value={p.name}>
+                        {p.emoji} {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-[11px] text-muted-foreground">or make your own</span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
             <Input
               autoFocus
               placeholder="New habit, e.g. Drink water"
