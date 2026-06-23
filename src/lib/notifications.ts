@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { publicEnv } from "@/env";
 import { sendEmail } from "@/lib/integrations/email";
+import { sendPushToUser } from "@/lib/push";
 import { audit } from "@/lib/audit";
 import type { DailySummary } from "@/lib/types";
 
@@ -93,6 +94,26 @@ export async function sendMorningEmailForUser(userId: string): Promise<boolean> 
     .eq("user_id", userId);
   await audit(userId, "notification.morning_email_sent");
   return true;
+}
+
+/**
+ * Push today's briefing to a user's devices. Subscribing is itself the opt-in,
+ * so this isn't gated on the email preference. Returns the number delivered.
+ */
+export async function sendMorningPushForUser(userId: string): Promise<number> {
+  const admin = createAdminClient();
+  const todayStr = isoDate(new Date());
+
+  const { data: summary } = await admin
+    .from("daily_summaries")
+    .select("summary, focus")
+    .eq("user_id", userId)
+    .eq("date", todayStr)
+    .maybeSingle<{ summary: string; focus: string | null }>();
+  if (!summary) return 0;
+
+  const body = (summary.focus?.trim() || summary.summary).slice(0, 160);
+  return sendPushToUser(userId, { title: "☀ Your Daybreak briefing", body, url: "/dashboard" });
 }
 
 // ── email rendering ──────────────────────────────────────────────────────────

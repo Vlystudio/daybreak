@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
-import { sendMorningEmailForUser } from "@/lib/notifications";
+import { sendMorningEmailForUser, sendMorningPushForUser } from "@/lib/notifications";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
@@ -42,7 +42,10 @@ export async function GET(request: NextRequest) {
       if (providers.has("fitbit")) await syncFitbitForUser(userId, 7);
       if (providers.has("google")) await syncCalendarForUser(userId);
       const briefed = await generateSummaryForUser(userId);
-      if (briefed) await sendMorningEmailForUser(userId);
+      if (briefed) {
+        await sendMorningEmailForUser(userId);
+        await sendMorningPushForUser(userId);
+      }
       synced++;
     } catch (err) {
       failed++;

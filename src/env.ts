@@ -12,6 +12,8 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
+  // VAPID public key for Web Push (safe to expose). Empty disables push.
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().default(""),
 });
 
 const serverSchema = z.object({
@@ -34,6 +36,9 @@ const serverSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   // Verified sender for transactional email, e.g. "Daybreak <hello@yourdomain.com>".
   EMAIL_FROM: z.string().min(1).default("Daybreak <onboarding@resend.dev>"),
+  // Web Push (VAPID). Generate with `npx web-push generate-vapid-keys`.
+  VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  VAPID_SUBJECT: z.string().min(1).default("mailto:hello@daybreak.app"),
   // Dedicated food-image recognition (https://logmeal.com). Falls back to
   // OpenAI vision when unset.
   LOGMEAL_API_KEY: z.string().min(1).optional(),
@@ -48,6 +53,7 @@ const publicParsed = publicSchema.safeParse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 });
 
 if (!publicParsed.success) {
@@ -79,4 +85,5 @@ export const integrationsAvailable = {
   google: () => Boolean(serverEnv().GOOGLE_CLIENT_ID && serverEnv().GOOGLE_CLIENT_SECRET),
   openai: () => Boolean(serverEnv().OPENAI_API_KEY),
   resend: () => Boolean(serverEnv().RESEND_API_KEY),
+  push: () => Boolean(serverEnv().VAPID_PRIVATE_KEY && publicEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
 };
