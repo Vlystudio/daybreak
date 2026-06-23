@@ -67,6 +67,8 @@ export interface GameState {
   earnedToday: number;
   earnable: EarnLine[];
   justGranted: number;
+  starterDone: boolean;
+  freeHatches: number;
 }
 
 /** Build the day's earn candidates from real completions. */
@@ -171,7 +173,7 @@ export async function loadGame(userId: string, timeZone: string): Promise<GameSt
   const today = localToday(timeZone);
 
   const [{ data: game }, { data: birds }, { data: todayLedger }, { earnable }] = await Promise.all([
-    admin.from("user_game").select("seeds, total_earned, active_bird_id").eq("user_id", userId).maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null }>(),
+    admin.from("user_game").select("seeds, total_earned, active_bird_id, starter_done, free_hatches").eq("user_id", userId).maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null; starter_done: boolean; free_hatches: number }>(),
     admin.from("user_birds").select("id, species_key, source, nickname, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail, xp, hatched_at").eq("user_id", userId).order("hatched_at", { ascending: false }).returns<Omit<OwnedBird, "level">[]>(),
     admin.from("reward_ledger").select("amount").eq("user_id", userId).eq("awarded_on", today).returns<{ amount: number }[]>(),
     candidatesForToday(admin, userId, today),
@@ -185,5 +187,7 @@ export async function loadGame(userId: string, timeZone: string): Promise<GameSt
     earnedToday: (todayLedger ?? []).reduce((s, r) => s + r.amount, 0),
     earnable,
     justGranted,
+    starterDone: game?.starter_done ?? false,
+    freeHatches: game?.free_hatches ?? 0,
   };
 }

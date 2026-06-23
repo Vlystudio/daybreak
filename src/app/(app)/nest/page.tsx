@@ -6,6 +6,7 @@ import { resolveSpecies } from "@/lib/game/birds";
 import { companionMood } from "@/lib/game/mood";
 import { NestStage } from "@/components/game/nest-stage";
 import { AviaryPanel } from "@/components/game/aviary-panel";
+import { StarterEggs } from "@/components/game/starter-eggs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,16 @@ export default async function NestPage() {
   const activeBird = game.birds.find((b) => b.id === game.activeBirdId) ?? null;
   const activeSpecies = activeBird ? resolveSpecies(activeBird) : null;
   const companion = companionMood(metric?.readiness_score ?? null, checkin?.mood ?? null);
+
+  // First-time players: run the starter-egg ceremony before the full Nest.
+  if (!game.starterDone && game.birds.length === 0) {
+    return (
+      <div className="mx-auto w-full max-w-2xl space-y-5">
+        <h1 className="text-2xl font-semibold tracking-tight">Nest</h1>
+        <StarterEggs />
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
@@ -79,7 +90,13 @@ export default async function NestPage() {
         </CardContent>
       </Card>
 
-      <AviaryPanel seeds={game.seeds} eggCost={SEED_COST_EGG} birds={game.birds} activeBirdId={game.activeBirdId} />
+      <AviaryPanel
+        seeds={game.seeds}
+        eggCost={SEED_COST_EGG}
+        birds={game.birds}
+        activeBirdId={game.activeBirdId}
+        freeHatches={game.freeHatches}
+      />
     </div>
   );
 }

@@ -24,12 +24,16 @@ export async function hatchEgg(): Promise<HatchResult> {
   const admin = createAdminClient();
   const { data: game } = await admin
     .from("user_game")
-    .select("seeds, active_bird_id")
+    .select("seeds, active_bird_id, free_hatches")
     .eq("user_id", user.id)
-    .maybeSingle<{ seeds: number; active_bird_id: string | null }>();
+    .maybeSingle<{ seeds: number; active_bird_id: string | null; free_hatches: number }>();
 
   const seeds = game?.seeds ?? 0;
-  if (seeds < SEED_COST_EGG) return { ok: false, error: `You need ${SEED_COST_EGG} seeds to hatch an egg.` };
+  const freeHatches = game?.free_hatches ?? 0;
+  const useFree = freeHatches > 0;
+  if (!useFree && seeds < SEED_COST_EGG) {
+    return { ok: false, error: `You need ${SEED_COST_EGG} seeds to hatch an egg.` };
+  }
 
   const species = rollSpecies();
   const { data: bird, error } = await admin
@@ -42,13 +46,49 @@ export async function hatchEgg(): Promise<HatchResult> {
   await admin
     .from("user_game")
     .update({
-      seeds: seeds - SEED_COST_EGG,
+      // A banked free egg costs no seeds.
+      ...(useFree ? { free_hatches: freeHatches - 1 } : { seeds: seeds - SEED_COST_EGG }),
       // Adopt the first bird as the companion automatically.
       ...(game?.active_bird_id ? {} : { active_bird_id: bird.id }),
     })
     .eq("user_id", user.id);
 
-  await audit(user.id, "game.hatched", { metadata: { species: species.key, rarity: species.rarity } });
+  await audit(user.id, "game.hatched", { metadata: { species: species.key, rarity: species.rarity, free: useFree } });
+  revalidatePath("/nest");
+  revalidatePath("/dashboard");
+  return { ok: true, speciesKey: species.key, speciesName: species.name, rarity: species.rarity, birdId: bird.id };
+}
+
+/**
+ * Starter ceremony: hatch the new user's first bird and bank one free egg (the
+ * second egg they chose to keep). One-time — guarded by starter_done.
+ */
+export async function claimStarter(): Promise<HatchResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "One moment…" };
+
+  const admin = createAdminClient();
+  const { data: game } = await admin
+    .from("user_game")
+    .select("starter_done, active_bird_id")
+    .eq("user_id", user.id)
+    .maybeSingle<{ starter_done: boolean; active_bird_id: string | null }>();
+  if (game?.starter_done) return { ok: false, error: "You've already chosen your starter eggs." };
+
+  const species = rollSpecies();
+  const { data: bird, error } = await admin
+    .from("user_birds")
+    .insert({ user_id: user.id, species_key: species.key })
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !bird) return { ok: false, error: "The egg didn't hatch — try again." };
+
+  const update = { starter_done: true, free_hatches: 1, active_bird_id: game?.active_bird_id ?? bird.id };
+  if (game) await admin.from("user_game").update(update).eq("user_id", user.id);
+  else await admin.from("user_game").insert({ user_id: user.id, ...update });
+
+  await audit(user.id, "game.hatched", { metadata: { species: species.key, starter: true } });
   revalidatePath("/nest");
   revalidatePath("/dashboard");
   return { ok: true, speciesKey: species.key, speciesName: species.name, rarity: species.rarity, birdId: bird.id };

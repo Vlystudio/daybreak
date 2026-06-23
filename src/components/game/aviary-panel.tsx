@@ -46,11 +46,13 @@ export function AviaryPanel({
   eggCost,
   birds,
   activeBirdId,
+  freeHatches = 0,
 }: {
   seeds: number;
   eggCost: number;
   birds: OwnedBird[];
   activeBirdId: string | null;
+  freeHatches?: number;
 }) {
   const [pending, startTransition] = useTransition();
   const [reveal, setReveal] = useState<{ species: BirdSpecies } | null>(null);
@@ -59,7 +61,8 @@ export function AviaryPanel({
   const fileRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);
 
-  const canHatch = seeds >= eggCost;
+  const hasFree = freeHatches > 0;
+  const canHatch = hasFree || seeds >= eggCost;
   const speciesCollected = new Set(birds.map((b) => b.species_key)).size;
 
   function hatch() {
@@ -134,11 +137,13 @@ export function AviaryPanel({
         <div className="flex items-center justify-between gap-3 rounded-2xl bg-honey-soft/60 p-3">
           <div>
             <p className="text-sm font-medium text-[#5a3d1a]">Hatch an egg</p>
-            <p className="text-xs text-[#9a6b1f]">A surprise bird for {eggCost} 🌱</p>
+            <p className="text-xs text-[#9a6b1f]">
+              {hasFree ? `You have ${freeHatches} free egg${freeHatches === 1 ? "" : "s"} 🥚` : `A surprise bird for ${eggCost} 🌱`}
+            </p>
           </div>
           <Button onClick={hatch} disabled={pending || !canHatch}>
             <Egg aria-hidden />
-            {canHatch ? "Hatch" : `Need ${eggCost - seeds} more`}
+            {hasFree ? "Hatch free" : canHatch ? "Hatch" : `Need ${eggCost - seeds} more`}
           </Button>
         </div>
 
