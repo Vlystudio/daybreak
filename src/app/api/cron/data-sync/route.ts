@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser } from "@/lib/sync";
 import { maybeRefreshTodayPlanForUser, maybeAutoPlanForUser } from "@/lib/planner";
+import { dispatchReminders } from "@/lib/reminders";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
@@ -78,8 +79,16 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Fire any contextual reminders due this hour (local-time matched).
+  let reminders = 0;
+  try {
+    reminders = await dispatchReminders();
+  } catch (err) {
+    console.error("[cron] reminder dispatch failed:", err);
+  }
+
   await audit(null, "cron.data_sync", {
-    metadata: { users: byUser.size, synced, failed, autoPlanned },
+    metadata: { users: byUser.size, synced, failed, autoPlanned, reminders },
   });
-  return NextResponse.json({ users: byUser.size, synced, failed, autoPlanned });
+  return NextResponse.json({ users: byUser.size, synced, failed, autoPlanned, reminders });
 }

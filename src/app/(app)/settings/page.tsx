@@ -5,7 +5,9 @@ import { integrationsAvailable } from "@/env";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AccountCard } from "@/components/settings/account-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
+import { RemindersCard } from "@/components/settings/reminders-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
+import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShieldCheck } from "lucide-react";
@@ -18,12 +20,21 @@ export default async function SettingsPage() {
   const data = await loadDashboardData(user.id);
 
   const supabase = await createClient();
-  const { data: notif } = await supabase
-    .from("notification_settings")
-    .select("morning_email_enabled")
-    .eq("user_id", user.id)
-    .maybeSingle<{ morning_email_enabled: boolean }>();
+  const [{ data: notif }, { data: reminders }] = await Promise.all([
+    supabase
+      .from("notification_settings")
+      .select("morning_email_enabled")
+      .eq("user_id", user.id)
+      .maybeSingle<{ morning_email_enabled: boolean }>(),
+    supabase
+      .from("reminders")
+      .select("id, kind, hour, message, enabled")
+      .eq("user_id", user.id)
+      .order("hour", { ascending: true })
+      .returns<Reminder[]>(),
+  ]);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
+  const pushAvailable = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -35,6 +46,7 @@ export default async function SettingsPage() {
       <ProfileForm profile={data.profile} />
       <AccountCard email={user.email ?? ""} />
       <NotificationsCard morningEmailEnabled={morningEmailEnabled} />
+      <RemindersCard reminders={reminders ?? []} pushAvailable={pushAvailable} />
       <CalendarSyncCard
         connections={data.connections}
         calendarSync={data.calendarSync}

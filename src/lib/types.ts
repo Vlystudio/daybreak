@@ -108,6 +108,16 @@ export interface GoalProgress {
   reached: boolean;
 }
 
+export type ReminderKind = "hydration" | "wind_down" | "move" | "log_food" | "checkin" | "custom";
+
+export interface Reminder {
+  id: string;
+  kind: ReminderKind;
+  hour: number;
+  message: string | null;
+  enabled: boolean;
+}
+
 export interface Habit {
   id: string;
   name: string;
