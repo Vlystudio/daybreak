@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { BirdSprite } from "@/components/game/bird-sprite";
-import { SPECIES_BY_KEY, RARITY_META, birdLevel, BIRD_SPECIES, resolveSpecies, type BirdSpecies, type OwnedBirdBase } from "@/lib/game/birds";
+import { SPECIES_BY_KEY, RARITY_META, birdLevel, BIRD_SPECIES, resolveSpecies, archetypeFor, type BirdSpecies, type OwnedBirdBase } from "@/lib/game/birds";
+import { playBirdCall } from "@/lib/game/bird-sounds";
 import { hatchEgg, setActiveBird, renameBird, addBirdFromPhoto } from "@/actions/game";
 
 interface OwnedBird extends OwnedBirdBase {
@@ -174,7 +175,7 @@ export function AviaryPanel({
                     active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
                   )}
                 >
-                  <button type="button" onClick={() => activate(b.id)} disabled={pending} className="flex flex-col items-center" aria-label={`Set ${b.nickname || species.name} active`}>
+                  <button type="button" onClick={() => { playBirdCall(archetypeFor(species)); activate(b.id); }} disabled={pending} className="flex flex-col items-center" aria-label={`Set ${b.nickname || species.name} active`}>
                     <BirdSprite species={species} size={64} animated={false} />
                     {renaming === b.id ? null : (
                       <span className="mt-0.5 max-w-full truncate text-xs font-medium">{b.nickname || species.name}</span>

@@ -58,6 +58,7 @@ export default async function NestPage() {
         xp={activeBird?.xp ?? 0}
         mood={companion.mood}
         moodLabel={companion.label}
+        timezone={profile?.timezone ?? "UTC"}
       />
 
       <Card>

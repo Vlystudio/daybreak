@@ -15,14 +15,62 @@ export interface BirdPalette {
   cheek: string;
 }
 
+/**
+ * Body archetype drives the silhouette so species actually look different — an
+ * owl is round-headed, a flamingo is long-legged, a penguin stands upright, a
+ * toucan has an oversized bill, etc. Each maps to shape params in the sprite.
+ */
+export type BirdArchetype =
+  | "songbird"
+  | "plump"
+  | "corvid"
+  | "owl"
+  | "raptor"
+  | "parrot"
+  | "bigbeak"
+  | "waterbird"
+  | "flamingo"
+  | "swan"
+  | "penguin"
+  | "hummingbird"
+  | "longtail"
+  | "woodpecker";
+
 export interface BirdSpecies {
   key: string;
   name: string;
   rarity: Rarity;
   palette: BirdPalette;
+  archetype?: BirdArchetype;
   crest?: boolean; // a little head tuft
   longTail?: boolean;
   blurb: string;
+}
+
+/** Archetype per species key (kept separate so the catalog stays terse). */
+export const ARCHETYPE_BY_KEY: Record<string, BirdArchetype> = {
+  // common
+  sparrow: "songbird", robin: "songbird", chickadee: "songbird", house_finch: "songbird", wren: "songbird",
+  dove: "plump", pigeon: "plump", starling: "songbird", junco: "songbird", titmouse: "songbird",
+  nuthatch: "songbird", warbler: "songbird", lark: "songbird", crow: "corvid", swift: "songbird",
+  phoebe: "songbird", bushtit: "songbird", sandpiper: "songbird", blackbird: "songbird", redpoll: "songbird",
+  // uncommon
+  goldfinch: "songbird", bluebird: "songbird", cardinal: "songbird", bluejay: "songbird", oriole: "songbird",
+  tanager: "songbird", waxwing: "songbird", grosbeak: "songbird", bunting: "songbird", canary: "songbird",
+  budgie: "parrot", lovebird: "parrot", cockatiel: "parrot", magpie: "longtail", pheasant: "longtail",
+  penguin: "penguin", woodpecker: "woodpecker", kestrel: "raptor",
+  // rare
+  kingfisher: "bigbeak", hummingbird: "hummingbird", puffin: "penguin", toucan: "bigbeak", owl: "owl",
+  barn_owl: "owl", parrot: "parrot", cockatoo: "parrot", lorikeet: "parrot", flamingo: "flamingo",
+  heron: "waterbird", swan: "swan", hoopoe: "songbird", kookaburra: "bigbeak", bee_eater: "songbird",
+  hawk: "raptor", falcon: "raptor",
+  // legendary
+  peacock: "longtail", phoenix: "longtail", macaw: "parrot", quetzal: "longtail", bird_of_paradise: "longtail",
+  eagle: "raptor",
+};
+
+export function archetypeFor(species: { key: string; archetype?: BirdArchetype }): BirdArchetype {
+  return species.archetype ?? ARCHETYPE_BY_KEY[species.key] ?? "songbird";
 }
 
 export const BIRD_SPECIES: BirdSpecies[] = [
