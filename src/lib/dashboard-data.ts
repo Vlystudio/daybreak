@@ -10,6 +10,7 @@ import type {
   Connection,
   HouseholdInfo,
   CalendarSyncSettings,
+  SubjectiveCheckin,
 } from "@/lib/types";
 
 export interface DashboardData {
@@ -25,6 +26,7 @@ export interface DashboardData {
   calendarSync: CalendarSyncSettings | null;
   onboardingCompleted: boolean;
   adherence: { total: number; done: number; streak: number };
+  todayCheckin: SubjectiveCheckin | null;
 }
 
 function isoDate(d: Date): string {
@@ -55,6 +57,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: calendarSync },
     { data: prefs },
     { data: weekEvents },
+    { data: latestCheckin },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -105,6 +108,13 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .eq("user_id", userId)
       .gte("starts_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
       .returns<{ starts_at: string; ends_at: string; completed_at: string | null }[]>(),
+    supabase
+      .from("subjective_checkins")
+      .select("date, mood, energy, stress, soreness, note")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle<SubjectiveCheckin>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -167,6 +177,9 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
   }
   const adherence = { total: pastEvents.length, done: doneCount, streak };
 
+  // Treat the latest check-in as "today's" only if it lands on the local day.
+  const todayCheckin = latestCheckin && latestCheckin.date === localDay(new Date()) ? latestCheckin : null;
+
   return {
     profile: profile ?? null,
     metrics: metrics ?? [],
@@ -180,5 +193,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     calendarSync: calendarSync ?? null,
     onboardingCompleted: prefs?.onboarding_completed ?? false,
     adherence,
+    todayCheckin: todayCheckin ?? null,
   };
 }

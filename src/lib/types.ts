@@ -43,6 +43,15 @@ export interface DailySummary {
   generated_at: string;
 }
 
+export interface SubjectiveCheckin {
+  date: string;
+  mood: number | null;
+  energy: number | null;
+  stress: number | null;
+  soreness: number | null;
+  note: string | null;
+}
+
 export type EventColor = "honey" | "sage" | "sky" | "peach";
 
 /** A recipe attached to a planned-meal schedule event, shown when it's opened. */

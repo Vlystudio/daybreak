@@ -26,6 +26,15 @@ export interface EventForPrompt {
   allDay: boolean;
 }
 
+/** Self-reported feeling (1-5 each), the signal a wearable can't capture. */
+export interface SubjectiveForPrompt {
+  mood: number | null;
+  energy: number | null;
+  stress: number | null;
+  soreness: number | null;
+  note: string | null;
+}
+
 export interface MorningBriefing {
   summary: string;
   focus: string;
@@ -37,9 +46,11 @@ const SYSTEM_PROMPT = `You are the morning companion inside Daybreak, a warm and
 Write like a kind, knowledgeable friend — encouraging, concrete, never preachy or alarmist.
 You are not a doctor and must not give medical advice; frame everything as gentle lifestyle guidance.
 
+When a self-reported check-in is provided (mood/energy/stress/soreness, each 1-5 where 5 is high), weave it in and let it gently override the wearable: if they feel drained or sore, ease off even when readiness looks fine; if they feel great, encourage them. Acknowledge how they say they feel.
+
 Respond with JSON matching exactly this shape:
 {
-  "summary": "2-3 sentences greeting the person and summarizing how their body is doing today, weaving in sleep/readiness/HRV and the weather",
+  "summary": "2-3 sentences greeting the person and summarizing how their body is doing today, weaving in sleep/readiness/HRV, how they say they feel, and the weather",
   "focus": "one short sentence naming the single most useful intention for today",
   "insights": ["2-4 short observations comparing today to their recent trend"],
   "recommendations": [{"title": "short title", "body": "1-2 sentence actionable suggestion"}]
@@ -62,6 +73,7 @@ export async function generateMorningBriefing(input: {
   recentMetrics: MetricsForPrompt[];
   weather: WeatherSnapshot | null;
   todayEvents: EventForPrompt[];
+  subjective?: SubjectiveForPrompt | null;
 }): Promise<MorningBriefing | null> {
   const apiKey = serverEnv().OPENAI_API_KEY;
   if (!apiKey) return null;
@@ -85,6 +97,7 @@ export async function generateMorningBriefing(input: {
         }
       : null,
     schedule: input.todayEvents.slice(0, 12),
+    howTheyFeel: input.subjective ?? null,
   };
 
   try {

@@ -249,7 +249,7 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
   const today = isoDate(new Date());
   const weekAgo = isoDate(new Date(Date.now() - 7 * 86_400_000));
 
-  const [{ data: profile }, { data: metrics }, { data: events }] = await Promise.all([
+  const [{ data: profile }, { data: metrics }, { data: events }, { data: checkin }] = await Promise.all([
     admin
       .from("profiles")
       .select("display_name, latitude, longitude")
@@ -272,6 +272,20 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       .lt("starts_at", `${today}T23:59:59Z`)
       .order("starts_at", { ascending: true })
       .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
+    admin
+      .from("subjective_checkins")
+      .select("date, mood, energy, stress, soreness, note")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle<{
+        date: string;
+        mood: number | null;
+        energy: number | null;
+        stress: number | null;
+        soreness: number | null;
+        note: string | null;
+      }>(),
   ]);
 
   const weather =
@@ -280,6 +294,19 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       : null;
 
   const todayMetrics = metrics?.find((m) => m.date === today) ?? metrics?.at(-1) ?? null;
+
+  // Only fold in a self-report from today or yesterday, so a stale one isn't
+  // presented as how they feel right now.
+  const yesterday = isoDate(new Date(Date.now() - 86_400_000));
+  const subjective = checkin && checkin.date >= yesterday
+    ? {
+        mood: checkin.mood,
+        energy: checkin.energy,
+        stress: checkin.stress,
+        soreness: checkin.soreness,
+        note: checkin.note,
+      }
+    : null;
 
   const briefing = await generateMorningBriefing({
     displayName: profile?.display_name ?? "",
@@ -292,6 +319,7 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       endsAt: e.ends_at,
       allDay: e.all_day,
     })),
+    subjective,
   });
 
   if (!briefing) return false;

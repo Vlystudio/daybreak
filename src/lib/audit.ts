@@ -16,6 +16,7 @@ export type AuditAction =
   | "summary.generated"
   | "notification.morning_email_sent"
   | "notification.unsubscribed"
+  | "checkin.logged"
   | "health.analyzed"
   | "household.created"
   | "household.joined"
