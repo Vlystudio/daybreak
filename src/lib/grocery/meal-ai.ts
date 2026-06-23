@@ -54,6 +54,8 @@ export interface MealPlanContext {
   favorites: string[];
   dislikes: string[];
   allergies: string[];
+  /** Grocery items discounted at local stores this week. */
+  onSale: string[];
   nutrition: {
     calories: number | null;
     protein_g: number | null;
@@ -72,7 +74,8 @@ HARD RULES:
 - NEVER include any ingredient that conflicts with a listed allergy. This is a safety constraint.
 - Avoid the listed dislikes. Favor the listed favorites where it fits.
 - Keep ingredient names simple and shoppable (e.g. "chicken breast", "olive oil", "yellow onion").
-- Respect the weekly budget loosely when provided (lean on affordable staples).`;
+- Respect the weekly budget loosely when provided (lean on affordable staples).
+- "onSale" is a list of grocery items discounted at the person's local stores this week. Where it fits their tastes and constraints, prefer recipes built around the FOOD items in this list to save money — ignore any non-food entries. Don't compromise variety, balance, allergies, or dislikes to chase a sale.`;
 
 export async function generateMealPlanContent(ctx: MealPlanContext): Promise<MealPlanContent | null> {
   const apiKey = serverEnv().OPENAI_API_KEY;

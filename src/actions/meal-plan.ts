@@ -15,6 +15,7 @@ import {
   type MealPlanDayMeal,
 } from "@/lib/grocery";
 import { generateMealPlanContent } from "@/lib/grocery/meal-ai";
+import { getOnSaleItems } from "@/lib/grocery/on-sale";
 import type { ActionResult } from "@/actions/schedule";
 
 type IdResult = { ok: true; id: string } | { ok: false; error: string };
@@ -66,6 +67,8 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
       .maybeSingle<{ calories: number | null; protein_g: number | null }>(),
   ]);
 
+  const onSale = await getOnSaleItems();
+
   const content = await generateMealPlanContent({
     durationDays: d.durationDays,
     householdSize: settings?.household_size ?? 1,
@@ -73,6 +76,7 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
     favorites: settings?.favorites ?? [],
     dislikes: settings?.dislikes ?? [],
     allergies: settings?.allergies ?? [],
+    onSale,
     nutrition: goals ? { calories: goals.calories, protein_g: goals.protein_g } : null,
   });
   if (!content) return { ok: false, error: "Couldn't generate a plan right now — please try again." };

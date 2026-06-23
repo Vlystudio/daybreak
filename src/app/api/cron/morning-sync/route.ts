@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import { sendMorningEmailForUser, sendMorningPushForUser } from "@/lib/notifications";
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
+import { notifyFavoriteDeals } from "@/lib/grocery/deal-alerts";
 import { audit } from "@/lib/audit";
 import { integrationsAvailable, serverEnv } from "@/env";
 
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
   if (integrationsAvailable.groceryDeals()) {
     try {
       await importGroceryDeals();
+      await notifyFavoriteDeals();
     } catch (err) {
       console.error("[cron] grocery deal import failed:", err);
     }
