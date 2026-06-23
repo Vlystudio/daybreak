@@ -26,6 +26,32 @@ self.addEventListener("push", (event) => {
   );
 });
 
+// Share target: stash the shared image in the cache, then redirect to the
+// share page which reads it back and logs it.
+self.addEventListener("fetch", (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method === "POST" && url.pathname === "/nutrition/share") {
+    event.respondWith(
+      (async () => {
+        try {
+          const form = await event.request.formData();
+          const file = form.get("image");
+          if (file) {
+            const cache = await caches.open("daybreak-shared");
+            await cache.put(
+              "shared-image",
+              new Response(file, { headers: { "Content-Type": file.type || "image/jpeg" } })
+            );
+          }
+        } catch (_e) {
+          // fall through to the page; it will show an empty state
+        }
+        return Response.redirect("/nutrition/share?shared=1", 303);
+      })()
+    );
+  }
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || "/dashboard";
