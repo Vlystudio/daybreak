@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchWeather, type WeatherSnapshot } from "@/lib/integrations/weather";
+import { computeHabitStatus } from "@/lib/habits";
 import type {
   Profile,
   HealthMetric,
@@ -12,6 +13,8 @@ import type {
   CalendarSyncSettings,
   SubjectiveCheckin,
   EveningReview,
+  Habit,
+  HabitStatus,
 } from "@/lib/types";
 
 export interface DashboardData {
@@ -30,6 +33,7 @@ export interface DashboardData {
   todayCheckin: SubjectiveCheckin | null;
   todayNutrition: { calories: number; protein: number; count: number } | null;
   todayReview: EveningReview | null;
+  habits: HabitStatus[];
 }
 
 function isoDate(d: Date): string {
@@ -63,6 +67,8 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: latestCheckin },
     { data: foodRows },
     { data: latestReview },
+    { data: habitRows },
+    { data: habitLogRows },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -133,6 +139,19 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle<EveningReview>(),
+    supabase
+      .from("habits")
+      .select("id, name, emoji, color, sort_order")
+      .eq("user_id", userId)
+      .is("archived_at", null)
+      .order("sort_order", { ascending: true })
+      .returns<Habit[]>(),
+    supabase
+      .from("habit_logs")
+      .select("habit_id, date")
+      .eq("user_id", userId)
+      .gte("date", isoDate(new Date(Date.now() - 60 * 86_400_000)))
+      .returns<{ habit_id: string; date: string }[]>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -199,6 +218,17 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
   const localToday = localDay(new Date());
   const todayCheckin = latestCheckin && latestCheckin.date === localToday ? latestCheckin : null;
 
+  // Habits: bucket completion dates per habit, then compute streak/today/week.
+  const logsByHabit = new Map<string, string[]>();
+  for (const log of habitLogRows ?? []) {
+    const list = logsByHabit.get(log.habit_id) ?? [];
+    list.push(log.date);
+    logsByHabit.set(log.habit_id, list);
+  }
+  const habits = (habitRows ?? []).map((h) =>
+    computeHabitStatus(h, logsByHabit.get(h.id) ?? [], localToday)
+  );
+
   const todaysFood = (foodRows ?? []).filter((f) => f.date === localToday);
   const todayNutrition = todaysFood.length
     ? {
@@ -224,5 +254,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     todayCheckin: todayCheckin ?? null,
     todayNutrition,
     todayReview: latestReview && latestReview.date === localToday ? latestReview : null,
+    habits,
   };
 }

@@ -80,6 +80,21 @@ export interface EveningReview {
   tomorrow_intention: string | null;
 }
 
+export interface Habit {
+  id: string;
+  name: string;
+  emoji: string | null;
+  color: EventColor;
+  sort_order: number;
+}
+
+/** A habit plus its computed status for the dashboard. */
+export interface HabitStatus extends Habit {
+  doneToday: boolean;
+  streak: number;
+  weekCount: number;
+}
+
 export type EventColor = "honey" | "sage" | "sky" | "peach";
 
 /** A recipe attached to a planned-meal schedule event, shown when it's opened. */
