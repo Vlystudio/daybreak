@@ -27,6 +27,7 @@ export interface DashboardData {
   onboardingCompleted: boolean;
   adherence: { total: number; done: number; streak: number };
   todayCheckin: SubjectiveCheckin | null;
+  todayNutrition: { calories: number; protein: number; count: number } | null;
 }
 
 function isoDate(d: Date): string {
@@ -58,6 +59,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: prefs },
     { data: weekEvents },
     { data: latestCheckin },
+    { data: foodRows },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -115,6 +117,12 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle<SubjectiveCheckin>(),
+    supabase
+      .from("food_logs")
+      .select("date, calories, protein_g")
+      .eq("user_id", userId)
+      .gte("date", isoDate(new Date(Date.now() - 86_400_000)))
+      .returns<{ date: string; calories: number | null; protein_g: number | null }[]>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -178,7 +186,17 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
   const adherence = { total: pastEvents.length, done: doneCount, streak };
 
   // Treat the latest check-in as "today's" only if it lands on the local day.
-  const todayCheckin = latestCheckin && latestCheckin.date === localDay(new Date()) ? latestCheckin : null;
+  const localToday = localDay(new Date());
+  const todayCheckin = latestCheckin && latestCheckin.date === localToday ? latestCheckin : null;
+
+  const todaysFood = (foodRows ?? []).filter((f) => f.date === localToday);
+  const todayNutrition = todaysFood.length
+    ? {
+        calories: todaysFood.reduce((s, f) => s + (f.calories ?? 0), 0),
+        protein: todaysFood.reduce((s, f) => s + (f.protein_g ?? 0), 0),
+        count: todaysFood.length,
+      }
+    : null;
 
   return {
     profile: profile ?? null,
@@ -194,5 +212,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     onboardingCompleted: prefs?.onboarding_completed ?? false,
     adherence,
     todayCheckin: todayCheckin ?? null,
+    todayNutrition,
   };
 }

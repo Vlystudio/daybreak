@@ -50,4 +50,5 @@ export const RATE_LIMITS = {
   aiFitness: { limit: 25, windowSeconds: 86400 }, // daily cap on AI fitness generations
   aiMeals: { limit: 15, windowSeconds: 86400 }, // daily cap on AI meal-plan generations
   aiChat: { limit: 40, windowSeconds: 3600 }, // health check-in conversation turns
+  aiVision: { limit: 30, windowSeconds: 3600 }, // food-photo nutrition analyses
 } as const;

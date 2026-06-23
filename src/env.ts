@@ -32,6 +32,9 @@ const serverSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   // Verified sender for transactional email, e.g. "Daybreak <hello@yourdomain.com>".
   EMAIL_FROM: z.string().min(1).default("Daybreak <onboarding@resend.dev>"),
+  // Dedicated food-image recognition (https://logmeal.com). Falls back to
+  // OpenAI vision when unset.
+  LOGMEAL_API_KEY: z.string().min(1).optional(),
 });
 
 function formatIssues(error: z.ZodError): string {

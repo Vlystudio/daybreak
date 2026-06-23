@@ -52,6 +52,26 @@ export interface SubjectiveCheckin {
   note: string | null;
 }
 
+export interface FoodLog {
+  id: string;
+  date: string;
+  meal: "breakfast" | "lunch" | "dinner" | "snack";
+  description: string;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+  source: "manual" | "photo";
+  created_at: string;
+}
+
+export interface BodyMeasurement {
+  date: string;
+  weight_kg: number | null;
+  body_fat_pct: number | null;
+  note: string | null;
+}
+
 export type EventColor = "honey" | "sage" | "sky" | "peach";
 
 /** A recipe attached to a planned-meal schedule event, shown when it's opened. */

@@ -9,6 +9,7 @@ import {
   CalendarDays,
   ClipboardList,
   Dumbbell,
+  Utensils,
   ShoppingBasket,
   Users,
   Settings,
@@ -25,6 +26,7 @@ const links = [
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/onboarding", label: "Plan", icon: ClipboardList },
   { href: "/coach", label: "Coach", icon: Dumbbell },
+  { href: "/nutrition", label: "Nutrition", icon: Utensils },
   { href: "/grocery", label: "Grocery", icon: ShoppingBasket },
   { href: "/friends", label: "Friends", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -79,7 +81,7 @@ export function AppNav() {
         className="glass fixed inset-x-0 bottom-0 z-40 border-t border-border/60 md:hidden"
         aria-label="Main"
       >
-        <div className="mx-auto flex max-w-md items-stretch justify-around py-2">
+        <div className="mx-auto flex max-w-2xl items-stretch justify-around gap-0.5 overflow-x-auto py-2">
           {links.map((link) => {
             const active = pathname.startsWith(link.href);
             return (
@@ -87,7 +89,7 @@ export function AppNav() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-xl px-5 py-1.5 text-xs font-medium transition-colors",
+                  "flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-current={active ? "page" : undefined}

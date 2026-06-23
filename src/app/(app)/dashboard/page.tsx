@@ -12,6 +12,7 @@ import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { AdherenceCard } from "@/components/dashboard/adherence-card";
 import { CheckinCard } from "@/components/dashboard/checkin-card";
+import { NutritionCard } from "@/components/dashboard/nutrition-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
@@ -74,6 +75,9 @@ export default async function DashboardPage() {
           </FadeIn>
           <FadeIn delay={0.34}>
             <CheckinCard checkin={data.todayCheckin} />
+          </FadeIn>
+          <FadeIn delay={0.36}>
+            <NutritionCard nutrition={data.todayNutrition} />
           </FadeIn>
           <FadeIn delay={0.35}>
             <CalendarSyncCard connections={data.connections} calendarSync={data.calendarSync} />
