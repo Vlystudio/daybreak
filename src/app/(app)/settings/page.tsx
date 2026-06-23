@@ -1,9 +1,8 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/server";
 import { integrationsAvailable } from "@/env";
-import { ProfileForm } from "@/components/settings/profile-form";
-import { AccountCard } from "@/components/settings/account-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { RemindersCard } from "@/components/settings/reminders-card";
 import { HealthImportCard } from "@/components/settings/health-import-card";
@@ -11,7 +10,7 @@ import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, UserRound, ChevronRight } from "lucide-react";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -44,8 +43,21 @@ export default async function SettingsPage() {
         <p className="mt-1 text-muted-foreground">Make Daybreak feel like yours.</p>
       </div>
 
-      <ProfileForm profile={data.profile} />
-      <AccountCard email={user.email ?? ""} />
+      <Link href="/profile" className="block">
+        <Card className="transition-colors hover:border-primary/40">
+          <CardContent className="flex items-center justify-between gap-3 py-4">
+            <span className="flex items-center gap-3">
+              <UserRound className="h-5 w-5 text-primary" aria-hidden />
+              <span>
+                <span className="block text-sm font-medium">Profile &amp; personalization</span>
+                <span className="block text-xs text-muted-foreground">Name, city, accent theme, account</span>
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+          </CardContent>
+        </Card>
+      </Link>
+
       <NotificationsCard morningEmailEnabled={morningEmailEnabled} />
       <RemindersCard reminders={reminders ?? []} pushAvailable={pushAvailable} />
       <CalendarSyncCard

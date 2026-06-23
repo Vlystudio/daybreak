@@ -8,38 +8,51 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { createHabit, toggleHabitToday, archiveHabit } from "@/actions/habits";
-import type { HabitStatus } from "@/lib/types";
+import type { EventColor, HabitStatus } from "@/lib/types";
+
+const COLORS: { key: EventColor; dot: string; ring: string; fill: string; text: string; hover: string }[] = [
+  { key: "honey", dot: "bg-honey", ring: "border-honey", fill: "bg-honey", text: "text-honey", hover: "hover:border-honey/60" },
+  { key: "sage", dot: "bg-sage", ring: "border-sage", fill: "bg-sage", text: "text-sage", hover: "hover:border-sage/60" },
+  { key: "sky", dot: "bg-sky", ring: "border-sky", fill: "bg-sky", text: "text-sky", hover: "hover:border-sky/60" },
+  { key: "peach", dot: "bg-peach", ring: "border-peach", fill: "bg-peach", text: "text-peach", hover: "hover:border-peach/60" },
+];
+const colorOf = (c: EventColor) => COLORS.find((x) => x.key === c) ?? COLORS[0];
+
+const EMOJI = ["💧", "🦷", "🚿", "🏃", "🧘", "📖", "🥦", "😴", "💊", "🧹", "✍️", "🎯"];
+const TARGETS = [
+  { value: 7, label: "Daily" },
+  { value: 5, label: "5×/wk" },
+  { value: 3, label: "3×/wk" },
+];
 
 export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
+  const [emoji, setEmoji] = useState<string>("");
+  const [color, setColor] = useState<EventColor>("honey");
+  const [target, setTarget] = useState(7);
   const [pending, startTransition] = useTransition();
 
   function toggle(id: string) {
     startTransition(async () => {
-      const result = await toggleHabitToday(id);
-      if (!result.ok) toast.error(result.error);
+      const r = await toggleHabitToday(id);
+      if (!r.ok) toast.error(r.error);
     });
   }
-
   function remove(id: string) {
     startTransition(async () => {
-      const result = await archiveHabit(id);
-      if (!result.ok) toast.error(result.error);
+      const r = await archiveHabit(id);
+      if (!r.ok) toast.error(r.error);
     });
   }
-
   function add() {
     const trimmed = name.trim();
     if (!trimmed) return;
     startTransition(async () => {
-      const result = await createHabit({ name: trimmed });
-      if (result.ok) {
-        setName("");
-        setAdding(false);
-      } else {
-        toast.error(result.error);
-      }
+      const r = await createHabit({ name: trimmed, emoji: emoji || undefined, color, targetPerWeek: target });
+      if (r.ok) {
+        setName(""); setEmoji(""); setColor("honey"); setTarget(7); setAdding(false);
+      } else toast.error(r.error);
     });
   }
 
@@ -54,74 +67,121 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
           <Plus aria-hidden />
         </Button>
       </CardHeader>
-      <CardContent className="space-y-2 pb-6">
+      <CardContent className="space-y-2.5 pb-6">
         {adding && (
-          <div className="flex gap-2">
+          <div className="space-y-2.5 rounded-2xl border bg-muted/30 p-3">
             <Input
               autoFocus
-              placeholder="New habit, e.g. Stretch 5 min"
+              placeholder="New habit, e.g. Drink water"
               value={name}
               maxLength={80}
               onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") add();
-                if (e.key === "Escape") setAdding(false);
-              }}
+              onKeyDown={(e) => e.key === "Enter" && add()}
             />
-            <Button size="sm" onClick={add} disabled={pending || !name.trim()}>
-              Add
+            <div className="flex flex-wrap gap-1">
+              {EMOJI.map((e) => (
+                <button
+                  key={e}
+                  type="button"
+                  onClick={() => setEmoji((cur) => (cur === e ? "" : e))}
+                  className={cn("rounded-lg px-1.5 py-1 text-base transition-colors", emoji === e ? "bg-primary/15" : "hover:bg-accent")}
+                  aria-label={`Emoji ${e}`}
+                  aria-pressed={emoji === e}
+                >
+                  {e}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex gap-1.5" role="group" aria-label="Color">
+                {COLORS.map((c) => (
+                  <button
+                    key={c.key}
+                    type="button"
+                    onClick={() => setColor(c.key)}
+                    aria-label={c.key}
+                    aria-pressed={color === c.key}
+                    className={cn("h-6 w-6 rounded-full border-2", c.dot, color === c.key ? "border-foreground/50" : "border-transparent")}
+                  />
+                ))}
+              </div>
+              <div className="flex gap-1">
+                {TARGETS.map((t) => (
+                  <button
+                    key={t.value}
+                    type="button"
+                    onClick={() => setTarget(t.value)}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                      target === t.value ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <Button size="sm" onClick={add} disabled={pending || !name.trim()} className="w-full">
+              Add habit
             </Button>
           </div>
         )}
 
         {habits.length === 0 && !adding && (
           <p className="py-3 text-sm text-muted-foreground">
-            Build a streak. Add a small daily habit like “Drink water” or “Read 10 min”.
+            Build a streak. Add a small daily habit like “Brush teeth” or “Read 10 min”.
           </p>
         )}
 
-        {habits.map((h) => (
-          <div key={h.id} className="group flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => toggle(h.id)}
-              disabled={pending}
-              aria-pressed={h.doneToday}
-              aria-label={`${h.doneToday ? "Undo" : "Complete"} ${h.name}`}
-              className={cn(
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-                h.doneToday
-                  ? "border-sage bg-sage text-white"
-                  : "border-muted-foreground/30 text-transparent hover:border-sage/60"
-              )}
-            >
-              <Check className="h-4 w-4" aria-hidden />
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className={cn("truncate text-sm font-medium", h.doneToday && "text-muted-foreground line-through")}>
-                {h.emoji ? `${h.emoji} ` : ""}
-                {h.name}
-              </p>
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                {h.streak > 0 && (
-                  <span className="inline-flex items-center gap-0.5">
-                    <Flame className="h-3 w-3 text-honey" aria-hidden /> {h.streak}d
-                  </span>
+        {habits.map((h) => {
+          const c = colorOf(h.color);
+          const met = h.weekCount >= h.target_per_week;
+          return (
+            <div key={h.id} className="group flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => toggle(h.id)}
+                disabled={pending}
+                aria-pressed={h.doneToday}
+                aria-label={`${h.doneToday ? "Undo" : "Complete"} ${h.name}`}
+                className={cn(
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                  h.doneToday ? cn(c.ring, c.fill, "text-white") : cn("border-muted-foreground/30 text-transparent", c.hover)
                 )}
-                <span>{h.weekCount}/7 this week</span>
-              </p>
+              >
+                <Check className="h-4 w-4" aria-hidden />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className={cn("truncate text-sm font-medium", h.doneToday && "text-muted-foreground line-through")}>
+                  {h.emoji ? `${h.emoji} ` : ""}
+                  {h.name}
+                </p>
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {h.streak > 0 && (
+                    <span className="inline-flex items-center gap-0.5">
+                      <Flame className="h-3 w-3 text-honey" aria-hidden /> {h.streak}d
+                    </span>
+                  )}
+                  <span className={cn(met && c.text, "font-medium")}>
+                    {h.weekCount}/{h.target_per_week} this week
+                  </span>
+                </p>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+                  <div className={cn("h-full rounded-full", c.fill)} style={{ width: `${Math.min(100, (h.weekCount / h.target_per_week) * 100)}%` }} />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => remove(h.id)}
+                disabled={pending}
+                aria-label={`Remove ${h.name}`}
+                className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => remove(h.id)}
-              disabled={pending}
-              aria-label={`Remove ${h.name}`}
-              className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   );

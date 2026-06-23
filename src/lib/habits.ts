@@ -37,6 +37,7 @@ export function computeHabitStatus(habit: Habit, completedDates: Iterable<string
     emoji: habit.emoji,
     color: habit.color,
     sort_order: habit.sort_order,
+    target_per_week: habit.target_per_week,
     doneToday,
     streak,
     weekCount,

@@ -14,6 +14,7 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(80),
   emoji: z.string().trim().max(8).optional(),
   color: z.enum(COLORS).default("honey"),
+  targetPerWeek: z.number().int().min(1).max(7).default(7),
 });
 
 export async function createHabit(input: z.input<typeof createSchema>): Promise<ActionResult> {
@@ -39,6 +40,7 @@ export async function createHabit(input: z.input<typeof createSchema>): Promise<
     name: parsed.data.name,
     emoji: parsed.data.emoji?.length ? parsed.data.emoji : null,
     color: parsed.data.color,
+    target_per_week: parsed.data.targetPerWeek,
     sort_order: count ?? 0,
   });
   if (error) return { ok: false, error: "Couldn't create that habit." };

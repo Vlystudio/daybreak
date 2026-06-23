@@ -74,6 +74,22 @@ export async function setCalendarSyncEnabled(input: { syncEnabled: boolean }): P
   return { ok: true };
 }
 
+const ACCENTS = ["sunrise", "coral", "berry", "grape", "ocean", "forest"] as const;
+
+export async function setAccent(accent: string): Promise<ActionResult> {
+  const user = await requireUser();
+  const parsed = z.enum(ACCENTS).safeParse(accent);
+  if (!parsed.success) return { ok: false, error: "Unknown theme" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ accent: parsed.data }).eq("id", user.id);
+  if (error) return { ok: false, error: "Couldn't save your theme." };
+
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function setMorningEmailEnabled(input: { enabled: boolean }): Promise<ActionResult> {
   const user = await requireUser();
 

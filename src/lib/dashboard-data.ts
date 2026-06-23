@@ -143,7 +143,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .maybeSingle<EveningReview>(),
     supabase
       .from("habits")
-      .select("id, name, emoji, color, sort_order")
+      .select("id, name, emoji, color, sort_order, target_per_week")
       .eq("user_id", userId)
       .is("archived_at", null)
       .order("sort_order", { ascending: true })

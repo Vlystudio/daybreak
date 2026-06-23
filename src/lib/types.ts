@@ -124,6 +124,7 @@ export interface Habit {
   emoji: string | null;
   color: EventColor;
   sort_order: number;
+  target_per_week: number;
 }
 
 /** A habit plus its computed status for the dashboard. */

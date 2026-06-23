@@ -15,6 +15,7 @@ import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { AdherenceCard } from "@/components/dashboard/adherence-card";
 import { CheckinCard } from "@/components/dashboard/checkin-card";
+import { DailyCheckinModal } from "@/components/dashboard/daily-checkin-modal";
 import { NutritionCard } from "@/components/dashboard/nutrition-card";
 import { EveningReviewCard } from "@/components/dashboard/evening-review-card";
 import { HabitsCard } from "@/components/dashboard/habits-card";
@@ -62,6 +63,8 @@ export default async function DashboardPage() {
       <Suspense fallback={null}>
         <ConnectToast />
       </Suspense>
+
+      <DailyCheckinModal checkin={data.todayCheckin} />
 
       <Greeting name={firstName} timezone={data.profile?.timezone ?? "UTC"} />
 
