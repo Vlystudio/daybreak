@@ -1,9 +1,12 @@
 /**
- * Bird catalog. Each species is pure data — colors and a few shape flags — that
- * the BirdSprite renders into an original SVG, so we get a varied flock without
- * any external art. Rarity drives hatch odds. Shared by server (hatching) and
- * client (rendering).
+ * Bird catalog — 60 species of Maine. Each bird is pure data: a palette plus an
+ * `art` recipe (a silhouette template + an ordered list of real field marks)
+ * that the bird-art engine renders into a unique SVG. No two share a body — a
+ * chickadee, a cardinal, a puffin and a heron are built from different
+ * templates and marks, not one shape recoloured. Rarity drives hatch odds.
  */
+
+import type { BirdArt } from "@/lib/game/bird-art";
 
 export type Rarity = "common" | "uncommon" | "rare" | "legendary" | "wild";
 
@@ -12,29 +15,29 @@ export interface BirdPalette {
   belly: string;
   wing: string;
   beak: string;
-  cheek: string;
+  cheek: string; // accent — also the crest colour for crested species
 }
 
-/**
- * Body archetype drives the silhouette so species actually look different — an
- * owl is round-headed, a flamingo is long-legged, a penguin stands upright, a
- * toucan has an oversized bill, etc. Each maps to shape params in the sprite.
- */
+/** Voice family, used only to pick a synthesized call. */
 export type BirdArchetype =
   | "songbird"
-  | "plump"
+  | "cardinal"
+  | "jay"
   | "corvid"
-  | "owl"
+  | "woodpecker"
   | "raptor"
-  | "parrot"
-  | "bigbeak"
-  | "waterbird"
-  | "flamingo"
-  | "swan"
-  | "penguin"
+  | "owl"
   | "hummingbird"
-  | "longtail"
-  | "woodpecker";
+  | "dove"
+  | "duck"
+  | "goose"
+  | "loon"
+  | "gull"
+  | "seabird"
+  | "gamebird"
+  | "shorebird"
+  | "wader"
+  | "swallow";
 
 export interface BirdSpecies {
   key: string;
@@ -42,116 +45,350 @@ export interface BirdSpecies {
   rarity: Rarity;
   palette: BirdPalette;
   archetype?: BirdArchetype;
-  crest?: boolean; // a little head tuft
-  longTail?: boolean;
+  art?: BirdArt;
+  crest?: boolean; // legacy flag, used by photo/wild birds only
+  longTail?: boolean; // legacy flag, used by photo/wild birds only
   blurb: string;
 }
 
-/** Archetype per species key (kept separate so the catalog stays terse). */
-export const ARCHETYPE_BY_KEY: Record<string, BirdArchetype> = {
-  // common
-  sparrow: "songbird", robin: "songbird", chickadee: "songbird", house_finch: "songbird", wren: "songbird",
-  dove: "plump", pigeon: "plump", starling: "songbird", junco: "songbird", titmouse: "songbird",
-  nuthatch: "songbird", warbler: "songbird", lark: "songbird", crow: "corvid", swift: "songbird",
-  phoebe: "songbird", bushtit: "songbird", sandpiper: "songbird", blackbird: "songbird", redpoll: "songbird",
-  // uncommon
-  goldfinch: "songbird", bluebird: "songbird", cardinal: "songbird", bluejay: "songbird", oriole: "songbird",
-  tanager: "songbird", waxwing: "songbird", grosbeak: "songbird", bunting: "songbird", canary: "songbird",
-  budgie: "parrot", lovebird: "parrot", cockatiel: "parrot", magpie: "longtail", pheasant: "longtail",
-  penguin: "penguin", woodpecker: "woodpecker", kestrel: "raptor",
-  // rare
-  kingfisher: "bigbeak", hummingbird: "hummingbird", puffin: "penguin", toucan: "bigbeak", owl: "owl",
-  barn_owl: "owl", parrot: "parrot", cockatoo: "parrot", lorikeet: "parrot", flamingo: "flamingo",
-  heron: "waterbird", swan: "swan", hoopoe: "songbird", kookaburra: "bigbeak", bee_eater: "songbird",
-  hawk: "raptor", falcon: "raptor",
-  // legendary
-  peacock: "longtail", phoenix: "longtail", macaw: "parrot", quetzal: "longtail", bird_of_paradise: "longtail",
-  eagle: "raptor",
-};
-
-export function archetypeFor(species: { key: string; archetype?: BirdArchetype }): BirdArchetype {
-  return species.archetype ?? ARCHETYPE_BY_KEY[species.key] ?? "songbird";
+export function archetypeFor(species: { archetype?: BirdArchetype }): BirdArchetype {
+  return species.archetype ?? "songbird";
 }
 
+// Shorthand colours reused across many birds.
+const BLACK = "#23211f";
+const WHITE = "#f6f3ec";
+const CREAM = "#efe6d2";
+
 export const BIRD_SPECIES: BirdSpecies[] = [
-  // ── Common ────────────────────────────────────────────────────────────────
-  { key: "sparrow", name: "Sparrow", rarity: "common", palette: { body: "#a98363", belly: "#efe2cf", wing: "#7c5e44", beak: "#5a4733", cheek: "#d8a07a" }, blurb: "Cheerful and always around." },
-  { key: "robin", name: "Robin", rarity: "common", palette: { body: "#6e6258", belly: "#e8743b", wing: "#4f463f", beak: "#3a342e", cheek: "#f29b6f" }, blurb: "First sign of a new morning." },
-  { key: "chickadee", name: "Chickadee", rarity: "common", palette: { body: "#cfd6da", belly: "#f6f3ee", wing: "#3a3f44", beak: "#2c2f33", cheek: "#ffffff" }, blurb: "Tiny, curious, fearless." },
-  { key: "house_finch", name: "House Finch", rarity: "common", palette: { body: "#9b6f63", belly: "#efe3d6", wing: "#6f4f44", beak: "#5a4a3a", cheek: "#d76a5a" }, blurb: "A rosy little regular." },
-  { key: "wren", name: "Wren", rarity: "common", palette: { body: "#9c7a55", belly: "#e8dcc6", wing: "#6e5238", beak: "#4a3c2c", cheek: "#c9a983" }, longTail: true, blurb: "Tiny body, enormous song." },
-  { key: "dove", name: "Mourning Dove", rarity: "common", palette: { body: "#b7a896", belly: "#efe7da", wing: "#8a7a66", beak: "#3a342e", cheek: "#d6c2a8" }, blurb: "Soft, gentle, and calm." },
-  { key: "pigeon", name: "Pigeon", rarity: "common", palette: { body: "#8c95a3", belly: "#aeb6c2", wing: "#5e6573", beak: "#3a3a3a", cheek: "#7e95c4" }, blurb: "The unbothered city dweller." },
-  { key: "starling", name: "Starling", rarity: "common", palette: { body: "#3a3550", belly: "#4a4566", wing: "#262238", beak: "#e8b04f", cheek: "#6f6a8c" }, blurb: "Iridescent in the right light." },
-  { key: "junco", name: "Junco", rarity: "common", palette: { body: "#5a5560", belly: "#efe9e2", wing: "#3f3b45", beak: "#f0d3a8", cheek: "#c2bdc7" }, blurb: "A snowbird, dapper in grey." },
-  { key: "titmouse", name: "Tufted Titmouse", rarity: "common", palette: { body: "#a9b0bd", belly: "#f2efe9", wing: "#7a8290", beak: "#2c2c2c", cheek: "#e0a07a" }, crest: true, blurb: "Big eyes, bigger attitude." },
-  { key: "nuthatch", name: "Nuthatch", rarity: "common", palette: { body: "#7d97b8", belly: "#f2ece2", wing: "#4f6685", beak: "#3a3a3a", cheek: "#d8e2ee" }, blurb: "Walks down trees headfirst." },
-  { key: "warbler", name: "Yellow Warbler", rarity: "common", palette: { body: "#e8d24f", belly: "#f8eeb0", wing: "#bda033", beak: "#3a3a3a", cheek: "#e8a36a" }, blurb: "A drop of springtime." },
-  { key: "lark", name: "Lark", rarity: "common", palette: { body: "#b69a72", belly: "#efe6d2", wing: "#8a6f4f", beak: "#5a4a3a", cheek: "#d8c29c" }, crest: true, blurb: "Sings the sun awake." },
-  { key: "crow", name: "Crow", rarity: "common", palette: { body: "#2a2a30", belly: "#3a3a42", wing: "#161618", beak: "#161618", cheek: "#4a4a55" }, blurb: "Smarter than it lets on." },
-  { key: "swift", name: "Swift", rarity: "common", palette: { body: "#4a4640", belly: "#cdc6bb", wing: "#2f2c28", beak: "#2c2c2c", cheek: "#8a857c" }, blurb: "Practically lives in the air." },
-  { key: "phoebe", name: "Phoebe", rarity: "common", palette: { body: "#7a756e", belly: "#f0ece4", wing: "#54504a", beak: "#2c2c2c", cheek: "#cfc8bd" }, blurb: "Wags its tail hello." },
-  { key: "bushtit", name: "Bushtit", rarity: "common", palette: { body: "#9a8f82", belly: "#e6ded2", wing: "#6e6458", beak: "#3a3a3a", cheek: "#c2b6a6" }, longTail: true, blurb: "Travels in cheerful gangs." },
-  { key: "sandpiper", name: "Sandpiper", rarity: "common", palette: { body: "#b7a07e", belly: "#f2ece0", wing: "#8a7355", beak: "#3a342e", cheek: "#d8c6a8" }, blurb: "Dances with the tide." },
-  { key: "blackbird", name: "Blackbird", rarity: "common", palette: { body: "#26262a", belly: "#34343a", wing: "#161618", beak: "#e8a33a", cheek: "#4a4a52" }, blurb: "A velvet voice at dawn." },
-  { key: "redpoll", name: "Redpoll", rarity: "common", palette: { body: "#a98a72", belly: "#efe5d6", wing: "#7a5f48", beak: "#cdb89a", cheek: "#d24a3a" }, blurb: "A little cap of crimson." },
-
-  // ── Uncommon ──────────────────────────────────────────────────────────────
-  { key: "goldfinch", name: "Goldfinch", rarity: "uncommon", palette: { body: "#f2c43d", belly: "#fbe9a6", wing: "#2e2a22", beak: "#caa12f", cheek: "#fff3c4" }, blurb: "A spark of sunshine." },
-  { key: "bluebird", name: "Bluebird", rarity: "uncommon", palette: { body: "#5b8fd6", belly: "#f1d7a8", wing: "#34568f", beak: "#3a3a3a", cheek: "#cfe0f6" }, blurb: "Carries good moods on its wings." },
-  { key: "cardinal", name: "Cardinal", rarity: "uncommon", palette: { body: "#d23b34", belly: "#e87d76", wing: "#9c2722", beak: "#f0a93f", cheek: "#2c2c2c" }, crest: true, blurb: "Bold and impossible to miss." },
-  { key: "bluejay", name: "Blue Jay", rarity: "uncommon", palette: { body: "#4a78c9", belly: "#eef3fb", wing: "#22407a", beak: "#2b2b2b", cheek: "#dbe7f8" }, crest: true, blurb: "Clever, loud, and proud." },
-  { key: "oriole", name: "Oriole", rarity: "uncommon", palette: { body: "#f0852f", belly: "#f7b85f", wing: "#2c2620", beak: "#5a5048", cheek: "#ffce8a" }, blurb: "A flame in the treetops." },
-  { key: "tanager", name: "Scarlet Tanager", rarity: "uncommon", palette: { body: "#e23b2f", belly: "#f06a5a", wing: "#1c1c1c", beak: "#bdb6a8", cheek: "#ff8f7a" }, blurb: "Red so bright it hums." },
-  { key: "waxwing", name: "Cedar Waxwing", rarity: "uncommon", palette: { body: "#bfa17a", belly: "#efe2c8", wing: "#6f5c46", beak: "#2c2c2c", cheek: "#e8c89a" }, crest: true, blurb: "Wears a tiny bandit mask." },
-  { key: "grosbeak", name: "Rose Grosbeak", rarity: "uncommon", palette: { body: "#2c2c30", belly: "#f2efe8", wing: "#161618", beak: "#e6ddc8", cheek: "#e0506a" }, blurb: "A heart of rose on its chest." },
-  { key: "bunting", name: "Indigo Bunting", rarity: "uncommon", palette: { body: "#3f57c4", belly: "#5a6fd0", wing: "#27306e", beak: "#3a3a3a", cheek: "#8f9ee8" }, blurb: "A scrap of fallen sky." },
-  { key: "canary", name: "Canary", rarity: "uncommon", palette: { body: "#f5d23a", belly: "#fcefa0", wing: "#d4af2c", beak: "#e8a36a", cheek: "#fff6c8" }, blurb: "Sings the whole day through." },
-  { key: "budgie", name: "Budgie", rarity: "uncommon", palette: { body: "#6cc24a", belly: "#bfe89a", wing: "#3f7a2c", beak: "#5a5048", cheek: "#e8d24f" }, blurb: "Small, chatty, full of beans." },
-  { key: "lovebird", name: "Lovebird", rarity: "uncommon", palette: { body: "#5fb04a", belly: "#bfe39a", wing: "#3a7a30", beak: "#e2543a", cheek: "#f0a04a" }, blurb: "Happiest in a pair." },
-  { key: "cockatiel", name: "Cockatiel", rarity: "uncommon", palette: { body: "#b7b0a4", belly: "#e8e2d6", wing: "#8a8276", beak: "#54504a", cheek: "#f0a04a" }, crest: true, blurb: "A whistler with a crest." },
-  { key: "magpie", name: "Magpie", rarity: "uncommon", palette: { body: "#2a2a30", belly: "#f2efe8", wing: "#1c2940", beak: "#161618", cheek: "#4a5a7a" }, longTail: true, blurb: "Collector of shiny things." },
-  { key: "pheasant", name: "Pheasant", rarity: "uncommon", palette: { body: "#9c5a2f", belly: "#c98a4f", wing: "#5a3620", beak: "#cdb6a0", cheek: "#d24a3a" }, longTail: true, blurb: "Struts like it owns the field." },
-  { key: "penguin", name: "Penguin", rarity: "uncommon", palette: { body: "#2c2f3a", belly: "#f4f4f0", wing: "#1c1e26", beak: "#e8a33a", cheek: "#f0c24a" }, blurb: "Waddles with great dignity." },
-  { key: "woodpecker", name: "Woodpecker", rarity: "uncommon", palette: { body: "#1f1f22", belly: "#f2ece0", wing: "#2c2c30", beak: "#bdb6a8", cheek: "#d23b34" }, crest: true, blurb: "Drums the morning in." },
-  { key: "kestrel", name: "Kestrel", rarity: "uncommon", palette: { body: "#b06a3a", belly: "#e8cba8", wing: "#5a6f9c", beak: "#3a3a3a", cheek: "#e0b48a" }, blurb: "Hovers like a tiny hawk." },
-
-  // ── Rare ──────────────────────────────────────────────────────────────────
-  { key: "kingfisher", name: "Kingfisher", rarity: "rare", palette: { body: "#2bb6c4", belly: "#f3a44e", wing: "#147884", beak: "#2c2c2c", cheek: "#bff0f4" }, crest: true, blurb: "A flash of color by the water." },
-  { key: "hummingbird", name: "Hummingbird", rarity: "rare", palette: { body: "#34b27b", belly: "#d8f0e2", wing: "#1f7a54", beak: "#3a3a3a", cheek: "#ff7aa2" }, longTail: true, blurb: "Never stops, never quits." },
-  { key: "puffin", name: "Puffin", rarity: "rare", palette: { body: "#2b2b2b", belly: "#ffffff", wing: "#1c1c1c", beak: "#f0683a", cheek: "#ffffff" }, blurb: "Dapper little sea clown." },
-  { key: "toucan", name: "Toucan", rarity: "rare", palette: { body: "#2c2c2c", belly: "#f6e27a", wing: "#1c1c1c", beak: "#f0883a", cheek: "#7ec8e3" }, blurb: "All about that beak." },
-  { key: "owl", name: "Owl", rarity: "rare", palette: { body: "#8a6f55", belly: "#e7d6bd", wing: "#5f4c3a", beak: "#caa12f", cheek: "#f0e3cd" }, crest: true, blurb: "Quiet wisdom, night and day." },
-  { key: "barn_owl", name: "Barn Owl", rarity: "rare", palette: { body: "#d8b87a", belly: "#f6efe2", wing: "#b0905c", beak: "#cdbf9a", cheek: "#fbf4e6" }, blurb: "A pale ghost of the dusk." },
-  { key: "parrot", name: "Parrot", rarity: "rare", palette: { body: "#3aa84a", belly: "#7fd06a", wing: "#1f7a30", beak: "#e8c24a", cheek: "#e2543a" }, blurb: "Repeats your best ideas back." },
-  { key: "cockatoo", name: "Cockatoo", rarity: "rare", palette: { body: "#f4f1ea", belly: "#fffdf8", wing: "#ddd6c8", beak: "#3a3a3a", cheek: "#f0d24a" }, crest: true, blurb: "Drama in a feather suit." },
-  { key: "lorikeet", name: "Rainbow Lorikeet", rarity: "rare", palette: { body: "#2f7ad0", belly: "#e2543a", wing: "#2c8a3a", beak: "#f0683a", cheek: "#f0c24a" }, blurb: "Every color, all at once." },
-  { key: "flamingo", name: "Flamingo", rarity: "rare", palette: { body: "#f08aa8", belly: "#f8b8cc", wing: "#e0607f", beak: "#2c2c2c", cheek: "#ffd0de" }, longTail: true, blurb: "Poised on a single leg." },
-  { key: "heron", name: "Heron", rarity: "rare", palette: { body: "#9aa6b0", belly: "#e6ebef", wing: "#6e7a86", beak: "#e8c24a", cheek: "#c2cdd6" }, crest: true, blurb: "Patience with a long neck." },
-  { key: "swan", name: "Swan", rarity: "rare", palette: { body: "#f6f4ef", belly: "#fffdf8", wing: "#e2dccf", beak: "#e2543a", cheek: "#f0e6d6" }, longTail: true, blurb: "Grace that glides." },
-  { key: "hoopoe", name: "Hoopoe", rarity: "rare", palette: { body: "#d89a5a", belly: "#f0d6a8", wing: "#2c2c2c", beak: "#5a4a3a", cheek: "#f0c89a" }, crest: true, blurb: "Crowned and unforgettable." },
-  { key: "kookaburra", name: "Kookaburra", rarity: "rare", palette: { body: "#bfa985", belly: "#efe6d2", wing: "#4f6f8a", beak: "#3a342e", cheek: "#d8c6a8" }, blurb: "Laughs at its own jokes." },
-  { key: "bee_eater", name: "Bee-eater", rarity: "rare", palette: { body: "#3aa84a", belly: "#e8c24a", wing: "#2f7ad0", beak: "#2c2c2c", cheek: "#e2543a" }, longTail: true, blurb: "Catches lunch mid-air." },
-  { key: "hawk", name: "Hawk", rarity: "rare", palette: { body: "#8a6f55", belly: "#e8dcc6", wing: "#5a4636", beak: "#e8c24a", cheek: "#c9a983" }, blurb: "Eyes that miss nothing." },
-  { key: "falcon", name: "Falcon", rarity: "rare", palette: { body: "#5a6675", belly: "#e6ebef", wing: "#3a4350", beak: "#e8c24a", cheek: "#9aa6b0" }, blurb: "The fastest thing alive." },
-
-  // ── Legendary ─────────────────────────────────────────────────────────────
-  { key: "peacock", name: "Peacock", rarity: "legendary", palette: { body: "#1f7a8c", belly: "#2a9d8f", wing: "#0d4f5c", beak: "#2c2c2c", cheek: "#8fe3d6" }, crest: true, longTail: true, blurb: "Pure, unapologetic splendor." },
-  { key: "phoenix", name: "Phoenix", rarity: "legendary", palette: { body: "#f0683a", belly: "#f2c43d", wing: "#c23b1f", beak: "#caa12f", cheek: "#ffd98a" }, crest: true, longTail: true, blurb: "Rises again every single day." },
-  { key: "macaw", name: "Scarlet Macaw", rarity: "legendary", palette: { body: "#e23b2f", belly: "#f0683a", wing: "#2f7ad0", beak: "#f2efe8", cheek: "#f0c24a" }, longTail: true, blurb: "A living firework." },
-  { key: "quetzal", name: "Quetzal", rarity: "legendary", palette: { body: "#1f9d7a", belly: "#e2543a", wing: "#147a5c", beak: "#e8c24a", cheek: "#8fe3c4" }, crest: true, longTail: true, blurb: "The jewel of the cloud forest." },
-  { key: "bird_of_paradise", name: "Bird of Paradise", rarity: "legendary", palette: { body: "#1f1f22", belly: "#f0852f", wing: "#2c2c30", beak: "#cdbf9a", cheek: "#3aa84a" }, crest: true, longTail: true, blurb: "Dances like no one's watching." },
-  { key: "eagle", name: "Golden Eagle", rarity: "legendary", palette: { body: "#6f4f33", belly: "#b08a5c", wing: "#4a3620", beak: "#e8c24a", cheek: "#d4af6a" }, crest: true, blurb: "Rules the open sky." },
+  // 1
+  { key: "black_capped_chickadee", name: "Black-capped Chickadee", rarity: "common", archetype: "songbird",
+    palette: { body: "#b7bec4", belly: "#f3efe6", wing: "#6f777c", beak: "#2a2a2a", cheek: "#ffffff" },
+    art: { template: "perch", bill: "cone", tail: "medium", legs: "short", marks: [{ m: "cheek", color: "#ffffff" }, { m: "cap", color: BLACK, extent: "full" }, { m: "bib", color: BLACK }] },
+    blurb: "Tiny, curious, fearless." },
+  // 2
+  { key: "american_robin", name: "American Robin", rarity: "common", archetype: "songbird",
+    palette: { body: "#6e6256", belly: "#c0532b", wing: "#54493f", beak: "#e8a93a", cheek: "#6e6256" },
+    art: { template: "upright", bill: "stout", tail: "medium", legs: "medium", marks: [{ m: "eyering", color: CREAM }, { m: "throat", color: "#3a342e" }] },
+    blurb: "First sign of a new morning." },
+  // 3
+  { key: "northern_cardinal", name: "Northern Cardinal", rarity: "common", archetype: "cardinal",
+    palette: { body: "#c0392b", belly: "#d5564a", wing: "#9c2a22", beak: "#e8883a", cheek: "#c0392b" },
+    art: { template: "perch", bill: "cone", crest: "spike", tail: "long", legs: "short", marks: [{ m: "mask", color: "#1f1c1a" }] },
+    blurb: "Bold and impossible to miss." },
+  // 4
+  { key: "blue_jay", name: "Blue Jay", rarity: "common", archetype: "jay",
+    palette: { body: "#5b86c9", belly: "#eef2f7", wing: "#2f4f8f", beak: "#2b2b2b", cheek: "#5b86c9" },
+    art: { template: "perch", bill: "stout", crest: "spike", tail: "long", legs: "short", marks: [{ m: "cheek", color: "#eef2f7" }, { m: "collar", color: "#22324f" }, { m: "wingbars", color: WHITE, count: 2 }] },
+    blurb: "Clever, loud, and proud." },
+  // 5
+  { key: "american_goldfinch", name: "American Goldfinch", rarity: "common", archetype: "songbird",
+    palette: { body: "#ecd233", belly: "#f5e88f", wing: "#1f1d18", beak: "#d99a45", cheek: "#ecd233" },
+    art: { template: "perch", bill: "cone", tail: "short", legs: "short", marks: [{ m: "forehead", color: "#1f1d18" }, { m: "wingbars", color: WHITE, count: 2 }] },
+    blurb: "A spark of sunshine." },
+  // 6
+  { key: "downy_woodpecker", name: "Downy Woodpecker", rarity: "common", archetype: "woodpecker",
+    palette: { body: "#2a2a2a", belly: "#f6f1e8", wing: "#1f1f1f", beak: "#555555", cheek: "#ffffff" },
+    art: { template: "cling", bill: "chisel", tail: "short", marks: [{ m: "cheek", color: WHITE }, { m: "eyeline", color: "#1f1f1f" }, { m: "nape", color: "#cc3b30" }, { m: "ladderback", color: WHITE }] },
+    blurb: "The little drummer of the yard." },
+  // 7
+  { key: "hairy_woodpecker", name: "Hairy Woodpecker", rarity: "uncommon", archetype: "woodpecker",
+    palette: { body: "#262626", belly: "#f6f1e8", wing: "#1c1c1c", beak: "#6a6a6a", cheek: "#ffffff" },
+    art: { template: "cling", bill: "chisel", tail: "medium", marks: [{ m: "cheek", color: WHITE }, { m: "eyeline", color: "#1c1c1c" }, { m: "nape", color: "#cc3b30" }, { m: "ladderback", color: WHITE }] },
+    blurb: "Downy's bigger, bolder cousin." },
+  // 8
+  { key: "pileated_woodpecker", name: "Pileated Woodpecker", rarity: "rare", archetype: "woodpecker",
+    palette: { body: "#25241f", belly: "#2a2a26", wing: "#1b1a17", beak: "#3a3a3a", cheek: "#cc2a22" },
+    art: { template: "cling", bill: "chisel", crest: "spike", tail: "medium", marks: [{ m: "facelines", color: WHITE }, { m: "throat", color: WHITE }] },
+    blurb: "A crow-sized blaze of red." },
+  // 9
+  { key: "red_bellied_woodpecker", name: "Red-bellied Woodpecker", rarity: "uncommon", archetype: "woodpecker",
+    palette: { body: "#cbc5b6", belly: "#ddd6c6", wing: "#cbc5b6", beak: "#444444", cheek: "#cc3b30" },
+    art: { template: "cling", bill: "chisel", tail: "short", marks: [{ m: "cap", color: "#cc3b30", extent: "full" }, { m: "barback", color: "#2a2a2a" }, { m: "breastWash", color: "#d9a18a" }] },
+    blurb: "Zebra-backed, ember-capped." },
+  // 10
+  { key: "northern_flicker", name: "Northern Flicker", rarity: "uncommon", archetype: "woodpecker",
+    palette: { body: "#b79a72", belly: "#d8c29c", wing: "#8a6f4f", beak: "#4a3c2c", cheek: "#b79a72" },
+    art: { template: "perch", bill: "decurved", tail: "medium", legs: "medium", marks: [{ m: "barback", color: "#6e573c" }, { m: "bib", color: "#26241f" }, { m: "spots", color: "#3a322a" }, { m: "nape", color: "#cc3b30" }] },
+    blurb: "A woodpecker that loves the ground." },
+  // 11
+  { key: "white_breasted_nuthatch", name: "White-breasted Nuthatch", rarity: "common", archetype: "songbird",
+    palette: { body: "#8a98ac", belly: "#f4f1ea", wing: "#4f6079", beak: "#3a3a3a", cheek: "#ffffff" },
+    art: { template: "cling", bill: "thin", tail: "short", marks: [{ m: "cheek", color: "#ffffff" }, { m: "cap", color: "#23252b", extent: "full" }] },
+    blurb: "Walks down trees headfirst." },
+  // 12
+  { key: "red_breasted_nuthatch", name: "Red-breasted Nuthatch", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#7d8ea6", belly: "#d98a5a", wing: "#4f6079", beak: "#3a3a3a", cheek: "#ffffff" },
+    art: { template: "cling", bill: "thin", tail: "short", marks: [{ m: "cheek", color: "#ffffff" }, { m: "cap", color: "#23252b", extent: "full" }, { m: "eyebrow", color: "#ffffff" }, { m: "eyeline", color: "#23252b" }] },
+    blurb: "A tiny tin-horn voice in the pines." },
+  // 13
+  { key: "tufted_titmouse", name: "Tufted Titmouse", rarity: "common", archetype: "songbird",
+    palette: { body: "#aab2bd", belly: "#f0ece4", wing: "#8a929e", beak: "#2c2c2c", cheek: "#aab2bd" },
+    art: { template: "perch", bill: "cone", crest: "spike", tail: "medium", legs: "short", marks: [{ m: "forehead", color: "#2a2a2a" }, { m: "breastWash", color: "#e0a98a" }] },
+    blurb: "Big eyes, bigger attitude." },
+  // 14
+  { key: "brown_creeper", name: "Brown Creeper", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#8a6f4f", belly: "#f0ece2", wing: "#6e5238", beak: "#5a4a3a", cheek: "#cabfa8" },
+    art: { template: "cling", bill: "decurved", tail: "short", marks: [{ m: "eyebrow", color: "#e8dcc6" }, { m: "spots", color: "#d8c8a8" }] },
+    blurb: "Tree bark come to life." },
+  // 15
+  { key: "winter_wren", name: "Winter Wren", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#6e4f33", belly: "#9c7a55", wing: "#4f3a26", beak: "#3a2c20", cheek: "#c9a983" },
+    art: { template: "perch", bill: "thin", tail: "cock", legs: "medium", marks: [{ m: "eyebrow", color: "#d8c29c" }, { m: "barback", color: "#3a2c20" }] },
+    blurb: "A thimble of bird, a fountain of song." },
+  // 16
+  { key: "house_wren", name: "House Wren", rarity: "common", archetype: "songbird",
+    palette: { body: "#9c7a55", belly: "#cabb9c", wing: "#6e5238", beak: "#4a3c2c", cheek: "#c9a983" },
+    art: { template: "perch", bill: "thin", tail: "updown", legs: "medium", marks: [{ m: "eyebrow", color: "#d8c8aa" }, { m: "barback", color: "#5a4332" }] },
+    blurb: "Tiny body, enormous song." },
+  // 17
+  { key: "eastern_bluebird", name: "Eastern Bluebird", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#4f86c4", belly: "#c46a3a", wing: "#3a5f96", beak: "#2c2c2c", cheek: "#4f86c4" },
+    art: { template: "perch", bill: "stout", tail: "medium", legs: "short", marks: [{ m: "undertail", color: "#f0ece2" }] },
+    blurb: "Carries good moods on its wings." },
+  // 18
+  { key: "cedar_waxwing", name: "Cedar Waxwing", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#b89a72", belly: "#d8c6a0", wing: "#6f6052", beak: "#2c2c2c", cheek: "#b89a72" },
+    art: { template: "perch", bill: "stout", crest: "sweep", tail: "short", legs: "short", marks: [{ m: "mask", color: "#1f1c19" }, { m: "tailtip", color: "#e6d24a" }, { m: "wingPatch", color: "#c0392b" }] },
+    blurb: "Wears a tiny bandit mask." },
+  // 19
+  { key: "gray_catbird", name: "Gray Catbird", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#6a6a70", belly: "#76767c", wing: "#4f4f55", beak: "#2c2c2c", cheek: "#6a6a70" },
+    art: { template: "upright", bill: "stout", tail: "long", legs: "medium", marks: [{ m: "cap", color: "#222226", extent: "small" }, { m: "undertail", color: "#8a4a3a" }] },
+    blurb: "Mews like a cat from the hedge." },
+  // 20
+  { key: "brown_thrasher", name: "Brown Thrasher", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#a85a30", belly: "#f0e6d2", wing: "#8a4a28", beak: "#5a4636", cheek: "#a85a30" },
+    art: { template: "upright", bill: "decurved", tail: "long", legs: "medium", marks: [{ m: "streaks", color: "#9c4f2a" }, { m: "wingbars", color: WHITE, count: 2 }] },
+    blurb: "A thousand songs, each sung twice." },
+  // 21
+  { key: "song_sparrow", name: "Song Sparrow", rarity: "common", archetype: "songbird",
+    palette: { body: "#9c7a58", belly: "#efe6d6", wing: "#6e5238", beak: "#5a4733", cheek: "#b89a72" },
+    art: { template: "perch", bill: "cone", tail: "medium", legs: "short", marks: [{ m: "crownStripe", color: "#8a5a38" }, { m: "streaks", color: "#7a5a3a" }, { m: "breastSpot", color: "#3a2a1c" }] },
+    blurb: "The yard's tireless singer." },
+  // 22
+  { key: "white_throated_sparrow", name: "White-throated Sparrow", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#8a7155", belly: "#d8cdba", wing: "#6e5238", beak: "#4a3c2c", cheek: "#8a7155" },
+    art: { template: "perch", bill: "cone", tail: "medium", legs: "short", marks: [{ m: "cap", color: "#2a2620", extent: "full" }, { m: "crownStripe", color: WHITE }, { m: "forehead", color: "#e8c24a" }, { m: "throat", color: "#ffffff" }] },
+    blurb: "Whistles 'Old Sam Peabody'." },
+  // 23
+  { key: "chipping_sparrow", name: "Chipping Sparrow", rarity: "common", archetype: "songbird",
+    palette: { body: "#9a8466", belly: "#ddd6c6", wing: "#7a5f44", beak: "#2c2c2c", cheek: "#c2b6a2" },
+    art: { template: "perch", bill: "cone", tail: "medium", legs: "short", marks: [{ m: "cap", color: "#a8542c", extent: "full" }, { m: "eyebrow", color: "#eceae2" }, { m: "eyeline", color: "#26241f" }] },
+    blurb: "A neat little rusty cap." },
+  // 24
+  { key: "dark_eyed_junco", name: "Dark-eyed Junco", rarity: "common", archetype: "songbird",
+    palette: { body: "#5a5560", belly: "#efe9e2", wing: "#4a454f", beak: "#e8cdb0", cheek: "#5a5560" },
+    art: { template: "perch", bill: "cone", tail: "medium", legs: "short", marks: [{ m: "undertail", color: "#ffffff" }] },
+    blurb: "The dapper grey snowbird." },
+  // 25
+  { key: "red_winged_blackbird", name: "Red-winged Blackbird", rarity: "uncommon", archetype: "corvid",
+    palette: { body: "#1c1c1f", belly: "#232326", wing: "#161618", beak: "#3a3a3a", cheek: "#1c1c1f" },
+    art: { template: "perch", bill: "thin", tail: "medium", legs: "short", marks: [{ m: "epaulet", color: "#c0392b", edge: "#e8c24a" }] },
+    blurb: "Conk-la-ree! from the cattails." },
+  // 26
+  { key: "common_grackle", name: "Common Grackle", rarity: "uncommon", archetype: "corvid",
+    palette: { body: "#3a3326", belly: "#3a3326", wing: "#241f30", beak: "#2a2a2a", cheek: "#4a4a55" },
+    art: { template: "upright", bill: "stout", tail: "long", legs: "medium", marks: [{ m: "hood", color: "#3a2f55" }] },
+    blurb: "Oil-slick sheen, golden eye." },
+  // 27
+  { key: "baltimore_oriole", name: "Baltimore Oriole", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#ef7f2e", belly: "#f59a4a", wing: "#1f1a16", beak: "#5a5048", cheek: "#ef7f2e" },
+    art: { template: "perch", bill: "thin", tail: "medium", legs: "short", marks: [{ m: "hood", color: "#1f1a16" }, { m: "wingbars", color: WHITE, count: 1 }] },
+    blurb: "A flame in the treetops." },
+  // 28
+  { key: "scarlet_tanager", name: "Scarlet Tanager", rarity: "rare", archetype: "songbird",
+    palette: { body: "#d8392a", belly: "#e85a48", wing: "#1a1a1a", beak: "#c9c2b0", cheek: "#d8392a" },
+    art: { template: "perch", bill: "stout", tail: "short", legs: "short", marks: [] },
+    blurb: "Red so bright it hums." },
+  // 29
+  { key: "rose_breasted_grosbeak", name: "Rose-breasted Grosbeak", rarity: "rare", archetype: "songbird",
+    palette: { body: "#1f1c1a", belly: "#f4f1ea", wing: "#161412", beak: "#e6ddc8", cheek: "#1f1c1a" },
+    art: { template: "perch", bill: "cone", tail: "medium", legs: "short", marks: [{ m: "breastTriangle", color: "#cc3550" }, { m: "wingbars", color: WHITE, count: 1 }] },
+    blurb: "Wears its heart on its chest." },
+  // 30
+  { key: "indigo_bunting", name: "Indigo Bunting", rarity: "uncommon", archetype: "songbird",
+    palette: { body: "#3f63c4", belly: "#5a72c8", wing: "#2a3f86", beak: "#3a3a3a", cheek: "#3f63c4" },
+    art: { template: "perch", bill: "cone", tail: "short", legs: "short", marks: [] },
+    blurb: "A scrap of fallen sky." },
+  // 31
+  { key: "tree_swallow", name: "Tree Swallow", rarity: "uncommon", archetype: "swallow",
+    palette: { body: "#2f7d8a", belly: "#f4f1ea", wing: "#235f6a", beak: "#2a2a2a", cheek: "#2f7d8a" },
+    art: { template: "flit", bill: "thin", tail: "fork", marks: [] },
+    blurb: "Steel-blue and sky-bound." },
+  // 32
+  { key: "barn_swallow", name: "Barn Swallow", rarity: "uncommon", archetype: "swallow",
+    palette: { body: "#2a3f86", belly: "#e8b98a", wing: "#1f2f66", beak: "#2a2a2a", cheek: "#a8442a" },
+    art: { template: "flit", bill: "thin", tail: "fork", marks: [{ m: "throat", color: "#a8442a" }, { m: "forehead", color: "#a8442a" }] },
+    blurb: "Forked tail, endless loops." },
+  // 33
+  { key: "ruby_throated_hummingbird", name: "Ruby-throated Hummingbird", rarity: "rare", archetype: "hummingbird",
+    palette: { body: "#3a9d6a", belly: "#f0ece2", wing: "#2a7a52", beak: "#2a2a2a", cheek: "#cc3b50" },
+    art: { template: "hover", bill: "thin", marks: [{ m: "throat", color: "#c0293f" }] },
+    blurb: "Never stops, never quits." },
+  // 34
+  { key: "mourning_dove", name: "Mourning Dove", rarity: "common", archetype: "dove",
+    palette: { body: "#b3a48f", belly: "#e8dcc9", wing: "#8a7a64", beak: "#3a342e", cheek: "#d8b0a0" },
+    art: { template: "perch", bill: "thin", tail: "point", legs: "short", marks: [{ m: "spots", color: "#3a342e" }] },
+    blurb: "Soft, gentle, and calm." },
+  // 35
+  { key: "wild_turkey", name: "Wild Turkey", rarity: "legendary", archetype: "gamebird",
+    palette: { body: "#5a4630", belly: "#6e5238", wing: "#3a2c1d", beak: "#d8a05a", cheek: "#c0392b" },
+    art: { template: "gamebird", bill: "stout", tail: "fan", legs: "long", marks: [{ m: "scaly", color: "#7a6244" }, { m: "hood", color: "#6a86a0" }, { m: "throat", color: "#c0392b" }] },
+    blurb: "Struts like it owns the woods." },
+  // 36
+  { key: "ruffed_grouse", name: "Ruffed Grouse", rarity: "rare", archetype: "gamebird",
+    palette: { body: "#a8855c", belly: "#e0cba8", wing: "#7a5f3f", beak: "#4a3c2c", cheek: "#a8855c" },
+    art: { template: "gamebird", bill: "stout", crest: "spike", tail: "fan", legs: "short", marks: [{ m: "scaly", color: "#6e5238" }, { m: "bib", color: "#2a2018" }, { m: "tailband", color: "#3a2c1d" }] },
+    blurb: "Drums the forest with its wings." },
+  // 37
+  { key: "spruce_grouse", name: "Spruce Grouse", rarity: "rare", archetype: "gamebird",
+    palette: { body: "#4a4540", belly: "#5a5048", wing: "#3a352f", beak: "#2c2c2c", cheek: "#4a4540" },
+    art: { template: "gamebird", bill: "stout", tail: "fan", legs: "short", marks: [{ m: "bib", color: "#1f1c19" }, { m: "spots", color: "#d8d2c6" }, { m: "eyebrow", color: "#c0392b" }] },
+    blurb: "The quiet ghost of the boreal." },
+  // 38
+  { key: "american_woodcock", name: "American Woodcock", rarity: "rare", archetype: "shorebird",
+    palette: { body: "#a8855c", belly: "#c9a875", wing: "#6e5238", beak: "#6e5840", cheek: "#a8855c" },
+    art: { template: "shorebird", bill: "long", legs: "short", marks: [{ m: "scaly", color: "#5a4530" }, { m: "crownStripe", color: "#3a2c1d" }] },
+    blurb: "A plump woodland wanderer." },
+  // 39
+  { key: "killdeer", name: "Killdeer", rarity: "uncommon", archetype: "shorebird",
+    palette: { body: "#8a6f50", belly: "#f4f1ea", wing: "#6e5238", beak: "#2c2c2c", cheek: "#f4f1ea" },
+    art: { template: "shorebird", bill: "thin", legs: "long", marks: [{ m: "forehead", color: "#f4f1ea" }, { m: "mask", color: "#26241f" }, { m: "breastBand", color: "#26241f", count: 2 }] },
+    blurb: "Cries its own name across the field." },
+  // 40
+  { key: "piping_plover", name: "Piping Plover", rarity: "rare", archetype: "shorebird",
+    palette: { body: "#cabfa6", belly: "#f6f3ec", wing: "#b0a488", beak: "#e8a33a", cheek: "#f6f3ec" },
+    art: { template: "shorebird", bill: "stout", legs: "medium", marks: [{ m: "forehead", color: "#2a2620" }, { m: "breastBand", color: "#2a2620", count: 1 }] },
+    blurb: "A wisp of dry sand on legs." },
+  // 41
+  { key: "great_blue_heron", name: "Great Blue Heron", rarity: "rare", archetype: "wader",
+    palette: { body: "#8a98a6", belly: "#c2cdd6", wing: "#6e7a88", beak: "#e8c24a", cheek: "#8a98a6" },
+    art: { template: "wader", bill: "dagger", legs: "long", marks: [{ m: "crownStripe", color: "#1f1c19" }, { m: "streaks", color: "#6e7a88" }] },
+    blurb: "Patience with a long neck." },
+  // 42
+  { key: "green_heron", name: "Green Heron", rarity: "rare", archetype: "wader",
+    palette: { body: "#3a4a3f", belly: "#8a4a3a", wing: "#2f3f36", beak: "#2c2c2c", cheek: "#8a4a3a" },
+    art: { template: "wader", bill: "dagger", legs: "short", marks: [{ m: "cap", color: "#26302a", extent: "full" }] },
+    blurb: "A crouched little fishing master." },
+  // 43
+  { key: "belted_kingfisher", name: "Belted Kingfisher", rarity: "rare", archetype: "jay",
+    palette: { body: "#5f7d96", belly: "#f4f1ea", wing: "#4a6378", beak: "#2c2c2c", cheek: "#5f7d96" },
+    art: { template: "perch", bill: "dagger", crest: "shag", tail: "short", legs: "short", marks: [{ m: "collar", color: "#ffffff" }, { m: "breastBand", color: "#557390", count: 1 }] },
+    blurb: "A rattle and a flash of blue." },
+  // 44
+  { key: "osprey", name: "Osprey", rarity: "legendary", archetype: "raptor",
+    palette: { body: "#4a4036", belly: "#f4f1ea", wing: "#3a322a", beak: "#2c2c2c", cheek: "#f4f1ea" },
+    art: { template: "raptor", bill: "hook", tail: "medium", marks: [{ m: "hood", color: "#f4f1ea" }, { m: "eyeline", color: "#3a322a" }] },
+    blurb: "The fish-hawk of the bay." },
+  // 45
+  { key: "bald_eagle", name: "Bald Eagle", rarity: "legendary", archetype: "raptor",
+    palette: { body: "#4a3528", belly: "#4a3528", wing: "#3a281d", beak: "#e8c24a", cheek: "#f4f1ea" },
+    art: { template: "raptor", bill: "hook", tail: "medium", marks: [{ m: "hood", color: WHITE }, { m: "tailtip", color: WHITE }] },
+    blurb: "Rules the open sky." },
+  // 46
+  { key: "red_tailed_hawk", name: "Red-tailed Hawk", rarity: "rare", archetype: "raptor",
+    palette: { body: "#7a5f44", belly: "#efe6d2", wing: "#5a4533", beak: "#3a3a3a", cheek: "#efe6d2" },
+    art: { template: "raptor", bill: "hook", tail: "medium", marks: [{ m: "streaks", color: "#9c6f44" }, { m: "tailband", color: "#b0542f" }] },
+    blurb: "A keen-eyed soul of the soar." },
+  // 47
+  { key: "coopers_hawk", name: "Cooper's Hawk", rarity: "rare", archetype: "raptor",
+    palette: { body: "#5a6675", belly: "#f0e6df", wing: "#3f4a58", beak: "#e8c24a", cheek: "#5a6675" },
+    art: { template: "raptor", bill: "hook", tail: "long", marks: [{ m: "cap", color: "#2a323d", extent: "full" }, { m: "streaks", color: "#c0804f" }, { m: "tailband", color: "#2a323d" }] },
+    blurb: "The yard's silent ambush." },
+  // 48
+  { key: "barred_owl", name: "Barred Owl", rarity: "rare", archetype: "owl",
+    palette: { body: "#8a7a68", belly: "#e7dcc9", wing: "#6e5f4c", beak: "#e8c24a", cheek: "#8a7a68" },
+    art: { template: "owl", bill: "hook", marks: [{ m: "breastBand", color: "#6e5238", count: 2 }, { m: "streaks", color: "#6e5238" }] },
+    blurb: "Who cooks for you?" },
+  // 49
+  { key: "great_horned_owl", name: "Great Horned Owl", rarity: "legendary", archetype: "owl",
+    palette: { body: "#6e5a44", belly: "#c9b08a", wing: "#4f4030", beak: "#2c2c2c", cheek: "#6e5a44" },
+    art: { template: "owl", bill: "hook", crest: "horns", marks: [{ m: "throat", color: "#f0ece2" }, { m: "scaly", color: "#4f4030" }] },
+    blurb: "The tiger of the night woods." },
+  // 50
+  { key: "common_loon", name: "Common Loon", rarity: "legendary", archetype: "loon",
+    palette: { body: "#2a2a2e", belly: "#f4f1ea", wing: "#1f1f22", beak: "#2a2a2a", cheek: "#2a2a2e" },
+    art: { template: "float", bill: "dagger", marks: [{ m: "hood", color: "#23232a" }, { m: "checker", color: "#eef0ea" }, { m: "collar", color: "#eef0ea" }] },
+    blurb: "A wild call across still water." },
+  // 51
+  { key: "canada_goose", name: "Canada Goose", rarity: "common", archetype: "goose",
+    palette: { body: "#8a7a5f", belly: "#e0d6c2", wing: "#6e5f48", beak: "#1f1f1f", cheek: "#ffffff" },
+    art: { template: "goose", bill: "stout", marks: [{ m: "hood", color: "#1f1f1f" }, { m: "cheek", color: "#ffffff" }] },
+    blurb: "Honks the seasons in and out." },
+  // 52
+  { key: "mallard", name: "Mallard", rarity: "common", archetype: "duck",
+    palette: { body: "#9a948a", belly: "#b3a89a", wing: "#6e6258", beak: "#e8c24a", cheek: "#2f7a52" },
+    art: { template: "float", bill: "spatula", marks: [{ m: "hood", color: "#2f7a52" }, { m: "collar", color: "#ffffff" }, { m: "breastWash", color: "#8a4f2f" }] },
+    blurb: "The duck everybody knows." },
+  // 53
+  { key: "wood_duck", name: "Wood Duck", rarity: "uncommon", archetype: "duck",
+    palette: { body: "#6a5a4a", belly: "#b89a6a", wing: "#2f5a4a", beak: "#d8542f", cheek: "#2a5a4a" },
+    art: { template: "float", bill: "spatula", crest: "sweep", marks: [{ m: "hood", color: "#2f4a44" }, { m: "facelines", color: "#ffffff" }, { m: "breastWash", color: "#7a3a2a" }] },
+    blurb: "The most ornate duck of all." },
+  // 54
+  { key: "common_eider", name: "Common Eider", rarity: "rare", archetype: "duck",
+    palette: { body: "#f4f1ea", belly: "#23232a", wing: "#d8d2c6", beak: "#c9b89a", cheek: "#8fc4a0" },
+    art: { template: "float", bill: "spatula", marks: [{ m: "cap", color: "#23232a", extent: "full" }, { m: "nape", color: "#9ad0b0" }] },
+    blurb: "A burly duck of the cold sea." },
+  // 55
+  { key: "atlantic_puffin", name: "Atlantic Puffin", rarity: "rare", archetype: "seabird",
+    palette: { body: "#232326", belly: "#f6f3ec", wing: "#1a1a1c", beak: "#e8542f", cheek: "#e8e4da" },
+    art: { template: "seabird", bill: "huge", tail: "short", legs: "short", marks: [{ m: "cap", color: "#232326", extent: "full" }, { m: "cheek", color: "#e8e4da" }] },
+    blurb: "The clown of the open sea." },
+  // 56
+  { key: "black_guillemot", name: "Black Guillemot", rarity: "rare", archetype: "seabird",
+    palette: { body: "#26262a", belly: "#2a2a2e", wing: "#1c1c1f", beak: "#2a2a2a", cheek: "#26262a" },
+    art: { template: "seabird", bill: "dagger", tail: "short", legs: "short", marks: [{ m: "wingPatch", color: "#f6f3ec" }] },
+    blurb: "Black velvet with white wing-spots." },
+  // 57
+  { key: "herring_gull", name: "Herring Gull", rarity: "common", archetype: "gull",
+    palette: { body: "#f4f1ea", belly: "#f6f3ec", wing: "#b9bcc2", beak: "#e8c24a", cheek: "#f4f1ea" },
+    art: { template: "seabird", bill: "stout", tail: "short", legs: "medium", marks: [{ m: "wingtips", color: "#26262a" }, { m: "billspot", color: "#c0392b" }] },
+    blurb: "The voice of every harbor." },
+  // 58
+  { key: "common_tern", name: "Common Tern", rarity: "uncommon", archetype: "gull",
+    palette: { body: "#d6dade", belly: "#f6f3ec", wing: "#b9bcc2", beak: "#e8683a", cheek: "#d6dade" },
+    art: { template: "flit", bill: "thin", tail: "fork", marks: [{ m: "cap", color: "#23232a", extent: "full" }, { m: "wingtips", color: "#5a5f66" }] },
+    blurb: "A white dart over the surf." },
+  // 59
+  { key: "common_raven", name: "Common Raven", rarity: "uncommon", archetype: "corvid",
+    palette: { body: "#1c1c20", belly: "#232328", wing: "#141416", beak: "#161618", cheek: "#2a2a30" },
+    art: { template: "perch", bill: "stout", tail: "medium", legs: "short", marks: [{ m: "bib", color: "#26262c" }] },
+    blurb: "Smarter than it lets on." },
+  // 60
+  { key: "peregrine_falcon", name: "Peregrine Falcon", rarity: "legendary", archetype: "raptor",
+    palette: { body: "#4a505a", belly: "#e7e2d6", wing: "#363b44", beak: "#e8c24a", cheek: "#4a505a" },
+    art: { template: "raptor", bill: "hook", tail: "medium", marks: [{ m: "cap", color: "#363b44", extent: "full" }, { m: "malar", color: "#2a2e35" }, { m: "streaks", color: "#7a7f88" }] },
+    blurb: "The fastest thing alive." },
 ];
 
 export const SPECIES_BY_KEY: Record<string, BirdSpecies> = Object.fromEntries(BIRD_SPECIES.map((b) => [b.key, b]));
+
+/** Old catalog keys → nearest new Maine species, so existing flocks still render. */
+export const LEGACY_KEY_MAP: Record<string, string> = {
+  sparrow: "song_sparrow", robin: "american_robin", chickadee: "black_capped_chickadee", house_finch: "american_goldfinch",
+  wren: "house_wren", dove: "mourning_dove", pigeon: "mourning_dove", starling: "common_grackle", junco: "dark_eyed_junco",
+  titmouse: "tufted_titmouse", nuthatch: "white_breasted_nuthatch", warbler: "american_goldfinch", lark: "song_sparrow",
+  crow: "common_raven", swift: "tree_swallow", phoebe: "eastern_bluebird", bushtit: "black_capped_chickadee",
+  sandpiper: "killdeer", blackbird: "red_winged_blackbird", redpoll: "american_goldfinch", goldfinch: "american_goldfinch",
+  bluebird: "eastern_bluebird", cardinal: "northern_cardinal", bluejay: "blue_jay", oriole: "baltimore_oriole",
+  tanager: "scarlet_tanager", waxwing: "cedar_waxwing", grosbeak: "rose_breasted_grosbeak", bunting: "indigo_bunting",
+  canary: "american_goldfinch", budgie: "american_goldfinch", lovebird: "eastern_bluebird", cockatiel: "tufted_titmouse",
+  magpie: "blue_jay", pheasant: "ruffed_grouse", penguin: "atlantic_puffin", woodpecker: "downy_woodpecker",
+  kestrel: "coopers_hawk", kingfisher: "belted_kingfisher", hummingbird: "ruby_throated_hummingbird", puffin: "atlantic_puffin",
+  toucan: "belted_kingfisher", owl: "barred_owl", barn_owl: "barred_owl", parrot: "baltimore_oriole", cockatoo: "cedar_waxwing",
+  lorikeet: "wood_duck", flamingo: "great_blue_heron", heron: "great_blue_heron", swan: "canada_goose", hoopoe: "northern_flicker",
+  kookaburra: "belted_kingfisher", bee_eater: "baltimore_oriole", hawk: "red_tailed_hawk", falcon: "peregrine_falcon",
+  peacock: "wild_turkey", phoenix: "northern_cardinal", macaw: "wood_duck", quetzal: "ruby_throated_hummingbird",
+  bird_of_paradise: "baltimore_oriole", eagle: "bald_eagle",
+};
 
 export const RARITY_META: Record<Rarity, { label: string; color: string; weight: number }> = {
   common: { label: "Common", color: "#8a9099", weight: 100 },
   uncommon: { label: "Uncommon", color: "#3f9d5a", weight: 38 },
   rare: { label: "Rare", color: "#3b7fd2", weight: 11 },
   legendary: { label: "Legendary", color: "#b5862f", weight: 2 },
-  // Photographed real birds — not part of the hatch pool.
   wild: { label: "Wild · yours", color: "#2a9d8f", weight: 0 },
 };
 
@@ -179,7 +416,8 @@ export function resolveSpecies(b: OwnedBirdBase): BirdSpecies {
       blurb: b.custom_blurb || "A real bird you spotted.",
     };
   }
-  return (b.species_key ? SPECIES_BY_KEY[b.species_key] : undefined) ?? BIRD_SPECIES[0];
+  const key = b.species_key ? (LEGACY_KEY_MAP[b.species_key] ?? b.species_key) : undefined;
+  return (key ? SPECIES_BY_KEY[key] : undefined) ?? BIRD_SPECIES[0];
 }
 
 /** Weighted random species for a hatched egg. */
