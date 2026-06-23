@@ -38,16 +38,36 @@ function nowIn(timezone: string): { hour: number; dateLabel: string } {
 }
 
 /** Time-of-day greeting, rendered server-side in the user's profile timezone. */
-export function Greeting({ name, timezone }: { name: string; timezone: string }) {
+export function Greeting({
+  name,
+  timezone,
+  avatarUrl,
+}: {
+  name: string;
+  timezone: string;
+  avatarUrl?: string | null;
+}) {
   const { hour, dateLabel } = nowIn(timezone);
 
   return (
     <FadeIn>
-      <p className="text-sm font-medium text-muted-foreground">{dateLabel}</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
-        {greetingFor(hour)}
-        {name ? `, ${name}` : ""}.
-      </h1>
+      <div className="flex items-center gap-3">
+        {avatarUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt=""
+            className="h-12 w-12 shrink-0 rounded-full object-cover shadow-soft ring-2 ring-card"
+          />
+        )}
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">{dateLabel}</p>
+          <h1 className="mt-0.5 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {greetingFor(hour)}
+            {name ? `, ${name}` : ""}.
+          </h1>
+        </div>
+      </div>
     </FadeIn>
   );
 }

@@ -40,8 +40,8 @@ export function AccentPicker({ current }: { current: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Accent theme</CardTitle>
-        <CardDescription>Pick the color that makes Daybreak feel like yours.</CardDescription>
+        <CardTitle className="text-base">Theme</CardTitle>
+        <CardDescription>Reskins the whole app — background, surfaces, and accents.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-3">

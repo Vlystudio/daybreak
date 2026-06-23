@@ -66,7 +66,11 @@ export default async function DashboardPage() {
 
       <DailyCheckinModal checkin={data.todayCheckin} />
 
-      <Greeting name={firstName} timezone={data.profile?.timezone ?? "UTC"} />
+      <Greeting
+        name={firstName}
+        timezone={data.profile?.timezone ?? "UTC"}
+        avatarUrl={data.profile?.avatar_url ?? null}
+      />
 
       <SetupChecklist
         onboardingCompleted={data.onboardingCompleted}

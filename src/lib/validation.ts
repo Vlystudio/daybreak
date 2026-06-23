@@ -40,6 +40,7 @@ export type ScheduleEventInput = z.input<typeof scheduleEventSchema>;
 export const profileSchema = z.object({
   displayName: z.string().trim().min(1, "Tell us what to call you").max(80),
   city: z.string().trim().max(120).optional().or(z.literal("")),
+  bio: z.string().trim().max(160).optional().or(z.literal("")),
 });
 
 export type ProfileInput = z.input<typeof profileSchema>;

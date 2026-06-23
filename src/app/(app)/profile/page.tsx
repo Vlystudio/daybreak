@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/settings/profile-form";
 import { AccountCard } from "@/components/settings/account-card";
 import { AccentPicker } from "@/components/settings/accent-picker";
+import { AvatarUploader } from "@/components/settings/avatar-uploader";
 import { BirdSprite } from "@/components/game/bird-sprite";
 import { resolveSpecies, type OwnedBirdBase } from "@/lib/game/birds";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,7 +19,7 @@ export default async function ProfilePage() {
   const [{ data: profile }, { data: gameRow }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, timezone, city, latitude, longitude, avatar_url, accent")
+      .select("id, display_name, timezone, city, latitude, longitude, avatar_url, bio, accent")
       .eq("id", user.id)
       .maybeSingle<Profile & { accent: string | null }>(),
     supabase
@@ -42,17 +43,26 @@ export default async function ProfilePage() {
       </div>
 
       <Card className="bg-sunrise border-none text-[#5a3d1a]">
-        <CardContent className="flex items-center gap-4 py-5">
-          <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/50">
-            {species ? <BirdSprite species={species} size={72} /> : <span className="text-3xl">🥚</span>}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-xl font-semibold">{name}</p>
-            <p className="text-sm opacity-80">
-              {bird ? `with ${bird.nickname || species?.name}` : "Hatch a companion in your Nest"}
-              {profile?.city ? ` · ${profile.city}` : ""}
-            </p>
+        <CardContent className="space-y-3 py-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-xl font-semibold">{name}</p>
+              <p className="text-sm opacity-80">
+                {bird ? `with ${bird.nickname || species?.name}` : "Hatch a companion in your Nest"}
+                {profile?.city ? ` · ${profile.city}` : ""}
+              </p>
+            </div>
+            {species && (
+              <span className="hidden h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/40 sm:flex">
+                <BirdSprite species={species} size={52} />
+              </span>
+            )}
           </div>
+          <AvatarUploader
+            avatarUrl={profile?.avatar_url ?? null}
+            fallback={species ? <BirdSprite species={species} size={72} /> : <span className="text-3xl">🥚</span>}
+          />
+          {profile?.bio && <p className="text-sm leading-relaxed opacity-90">“{profile.bio}”</p>}
         </CardContent>
       </Card>
 

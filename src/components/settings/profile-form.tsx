@@ -10,6 +10,7 @@ import { updateProfile } from "@/actions/settings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import type { Profile } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
     defaultValues: {
       displayName: profile?.display_name ?? "",
       city: profile?.city ?? "",
+      bio: profile?.bio ?? "",
     },
   });
 
@@ -54,6 +56,17 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
                 {errors.displayName.message}
               </p>
             )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="bio">About you</Label>
+            <Textarea
+              id="bio"
+              rows={2}
+              maxLength={160}
+              placeholder="A short line about you — your vibe, your goals, anything."
+              {...form.register("bio")}
+            />
+            <p className="text-xs text-muted-foreground">Shown on your profile. Up to 160 characters.</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="city">City</Label>

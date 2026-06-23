@@ -8,6 +8,7 @@ export interface Profile {
   latitude: number | null;
   longitude: number | null;
   avatar_url: string | null;
+  bio: string | null;
 }
 
 export interface HealthMetric {

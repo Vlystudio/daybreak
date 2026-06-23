@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { profileSchema, calendarSyncSchema, type ProfileInput } from "@/lib/validation";
@@ -43,6 +44,7 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
       city: location.city,
       latitude: location.latitude,
       longitude: location.longitude,
+      bio: parsed.data.bio?.length ? parsed.data.bio : null,
       ...(location.timezone ? { timezone: location.timezone } : {}),
     })
     .eq("id", user.id);
@@ -71,6 +73,56 @@ export async function setCalendarSyncEnabled(input: { syncEnabled: boolean }): P
 
   revalidatePath("/dashboard");
   revalidatePath("/settings");
+  return { ok: true };
+}
+
+const MAX_AVATAR_CHARS = 3_000_000; // ~2MB image as base64
+
+/** Upload a profile picture to the public avatars bucket and save its URL. */
+export async function uploadAvatar(input: { imageDataUrl: string }): Promise<ActionResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many updates — try again shortly." };
+
+  const dataUrl = input.imageDataUrl;
+  const m = typeof dataUrl === "string" ? dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/) : null;
+  if (!m) return { ok: false, error: "That doesn't look like an image." };
+  if (dataUrl.length > MAX_AVATAR_CHARS) return { ok: false, error: "That image is a bit large — try a smaller one." };
+
+  const bytes = Buffer.from(m[2], "base64");
+  const admin = createAdminClient();
+  const path = `${user.id}.jpg`;
+  const { error: upErr } = await admin.storage
+    .from("avatars")
+    .upload(path, bytes, { contentType: "image/jpeg", upsert: true });
+  if (upErr) return { ok: false, error: "Couldn't upload that picture." };
+
+  const publicUrl = admin.storage.from("avatars").getPublicUrl(path).data.publicUrl;
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: `${publicUrl}?v=${Date.now()}` }) // cache-bust the stable path
+    .eq("id", user.id);
+  if (error) return { ok: false, error: "Couldn't save your picture." };
+
+  await audit(user.id, "profile.updated");
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function removeAvatar(): Promise<ActionResult> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
+  if (error) return { ok: false, error: "Couldn't remove your picture." };
+  try {
+    await createAdminClient().storage.from("avatars").remove([`${user.id}.jpg`]);
+  } catch {
+    // best-effort cleanup
+  }
+  revalidatePath("/profile");
+  revalidatePath("/dashboard");
   return { ok: true };
 }
 
