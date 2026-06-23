@@ -13,6 +13,8 @@ import {
   type GrocerySettingsInput,
   type PantryItemInput,
 } from "@/lib/grocery";
+import { importGroceryDeals } from "@/lib/grocery/import-deals";
+import { integrationsAvailable } from "@/env";
 import type { ActionResult } from "@/actions/schedule";
 
 async function householdId(supabase: SupabaseClient, userId: string): Promise<string | null> {
@@ -90,6 +92,32 @@ export async function removePantryItem(id: string): Promise<ActionResult> {
   await audit(user.id, "pantry.updated", { metadata: { action: "remove" } });
   revalidatePath("/grocery/pantry");
   return { ok: true };
+}
+
+/**
+ * Pull the latest discounts from the external grocery-deals feed into the
+ * shared price catalog. Global (affects everyone's optimizer); rate-limited.
+ */
+export async function refreshGroceryDeals(): Promise<{ ok: true; prices: number } | { ok: false; error: string }> {
+  const user = await requireUser();
+  if (!integrationsAvailable.groceryDeals()) {
+    return { ok: false, error: "The deals feed isn't connected on this deployment." };
+  }
+
+  const limited = await rateLimit(`sync:${user.id}`, RATE_LIMITS.sync);
+  if (!limited.ok) return { ok: false, error: "Deals were refreshed recently — they update automatically too." };
+
+  try {
+    const result = await importGroceryDeals();
+    if (!result) return { ok: false, error: "Couldn't reach the deals feed — try again shortly." };
+    await audit(user.id, "deals.imported", { metadata: { prices: result.prices, stores: result.stores } });
+    revalidatePath("/grocery/prices");
+    revalidatePath("/grocery");
+    return { ok: true, prices: result.prices };
+  } catch (err) {
+    console.error("[grocery] deal import failed:", err);
+    return { ok: false, error: "The deal import hit a snag — please try again." };
+  }
 }
 
 /** Toggle a store on/off in the user's preferred-store list. */

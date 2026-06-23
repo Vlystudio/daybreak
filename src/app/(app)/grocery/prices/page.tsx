@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { integrationsAvailable } from "@/env";
 import { PriceEntry } from "@/components/grocery/price-entry";
+import { DealsCard } from "@/components/grocery/deals-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { effectivePrice, type Store } from "@/lib/grocery";
 
@@ -23,7 +25,7 @@ export default async function PricesPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const [{ data: stores }, { data: recent }] = await Promise.all([
+  const [{ data: stores }, { data: recent }, { count: dealCount }, { data: latestDeal }] = await Promise.all([
     supabase
       .from("stores")
       .select("id, slug, name, default_pricing_source, website")
@@ -36,6 +38,14 @@ export default async function PricesPage() {
       .order("recorded_at", { ascending: false })
       .limit(20)
       .returns<RecentPriceRow[]>(),
+    supabase.from("product_prices").select("id", { count: "exact", head: true }).eq("source_key", "web"),
+    supabase
+      .from("product_prices")
+      .select("recorded_at")
+      .eq("source_key", "web")
+      .order("recorded_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ recorded_at: string }>(),
   ]);
 
   const recentPrices = recent ?? [];
@@ -54,6 +64,12 @@ export default async function PricesPage() {
           The more prices you log, the smarter your shopping trips get.
         </p>
       </div>
+
+      <DealsCard
+        available={integrationsAvailable.groceryDeals()}
+        count={dealCount ?? 0}
+        lastUpdated={latestDeal?.recorded_at ?? null}
+      />
 
       <PriceEntry stores={stores ?? []} />
 

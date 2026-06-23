@@ -42,6 +42,10 @@ const serverSchema = z.object({
   // Dedicated food-image recognition (https://logmeal.com). Falls back to
   // OpenAI vision when unset.
   LOGMEAL_API_KEY: z.string().min(1).optional(),
+  // External grocery-deals feed (the "grocerytracker" Supabase project). Read
+  // via its anon key + PostgREST; powers store discount prices in the optimizer.
+  GROCERYTRACKER_URL: z.string().url().optional(),
+  GROCERYTRACKER_ANON_KEY: z.string().min(1).optional(),
 });
 
 function formatIssues(error: z.ZodError): string {
@@ -86,4 +90,5 @@ export const integrationsAvailable = {
   openai: () => Boolean(serverEnv().OPENAI_API_KEY),
   resend: () => Boolean(serverEnv().RESEND_API_KEY),
   push: () => Boolean(serverEnv().VAPID_PRIVATE_KEY && publicEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+  groceryDeals: () => Boolean(serverEnv().GROCERYTRACKER_URL && serverEnv().GROCERYTRACKER_ANON_KEY),
 };

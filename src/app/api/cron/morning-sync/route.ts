@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import { sendMorningEmailForUser, sendMorningPushForUser } from "@/lib/notifications";
+import { importGroceryDeals } from "@/lib/grocery/import-deals";
 import { audit } from "@/lib/audit";
-import { serverEnv } from "@/env";
+import { integrationsAvailable, serverEnv } from "@/env";
 
 export const maxDuration = 300;
 
@@ -25,6 +26,15 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: "Failed to list connections" }, { status: 500 });
+  }
+
+  // Refresh the shared grocery-deal catalog once for everyone (global, not per-user).
+  if (integrationsAvailable.groceryDeals()) {
+    try {
+      await importGroceryDeals();
+    } catch (err) {
+      console.error("[cron] grocery deal import failed:", err);
+    }
   }
 
   const byUser = new Map<string, Set<string>>();
