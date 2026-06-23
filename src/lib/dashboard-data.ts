@@ -11,6 +11,7 @@ import type {
   HouseholdInfo,
   CalendarSyncSettings,
   SubjectiveCheckin,
+  EveningReview,
 } from "@/lib/types";
 
 export interface DashboardData {
@@ -28,6 +29,7 @@ export interface DashboardData {
   adherence: { total: number; done: number; streak: number };
   todayCheckin: SubjectiveCheckin | null;
   todayNutrition: { calories: number; protein: number; count: number } | null;
+  todayReview: EveningReview | null;
 }
 
 function isoDate(d: Date): string {
@@ -60,6 +62,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: weekEvents },
     { data: latestCheckin },
     { data: foodRows },
+    { data: latestReview },
   ] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
@@ -123,6 +126,13 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .eq("user_id", userId)
       .gte("date", isoDate(new Date(Date.now() - 86_400_000)))
       .returns<{ date: string; calories: number | null; protein_g: number | null }[]>(),
+    supabase
+      .from("evening_reviews")
+      .select("date, day_rating, went_well, to_improve, tomorrow_intention")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle<EveningReview>(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
@@ -213,5 +223,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     adherence,
     todayCheckin: todayCheckin ?? null,
     todayNutrition,
+    todayReview: latestReview && latestReview.date === localToday ? latestReview : null,
   };
 }

@@ -72,6 +72,14 @@ export interface BodyMeasurement {
   note: string | null;
 }
 
+export interface EveningReview {
+  date: string;
+  day_rating: number | null;
+  went_well: string | null;
+  to_improve: string | null;
+  tomorrow_intention: string | null;
+}
+
 export type EventColor = "honey" | "sage" | "sky" | "peach";
 
 /** A recipe attached to a planned-meal schedule event, shown when it's opened. */

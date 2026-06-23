@@ -13,6 +13,7 @@ import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { AdherenceCard } from "@/components/dashboard/adherence-card";
 import { CheckinCard } from "@/components/dashboard/checkin-card";
 import { NutritionCard } from "@/components/dashboard/nutrition-card";
+import { EveningReviewCard } from "@/components/dashboard/evening-review-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
@@ -90,6 +91,10 @@ export default async function DashboardPage() {
 
       <FadeIn delay={0.45}>
         <Recommendations summary={data.summary} />
+      </FadeIn>
+
+      <FadeIn delay={0.5}>
+        <EveningReviewCard review={data.todayReview} />
       </FadeIn>
     </div>
   );

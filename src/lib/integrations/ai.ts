@@ -338,6 +338,7 @@ Rules:
 - Chores: schedule each listed chore consistent with its frequency over the window ("daily" most days, "weekly" once, etc.).
 - Hobbies & downtime: include their hobbies and genuine rest. Homebody -> favor at-home activities; social -> include getting-out/social time.
 - Day window: when dayWindow is provided, ONLY schedule between its wake and sleep times (24h HH:MM). Never place a block before wake or after sleep, and end the day with a short "wind_down" block roughly 30-60 minutes before sleep. This window reflects the person's wearable sleep/wake or their stated goal — honor it as the bounds of their day.
+- Reflection (when provided, from their last evening review): treat their stated intention for tomorrow as a priority for the earliest planned day, lean into what they said went well, and adjust away from what they wanted to improve. Their own words outrank generic defaults.
 - Be humane: do not overload a day. Aim for 3-6 blocks per day at sensible local times.
 
 Respond with JSON exactly:
@@ -356,6 +357,11 @@ export async function generateWeeklyPlan(input: {
     high: number;
     low: number;
     precipitationChance: number | null;
+  } | null;
+  reflection?: {
+    wentWell: string | null;
+    toImprove: string | null;
+    tomorrowIntention: string | null;
   } | null;
 }): Promise<PlanBlock[] | null> {
   const apiKey = serverEnv().OPENAI_API_KEY;

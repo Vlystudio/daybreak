@@ -20,6 +20,7 @@ export type AuditAction =
   | "food.analyzed"
   | "food.logged"
   | "body.logged"
+  | "review.logged"
   | "health.analyzed"
   | "household.created"
   | "household.joined"

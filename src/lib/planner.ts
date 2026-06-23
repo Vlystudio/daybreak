@@ -155,6 +155,26 @@ async function planDays(
   const metricsByDate = new Map((metrics ?? []).map((m) => [m.date, m]));
   const latestMetric = (metrics ?? [])[0] ?? null;
 
+  // Latest evening reflection — folded into the earliest planned day so tomorrow
+  // adapts to how today actually went.
+  const { data: review } = await admin
+    .from("evening_reviews")
+    .select("date, went_well, to_improve, tomorrow_intention")
+    .eq("user_id", userId)
+    .order("date", { ascending: false })
+    .limit(1)
+    .maybeSingle<{
+      date: string;
+      went_well: string | null;
+      to_improve: string | null;
+      tomorrow_intention: string | null;
+    }>();
+  const earliestDate = sorted[0].date;
+  const reflection =
+    review && (review.went_well || review.to_improve || review.tomorrow_intention)
+      ? { wentWell: review.went_well, toImprove: review.to_improve, tomorrowIntention: review.tomorrow_intention }
+      : null;
+
   // Day window the planner schedules within. Prefer the wearable's most recent
   // actual sleep/wake; fall back to the user's goal times; then sane defaults.
   const latestSleep = (metrics ?? []).find((m) => m.bedtime_end || m.bedtime_start) ?? null;
@@ -232,6 +252,7 @@ async function planDays(
             precipitationChance: weather.precipitationChance,
           }
         : null,
+      reflection: d.date === earliestDate ? reflection : null,
     });
     if (!blocks) continue;
 
