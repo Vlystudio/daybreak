@@ -6,6 +6,7 @@
 $ErrorActionPreference = "Stop"
 
 $wanted = @(
+  # Core — the app fails fast without these.
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
   "NEXT_PUBLIC_APP_URL",
@@ -13,11 +14,26 @@ $wanted = @(
   "TOKEN_ENCRYPTION_KEY",
   "CRON_SECRET",
   # Optional integrations — pushed only if present and non-empty in .env.local.
+  # Wearables + calendar (OAuth)
   "OURA_CLIENT_ID",
   "OURA_CLIENT_SECRET",
+  "FITBIT_CLIENT_ID",
+  "FITBIT_CLIENT_SECRET",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
-  "OPENAI_API_KEY"
+  # AI
+  "OPENAI_API_KEY",
+  # Weather, recipes, food-photo nutrition
+  "WEATHER_API_KEY",
+  "SPOONACULAR_API_KEY",
+  "LOGMEAL_API_KEY",
+  # Email (Resend)
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
+  # Web Push (VAPID)
+  "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+  "VAPID_PRIVATE_KEY",
+  "VAPID_SUBJECT"
 )
 
 $map = @{}
