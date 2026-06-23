@@ -39,6 +39,8 @@ export type AuditAction =
   | "pantry.updated"
   | "price.added"
   | "deals.imported"
+  | "receipt.scanned"
+  | "purchase.logged"
   | "shopping_list.created"
   | "shopping_list.updated"
   | "meal_plan.generated"

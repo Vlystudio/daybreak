@@ -5,8 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { integrationsAvailable } from "@/env";
 import { PriceEntry } from "@/components/grocery/price-entry";
 import { DealsCard } from "@/components/grocery/deals-card";
+import { ReceiptCard, type PurchaseRow } from "@/components/grocery/receipt-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { effectivePrice, type Store } from "@/lib/grocery";
+
+/** Monday-start ISO date for the current week. */
+function weekStart(): string {
+  const d = new Date();
+  const day = (d.getDay() + 6) % 7; // 0 = Monday
+  d.setDate(d.getDate() - day);
+  return d.toISOString().slice(0, 10);
+}
 
 export const metadata = { title: "Prices · Daybreak" };
 
@@ -25,7 +34,14 @@ export default async function PricesPage() {
   const user = await requireUser();
   const supabase = await createClient();
 
-  const [{ data: stores }, { data: recent }, { count: dealCount }, { data: latestDeal }] = await Promise.all([
+  const [
+    { data: stores },
+    { data: recent },
+    { count: dealCount },
+    { data: latestDeal },
+    { data: recentRaw },
+    { data: budgetRow },
+  ] = await Promise.all([
     supabase
       .from("stores")
       .select("id, slug, name, default_pricing_source, website")
@@ -46,9 +62,24 @@ export default async function PricesPage() {
       .order("recorded_at", { ascending: false })
       .limit(1)
       .maybeSingle<{ recorded_at: string }>(),
+    supabase
+      .from("grocery_purchases")
+      .select("id, store, purchased_on, total")
+      .eq("user_id", user.id)
+      .order("purchased_on", { ascending: false })
+      .limit(8)
+      .returns<PurchaseRow[]>(),
+    supabase
+      .from("grocery_settings")
+      .select("weekly_budget")
+      .eq("user_id", user.id)
+      .maybeSingle<{ weekly_budget: number | null }>(),
   ]);
 
   const recentPrices = recent ?? [];
+  const purchases = (recentRaw ?? []) as PurchaseRow[];
+  const ws = weekStart();
+  const weeklySpend = purchases.filter((p) => p.purchased_on >= ws).reduce((sum, p) => sum + Number(p.total), 0);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5">
@@ -70,6 +101,8 @@ export default async function PricesPage() {
         count={dealCount ?? 0}
         lastUpdated={latestDeal?.recorded_at ?? null}
       />
+
+      <ReceiptCard weeklySpend={weeklySpend} weeklyBudget={budgetRow?.weekly_budget ?? null} recent={purchases} />
 
       <PriceEntry stores={stores ?? []} />
 

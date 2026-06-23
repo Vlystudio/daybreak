@@ -14,7 +14,9 @@ import {
   type PantryItemInput,
 } from "@/lib/grocery";
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
+import { analyzeReceipt, type ReceiptAnalysis } from "@/lib/integrations/receipt-vision";
 import { integrationsAvailable } from "@/env";
+import { z } from "zod";
 import type { ActionResult } from "@/actions/schedule";
 
 async function householdId(supabase: SupabaseClient, userId: string): Promise<string | null> {
@@ -118,6 +120,77 @@ export async function refreshGroceryDeals(): Promise<{ ok: true; prices: number 
     console.error("[grocery] deal import failed:", err);
     return { ok: false, error: "The deal import hit a snag — please try again." };
   }
+}
+
+// ── receipts + spend ─────────────────────────────────────────────────────────
+
+const MAX_IMAGE_CHARS = 9_000_000;
+
+export type ReceiptResult = { ok: true; receipt: ReceiptAnalysis } | { ok: false; error: string };
+
+/** Read a grocery receipt photo into a structured purchase (no save yet). */
+export async function analyzeReceiptPhoto(input: { imageDataUrl: string }): Promise<ReceiptResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
+  if (!limited.ok) return { ok: false, error: "You've scanned a lot recently — try again in a bit." };
+
+  if (typeof input.imageDataUrl !== "string" || !input.imageDataUrl.startsWith("data:image/")) {
+    return { ok: false, error: "That doesn't look like an image." };
+  }
+  if (input.imageDataUrl.length > MAX_IMAGE_CHARS) return { ok: false, error: "That image is a bit large." };
+
+  const receipt = await analyzeReceipt(input.imageDataUrl);
+  if (!receipt) return { ok: false, error: "Couldn't read that receipt — enter the total manually." };
+  await audit(user.id, "receipt.scanned");
+  return { ok: true, receipt };
+}
+
+const purchaseSchema = z.object({
+  store: z.string().trim().max(120).optional(),
+  purchasedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  total: z.number().min(0).max(100000),
+  items: z.array(z.object({ name: z.string().max(120), price: z.number().nullable() })).max(200).default([]),
+  source: z.enum(["receipt", "manual"]).default("manual"),
+});
+
+export async function logPurchase(input: z.input<typeof purchaseSchema>): Promise<ActionResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many updates — try again shortly." };
+
+  const parsed = purchaseSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "That purchase looks off." };
+  const d = parsed.data;
+
+  const supabase = await createClient();
+  const hh = await householdId(supabase, user.id);
+  const { error } = await supabase.from("grocery_purchases").insert({
+    user_id: user.id,
+    household_id: hh,
+    store: d.store?.length ? d.store : null,
+    purchased_on: d.purchasedOn,
+    total: d.total,
+    item_count: d.items.length || null,
+    items: d.items,
+    source: d.source,
+  });
+  if (error) return { ok: false, error: "Couldn't save that purchase." };
+
+  await audit(user.id, "purchase.logged");
+  revalidatePath("/grocery/prices");
+  revalidatePath("/grocery");
+  return { ok: true };
+}
+
+export async function deletePurchase(id: string): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Unknown purchase" };
+  const supabase = await createClient();
+  const { error } = await supabase.from("grocery_purchases").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return { ok: false, error: "Couldn't remove that purchase." };
+  revalidatePath("/grocery/prices");
+  revalidatePath("/grocery");
+  return { ok: true };
 }
 
 /** Toggle a store on/off in the user's preferred-store list. */
