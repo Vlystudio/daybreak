@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
-import { rollSpecies, SPECIES_BY_KEY } from "@/lib/game/birds";
+import { rollSpecies } from "@/lib/game/birds";
 import { identifyBird, type BirdIdentification } from "@/lib/integrations/bird-identify";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
 
@@ -202,5 +202,3 @@ export async function petBird(): Promise<{ ok: boolean; seeds?: number }> {
   }
   return { ok: true, seeds: bonus };
 }
-
-export { SPECIES_BY_KEY };
