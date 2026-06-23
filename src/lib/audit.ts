@@ -18,6 +18,7 @@ export type AuditAction =
   | "notification.unsubscribed"
   | "digest.sent"
   | "checkin.logged"
+  | "health.imported"
   | "food.analyzed"
   | "food.logged"
   | "body.logged"

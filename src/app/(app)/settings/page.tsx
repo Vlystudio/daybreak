@@ -6,6 +6,7 @@ import { ProfileForm } from "@/components/settings/profile-form";
 import { AccountCard } from "@/components/settings/account-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { RemindersCard } from "@/components/settings/reminders-card";
+import { HealthImportCard } from "@/components/settings/health-import-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
@@ -52,6 +53,7 @@ export default async function SettingsPage() {
         calendarSync={data.calendarSync}
         fitbitAvailable={integrationsAvailable.fitbit()}
       />
+      <HealthImportCard />
       <HouseholdCard household={data.household} householdEvents={[]} />
 
       <Card>
