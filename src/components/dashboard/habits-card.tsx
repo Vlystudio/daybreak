@@ -62,6 +62,11 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
         <CardTitle className="flex items-center gap-2 text-base">
           <Repeat className="h-4 w-4 text-sage" aria-hidden />
           Habits
+          {habits.length > 0 && (
+            <span className="rounded-full bg-sage-soft px-2 py-0.5 text-xs font-medium text-sage">
+              {habits.filter((h) => h.doneToday).length}/{habits.length} today
+            </span>
+          )}
         </CardTitle>
         <Button variant="ghost" size="sm" onClick={() => setAdding((a) => !a)} aria-label="Add habit">
           <Plus aria-hidden />
@@ -156,18 +161,24 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
                   {h.emoji ? `${h.emoji} ` : ""}
                   {h.name}
                 </p>
-                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                   {h.streak > 0 && (
-                    <span className="inline-flex items-center gap-0.5">
-                      <Flame className="h-3 w-3 text-honey" aria-hidden /> {h.streak}d
+                    <span className="inline-flex items-center gap-0.5 font-medium text-honey">
+                      <Flame className="h-3.5 w-3.5" aria-hidden /> {h.streak}
                     </span>
                   )}
-                  <span className={cn(met && c.text, "font-medium")}>
-                    {h.weekCount}/{h.target_per_week} this week
+                  {/* Weekly target as pips — filled = completions this week. */}
+                  <span className="flex items-center gap-1" aria-label={`${h.weekCount} of ${h.target_per_week} this week`}>
+                    {Array.from({ length: h.target_per_week }).map((_, i) => (
+                      <span
+                        key={i}
+                        className={cn("h-2 w-2 rounded-full", i < h.weekCount ? c.fill : "bg-muted-foreground/20")}
+                      />
+                    ))}
                   </span>
-                </p>
-                <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
-                  <div className={cn("h-full rounded-full", c.fill)} style={{ width: `${Math.min(100, (h.weekCount / h.target_per_week) * 100)}%` }} />
+                  <span className={cn(met && c.text, "font-medium")}>
+                    {met ? "goal met 🎉" : `${h.weekCount}/${h.target_per_week}`}
+                  </span>
                 </div>
               </div>
               <button

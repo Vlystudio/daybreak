@@ -96,45 +96,40 @@ export default async function DashboardPage() {
         </FadeIn>
       </div>
 
+      {/* Today focus: schedule beside the two most time-sensitive cards */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.3} className="h-full lg:col-span-2">
           <ScheduleTimeline events={data.todayEvents} hasHousehold={data.household !== null} />
         </FadeIn>
         <div className="space-y-4">
           <FadeIn delay={0.33}>
+            <CheckinCard checkin={data.todayCheckin} />
+          </FadeIn>
+          <FadeIn delay={0.34}>
             <AdherenceCard
               total={data.adherence.total}
               done={data.adherence.done}
               streak={data.adherence.streak}
             />
           </FadeIn>
-          <FadeIn delay={0.34}>
-            <CheckinCard checkin={data.todayCheckin} />
-          </FadeIn>
-          <FadeIn delay={0.36}>
-            <NutritionCard nutrition={data.todayNutrition} />
-          </FadeIn>
-          <FadeIn delay={0.37}>
-            <NestCard
-              seeds={gameRow?.seeds ?? 0}
-              activeBird={gameRow?.active_bird ?? null}
-              nickname={gameRow?.active_bird?.nickname ?? null}
-            />
-          </FadeIn>
-          <FadeIn delay={0.38}>
-            <HabitsCard habits={data.habits} />
-          </FadeIn>
-          <FadeIn delay={0.35}>
-            <CalendarSyncCard
-              connections={data.connections}
-              calendarSync={data.calendarSync}
-              fitbitAvailable={integrationsAvailable.fitbit()}
-            />
-          </FadeIn>
-          <FadeIn delay={0.4}>
-            <HouseholdCard household={data.household} householdEvents={data.householdEvents} />
-          </FadeIn>
         </div>
+      </div>
+
+      {/* Everything else tiles in a masonry grid so heights pack tightly */}
+      <div className="gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
+        <HabitsCard habits={data.habits} />
+        <NestCard
+          seeds={gameRow?.seeds ?? 0}
+          activeBird={gameRow?.active_bird ?? null}
+          nickname={gameRow?.active_bird?.nickname ?? null}
+        />
+        <NutritionCard nutrition={data.todayNutrition} />
+        <CalendarSyncCard
+          connections={data.connections}
+          calendarSync={data.calendarSync}
+          fitbitAvailable={integrationsAvailable.fitbit()}
+        />
+        <HouseholdCard household={data.household} householdEvents={data.householdEvents} />
       </div>
 
       <FadeIn delay={0.45}>
