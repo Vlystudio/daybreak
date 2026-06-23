@@ -50,6 +50,40 @@ export async function createHabit(input: z.input<typeof createSchema>): Promise<
   return { ok: true };
 }
 
+const updateSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1).max(80),
+  emoji: z.string().trim().max(8).optional(),
+  color: z.enum(COLORS),
+  targetPerWeek: z.number().int().min(1).max(7),
+});
+
+/** Edit an existing habit's name, emoji, color, and weekly target. */
+export async function updateHabit(input: z.input<typeof updateSchema>): Promise<ActionResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many updates — try again shortly." };
+
+  const parsed = updateSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Those habit details look off." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("habits")
+    .update({
+      name: parsed.data.name,
+      emoji: parsed.data.emoji?.length ? parsed.data.emoji : null,
+      color: parsed.data.color,
+      target_per_week: parsed.data.targetPerWeek,
+    })
+    .eq("id", parsed.data.id)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: "Couldn't update that habit." };
+
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 /** Mark a habit done/undone for today (toggles the row). */
 export async function toggleHabitToday(habitId: string): Promise<ActionResult> {
   const user = await requireUser();

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventEditor } from "@/components/schedule/event-editor";
 import { toggleEventCompleted } from "@/actions/schedule";
+import { ConfettiBurst } from "@/components/confetti-burst";
 import type { ScheduleEvent } from "@/lib/types";
 
 const colorDot: Record<string, string> = {
@@ -30,6 +31,7 @@ export function ScheduleTimeline({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<ScheduleEvent | null>(null);
   const [, startTransition] = useTransition();
+  const [burst, setBurst] = useState(0);
   const [done, setDone] = useState<Record<string, boolean>>(
     () => Object.fromEntries(events.map((e) => [e.id, e.completed_at != null]))
   );
@@ -52,6 +54,7 @@ export function ScheduleTimeline({
   function toggle(event: ScheduleEvent) {
     const next = !done[event.id];
     setDone((d) => ({ ...d, [event.id]: next }));
+    if (next) setBurst((b) => b + 1); // celebrate finishing a task
     startTransition(async () => {
       const res = await toggleEventCompleted(event.id, next);
       if (!res.ok) {
@@ -70,7 +73,8 @@ export function ScheduleTimeline({
     : events.find((e) => !e.all_day && new Date(e.starts_at).getTime() > now)?.id;
 
   return (
-    <Card className="h-full">
+    <Card className="relative h-full">
+      {burst > 0 && <ConfettiBurst key={burst} />}
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarDays className="h-4 w-4 text-primary" aria-hidden />
