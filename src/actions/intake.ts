@@ -119,6 +119,35 @@ export async function logWater(input: { amountMl: number }): Promise<ActionResul
   return { ok: true };
 }
 
+// ── nutrition targets ────────────────────────────────────────────────────────
+
+const goalsSchema = z.object({
+  calories: z.number().int().min(0).max(20000).nullable(),
+  protein_g: z.number().int().min(0).max(2000).nullable(),
+  carbs_g: z.number().int().min(0).max(2000).nullable(),
+  fat_g: z.number().int().min(0).max(2000).nullable(),
+});
+
+export async function setNutritionGoals(input: z.input<typeof goalsSchema>): Promise<ActionResult> {
+  const user = await requireUser();
+
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many updates — try again shortly." };
+
+  const parsed = goalsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Those targets look off." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("nutrition_goals")
+    .upsert({ user_id: user.id, ...parsed.data }, { onConflict: "user_id" });
+  if (error) return { ok: false, error: "Couldn't save your targets." };
+
+  revalidatePath("/nutrition");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 // ── body measurement ─────────────────────────────────────────────────────────
 
 const bodySchema = z.object({
