@@ -84,13 +84,21 @@ export interface WorkoutContext {
   } | null;
   recentWorkouts: { date: string; title: string; intensity: string | null }[];
   soreness: string | null;
+  /** Deterministic recovery-trend directive the model must honor. */
+  autoregulation: {
+    directive: "deload" | "maintain" | "progress";
+    reason: string;
+    readinessAvg: number | null;
+    sorenessAvg: number | null;
+  } | null;
 }
 
 export async function generateWorkoutPlan(ctx: WorkoutContext): Promise<WorkoutPlan | null> {
   const ai = client();
   if (!ai) return null;
 
-  const system = `You are an intelligent strength & conditioning coach generating a single session for a personal fitness app. Use the person's recovery data to set intensity: low sleep / low HRV / low readiness means a lighter, recovery-oriented session (mobility, light cardio) rather than heavy lifting; good recovery means you can push appropriately. Apply progressive overload using recent workouts: increase reps before load, avoid spiking volume, alternate emphasis, and deload when recovery is poor. Only use the available equipment. ${SAFETY_SYSTEM_RULES}`;
+  const system = `You are an intelligent strength & conditioning coach generating a single session for a personal fitness app. Use the person's recovery data to set intensity: low sleep / low HRV / low readiness means a lighter, recovery-oriented session (mobility, light cardio) rather than heavy lifting; good recovery means you can push appropriately. Apply progressive overload using recent workouts: increase reps before load, avoid spiking volume, alternate emphasis, and deload when recovery is poor. Only use the available equipment.
+When an "autoregulation" directive is provided, it is derived from multi-day recovery and soreness trends and OUTRANKS a single day's numbers: "deload" = noticeably reduce volume and intensity, favor mobility/technique/light cardio and extra rest; "progress" = it's a good window to push — add a little volume or load with good form; "maintain" = keep steady. Reflect the directive and its reason in reasoning_summary. ${SAFETY_SYSTEM_RULES}`;
   const user = `Build one workout for this person as strict JSON. Context: ${JSON.stringify(ctx)}. The reasoning_summary must briefly explain why this intensity/structure fits their recovery and goal. Keep total time within the available minutes.`;
 
   try {

@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWorkoutPlan, type WorkoutContext } from "@/lib/integrations/fitness-ai";
 import { detectRedFlags, redFlagGuidance } from "@/lib/fitness-safety";
+import { computeAutoregulation } from "@/lib/autoregulation";
 import { audit } from "@/lib/audit";
 import type { UserWorkout } from "@/lib/fitness";
 
@@ -22,7 +23,7 @@ export async function generateWorkoutForUser(
 ): Promise<WorkoutGenResult> {
   const admin = createAdminClient();
 
-  const [{ data: prefs }, { data: equip }, { data: lims }, { data: metric }, { data: recent }] =
+  const [{ data: prefs }, { data: equip }, { data: lims }, { data: metrics }, { data: recent }] =
     await Promise.all([
       admin
         .from("user_preferences")
@@ -37,16 +38,17 @@ export async function generateWorkoutForUser(
         .returns<{ description: string }[]>(),
       admin
         .from("health_metrics")
-        .select("sleep_duration_min, hrv_avg, resting_hr, readiness_score")
+        .select("date, sleep_duration_min, hrv_avg, resting_hr, readiness_score")
         .eq("user_id", userId)
         .order("date", { ascending: false })
-        .limit(1)
-        .maybeSingle<{
+        .limit(7)
+        .returns<{
+          date: string;
           sleep_duration_min: number | null;
           hrv_avg: number | null;
           resting_hr: number | null;
           readiness_score: number | null;
-        }>(),
+        }[]>(),
       admin
         .from("user_workouts")
         .select("date, title, intensity")
@@ -56,8 +58,24 @@ export async function generateWorkoutForUser(
         .returns<{ date: string; title: string; intensity: string | null }[]>(),
     ]);
 
+  const { data: checkins } = await admin
+    .from("subjective_checkins")
+    .select("date, soreness, stress")
+    .eq("user_id", userId)
+    .order("date", { ascending: false })
+    .limit(5)
+    .returns<{ date: string; soreness: number | null; stress: number | null }[]>();
+
+  const metric = (metrics ?? [])[0] ?? null;
   const limitations = (lims ?? []).map((l) => l.description);
   const soreness = opts.soreness?.trim() || null;
+
+  // Multi-day autoregulation from recovery + subjective trends.
+  const autoregulation = computeAutoregulation(
+    (metrics ?? []).map((m) => m.readiness_score),
+    (checkins ?? []).map((c) => c.soreness),
+    (checkins ?? []).map((c) => c.stress)
+  );
 
   const flags = detectRedFlags([soreness, ...limitations].filter(Boolean).join(". "));
   if (flags.length > 0) return { ok: false, blocked: true, message: redFlagGuidance(flags) };
@@ -79,6 +97,7 @@ export async function generateWorkoutForUser(
       : null,
     recentWorkouts: (recent ?? []).map((w) => ({ date: w.date, title: w.title, intensity: w.intensity })),
     soreness,
+    autoregulation,
   };
 
   const plan = await generateWorkoutPlan(ctx);
