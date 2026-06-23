@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
+import { createClient } from "@/lib/supabase/server";
 import { integrationsAvailable } from "@/env";
+import { NestCard } from "@/components/dashboard/nest-card";
 import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
 import { MorningSummary } from "@/components/dashboard/morning-summary";
@@ -28,6 +30,14 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const user = await requireUser();
   const data = await loadDashboardData(user.id);
+
+  // Lightweight game read for the Nest card (seeds + active companion).
+  const supabase = await createClient();
+  const { data: gameRow } = await supabase
+    .from("user_game")
+    .select("seeds, active_bird:user_birds!user_game_active_bird_id_fkey(species_key, nickname)")
+    .eq("user_id", user.id)
+    .maybeSingle<{ seeds: number; active_bird: { species_key: string; nickname: string | null } | null }>();
 
   const firstName = (data.profile?.display_name ?? "").split(" ")[0];
 
@@ -84,6 +94,13 @@ export default async function DashboardPage() {
           </FadeIn>
           <FadeIn delay={0.36}>
             <NutritionCard nutrition={data.todayNutrition} />
+          </FadeIn>
+          <FadeIn delay={0.37}>
+            <NestCard
+              seeds={gameRow?.seeds ?? 0}
+              speciesKey={gameRow?.active_bird?.species_key ?? null}
+              nickname={gameRow?.active_bird?.nickname ?? null}
+            />
           </FadeIn>
           <FadeIn delay={0.38}>
             <HabitsCard habits={data.habits} />
