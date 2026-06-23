@@ -5,7 +5,7 @@
  * client (rendering).
  */
 
-export type Rarity = "common" | "uncommon" | "rare" | "legendary";
+export type Rarity = "common" | "uncommon" | "rare" | "legendary" | "wild";
 
 export interface BirdPalette {
   body: string;
@@ -49,7 +49,36 @@ export const RARITY_META: Record<Rarity, { label: string; color: string; weight:
   uncommon: { label: "Uncommon", color: "#3f9d5a", weight: 38 },
   rare: { label: "Rare", color: "#3b7fd2", weight: 11 },
   legendary: { label: "Legendary", color: "#b5862f", weight: 2 },
+  // Photographed real birds — not part of the hatch pool.
+  wild: { label: "Wild · yours", color: "#2a9d8f", weight: 0 },
 };
+
+/** The custom fields a photo bird carries on its row. */
+export interface OwnedBirdBase {
+  species_key: string | null;
+  source: "hatched" | "photo";
+  custom_name: string | null;
+  custom_blurb: string | null;
+  custom_palette: BirdPalette | null;
+  custom_crest: boolean | null;
+  custom_long_tail: boolean | null;
+}
+
+/** Resolve any owned bird (hatched or photographed) to a renderable species. */
+export function resolveSpecies(b: OwnedBirdBase): BirdSpecies {
+  if (b.source === "photo" && b.custom_palette) {
+    return {
+      key: `wild-${b.species_key ?? "x"}`,
+      name: b.custom_name || "Wild bird",
+      rarity: "wild",
+      palette: b.custom_palette,
+      crest: b.custom_crest ?? false,
+      longTail: b.custom_long_tail ?? false,
+      blurb: b.custom_blurb || "A real bird you spotted.",
+    };
+  }
+  return (b.species_key ? SPECIES_BY_KEY[b.species_key] : undefined) ?? BIRD_SPECIES[0];
+}
 
 /** Weighted random species for a hatched egg. */
 export function rollSpecies(rng: () => number = Math.random): BirdSpecies {

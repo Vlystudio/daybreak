@@ -2,7 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadGame } from "@/lib/game/rewards";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
-import { SPECIES_BY_KEY } from "@/lib/game/birds";
+import { resolveSpecies } from "@/lib/game/birds";
 import { NestStage } from "@/components/game/nest-stage";
 import { AviaryPanel } from "@/components/game/aviary-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ export default async function NestPage() {
 
   const game = await loadGame(user.id, profile?.timezone ?? "UTC");
   const activeBird = game.birds.find((b) => b.id === game.activeBirdId) ?? null;
-  const activeSpecies = activeBird ? SPECIES_BY_KEY[activeBird.species_key] ?? null : null;
+  const activeSpecies = activeBird ? resolveSpecies(activeBird) : null;
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">

@@ -8,6 +8,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
 import { rollSpecies, SPECIES_BY_KEY } from "@/lib/game/birds";
+import { identifyBird, type BirdIdentification } from "@/lib/integrations/bird-identify";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
 
 export type HatchResult =
@@ -51,6 +52,54 @@ export async function hatchEgg(): Promise<HatchResult> {
   revalidatePath("/nest");
   revalidatePath("/dashboard");
   return { ok: true, speciesKey: species.key, speciesName: species.name, rarity: species.rarity, birdId: bird.id };
+}
+
+export type PhotoBirdResult =
+  | { ok: true; id: string; identification: BirdIdentification }
+  | { ok: false; error: string };
+
+const MAX_IMAGE_CHARS = 7_000_000;
+
+/** Identify a real bird from a photo and keep it as a collectible (free). */
+export async function addBirdFromPhoto(input: { imageDataUrl: string }): Promise<PhotoBirdResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
+  if (!limited.ok) return { ok: false, error: "You've added a lot of birds — try again in a bit." };
+
+  if (typeof input.imageDataUrl !== "string" || !input.imageDataUrl.startsWith("data:image/")) {
+    return { ok: false, error: "That doesn't look like a photo." };
+  }
+  if (input.imageDataUrl.length > MAX_IMAGE_CHARS) return { ok: false, error: "That image is a bit large." };
+
+  const id = await identifyBird(input.imageDataUrl);
+  if (!id) return { ok: false, error: "Couldn't read that photo — try another one." };
+  if (!id.isBird) return { ok: false, error: "Hmm, that doesn't look like a bird. Try a clearer photo of one." };
+
+  const admin = createAdminClient();
+  const { data: bird, error } = await admin
+    .from("user_birds")
+    .insert({
+      user_id: user.id,
+      species_key: null,
+      source: "photo",
+      custom_name: id.name,
+      custom_blurb: id.blurb,
+      custom_palette: id.palette,
+      custom_crest: id.crest,
+      custom_long_tail: id.longTail,
+    })
+    .select("id")
+    .single<{ id: string }>();
+  if (error || !bird) return { ok: false, error: "Couldn't add that bird — try again." };
+
+  const { data: game } = await admin.from("user_game").select("active_bird_id").eq("user_id", user.id).maybeSingle<{ active_bird_id: string | null }>();
+  if (!game) await admin.from("user_game").insert({ user_id: user.id, active_bird_id: bird.id });
+  else if (!game.active_bird_id) await admin.from("user_game").update({ active_bird_id: bird.id }).eq("user_id", user.id);
+
+  await audit(user.id, "game.hatched", { metadata: { source: "photo", name: id.name } });
+  revalidatePath("/nest");
+  revalidatePath("/dashboard");
+  return { ok: true, id: bird.id, identification: id };
 }
 
 export async function setActiveBird(birdId: string): Promise<{ ok: boolean; error?: string }> {

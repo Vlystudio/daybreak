@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { birdLevel } from "@/lib/game/birds";
+import { birdLevel, type BirdPalette } from "@/lib/game/birds";
 
 /**
  * The reward economy. `syncDailyRewards` recomputes what the user has earned
@@ -44,11 +44,26 @@ export interface EarnLine {
   done: boolean;
 }
 
+export interface OwnedBird {
+  id: string;
+  species_key: string | null;
+  source: "hatched" | "photo";
+  nickname: string | null;
+  custom_name: string | null;
+  custom_blurb: string | null;
+  custom_palette: BirdPalette | null;
+  custom_crest: boolean | null;
+  custom_long_tail: boolean | null;
+  xp: number;
+  level: number;
+  hatched_at: string;
+}
+
 export interface GameState {
   seeds: number;
   totalEarned: number;
   activeBirdId: string | null;
-  birds: { id: string; species_key: string; nickname: string | null; xp: number; level: number; hatched_at: string }[];
+  birds: OwnedBird[];
   earnedToday: number;
   earnable: EarnLine[];
   justGranted: number;
@@ -157,7 +172,7 @@ export async function loadGame(userId: string, timeZone: string): Promise<GameSt
 
   const [{ data: game }, { data: birds }, { data: todayLedger }, { earnable }] = await Promise.all([
     admin.from("user_game").select("seeds, total_earned, active_bird_id").eq("user_id", userId).maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null }>(),
-    admin.from("user_birds").select("id, species_key, nickname, xp, hatched_at").eq("user_id", userId).order("hatched_at", { ascending: false }).returns<{ id: string; species_key: string; nickname: string | null; xp: number; hatched_at: string }[]>(),
+    admin.from("user_birds").select("id, species_key, source, nickname, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail, xp, hatched_at").eq("user_id", userId).order("hatched_at", { ascending: false }).returns<Omit<OwnedBird, "level">[]>(),
     admin.from("reward_ledger").select("amount").eq("user_id", userId).eq("awarded_on", today).returns<{ amount: number }[]>(),
     candidatesForToday(admin, userId, today),
   ]);

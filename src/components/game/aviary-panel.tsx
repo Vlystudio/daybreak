@@ -1,22 +1,44 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Egg, Check, Pencil, Sparkles, X } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
+import { Egg, Check, Pencil, Sparkles, X, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { BirdSprite } from "@/components/game/bird-sprite";
-import { SPECIES_BY_KEY, RARITY_META, birdLevel, BIRD_SPECIES, type BirdSpecies } from "@/lib/game/birds";
-import { hatchEgg, setActiveBird, renameBird } from "@/actions/game";
+import { SPECIES_BY_KEY, RARITY_META, birdLevel, BIRD_SPECIES, resolveSpecies, type BirdSpecies, type OwnedBirdBase } from "@/lib/game/birds";
+import { hatchEgg, setActiveBird, renameBird, addBirdFromPhoto } from "@/actions/game";
 
-interface OwnedBird {
+interface OwnedBird extends OwnedBirdBase {
   id: string;
-  species_key: string;
   nickname: string | null;
   xp: number;
   level: number;
+}
+
+function imageToDataUrl(file: File, maxDim = 1024): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("no canvas"));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("bad image"));
+    };
+    img.src = url;
+  });
 }
 
 export function AviaryPanel({
@@ -34,6 +56,8 @@ export function AviaryPanel({
   const [reveal, setReveal] = useState<{ species: BirdSpecies } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const canHatch = seeds >= eggCost;
   const speciesCollected = new Set(birds.map((b) => b.species_key)).size;
@@ -48,6 +72,37 @@ export function AviaryPanel({
       const species = SPECIES_BY_KEY[result.speciesKey];
       if (species) setReveal({ species });
     });
+  }
+
+  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setAnalyzing(true);
+    try {
+      const dataUrl = await imageToDataUrl(file);
+      const result = await addBirdFromPhoto({ imageDataUrl: dataUrl });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      const id = result.identification;
+      setReveal({
+        species: {
+          key: `wild-${result.id}`,
+          name: id.name,
+          rarity: "wild",
+          palette: id.palette,
+          crest: id.crest,
+          longTail: id.longTail,
+          blurb: id.blurb,
+        },
+      });
+    } catch {
+      toast.error("Couldn't read that photo.");
+    } finally {
+      setAnalyzing(false);
+    }
   }
 
   function activate(id: string) {
@@ -87,13 +142,24 @@ export function AviaryPanel({
           </Button>
         </div>
 
+        <div className="flex items-center justify-between gap-3 rounded-2xl bg-sage-soft/50 p-3">
+          <div>
+            <p className="text-sm font-medium text-[#3a5a3a]">Photograph a real bird</p>
+            <p className="text-xs text-[#4f7a4f]">Spotted one outside? Add it to your aviary — free.</p>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
+          <Button variant="secondary" disabled={analyzing} onClick={() => fileRef.current?.click()}>
+            {analyzing ? <Loader2 className="animate-spin" aria-hidden /> : <Camera aria-hidden />}
+            {analyzing ? "Identifying…" : "Photo"}
+          </Button>
+        </div>
+
         {birds.length === 0 ? (
           <p className="py-2 text-center text-sm text-muted-foreground">No birds yet — hatch your first one!</p>
         ) : (
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
             {birds.map((b) => {
-              const species = SPECIES_BY_KEY[b.species_key];
-              if (!species) return null;
+              const species = resolveSpecies(b);
               const active = b.id === activeBirdId;
               return (
                 <div

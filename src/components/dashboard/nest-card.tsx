@@ -1,18 +1,18 @@
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { BirdSprite } from "@/components/game/bird-sprite";
-import { SPECIES_BY_KEY } from "@/lib/game/birds";
+import { resolveSpecies, type OwnedBirdBase } from "@/lib/game/birds";
 
 export function NestCard({
   seeds,
-  speciesKey,
+  activeBird,
   nickname,
 }: {
   seeds: number;
-  speciesKey: string | null;
+  activeBird: OwnedBirdBase | null;
   nickname: string | null;
 }) {
-  const species = speciesKey ? SPECIES_BY_KEY[speciesKey] ?? null : null;
+  const species = activeBird ? resolveSpecies(activeBird) : null;
 
   return (
     <Card className="h-full bg-gradient-to-br from-[#dff1e3] to-[#f3e7c9] border-none">
