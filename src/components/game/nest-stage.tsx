@@ -14,10 +14,14 @@ export function NestStage({
   species,
   nickname,
   xp,
+  mood = "content",
+  moodLabel,
 }: {
   species: BirdSpecies | null;
   nickname: string | null;
   xp: number;
+  mood?: import("@/lib/game/mood").Mood;
+  moodLabel?: string;
 }) {
   const [left, setLeft] = useState(46);
   const [hopping, setHopping] = useState(false);
@@ -74,7 +78,7 @@ export function NestStage({
             style={{ left: `${left}%` }}
           >
             <div className={hopping ? "bird-hop" : undefined}>
-              <BirdSprite species={species} size={120} />
+              <BirdSprite species={species} size={120} mood={mood} />
             </div>
             {/* shadow */}
             <div className="mx-auto h-2 w-16 rounded-full bg-black/15 blur-sm" />
@@ -93,6 +97,11 @@ export function NestStage({
           <div className="absolute left-4 top-4 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-[#5a3d1a] backdrop-blur">
             {nickname || species.name} · Lv {birdLevel(xp)}
           </div>
+          {moodLabel && (
+            <div className="absolute right-4 top-4 rounded-full bg-white/70 px-3 py-1 text-xs font-medium text-[#5a3d1a] backdrop-blur">
+              {mood === "happy" ? "😊" : mood === "sleepy" ? "😴" : "🙂"} {moodLabel}
+            </div>
+          )}
         </>
       ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-[#5a3d1a]">

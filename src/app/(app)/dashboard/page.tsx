@@ -3,7 +3,10 @@ import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/server";
 import { integrationsAvailable } from "@/env";
+import { loadUserProgress } from "@/lib/game/progress";
+import { companionMood } from "@/lib/game/mood";
 import { NestCard } from "@/components/dashboard/nest-card";
+import { StatsStrip } from "@/components/game/stats-strip";
 import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
 import { MorningSummary } from "@/components/dashboard/morning-summary";
@@ -56,6 +59,8 @@ export default async function DashboardPage() {
         | null;
     }>();
 
+  const progress = await loadUserProgress(user.id, data.profile?.timezone ?? "UTC");
+  const companion = companionMood(data.today?.readiness_score ?? null, data.todayCheckin?.mood ?? null);
   const firstName = (data.profile?.display_name ?? "").split(" ")[0];
 
   return (
@@ -71,6 +76,16 @@ export default async function DashboardPage() {
         timezone={data.profile?.timezone ?? "UTC"}
         avatarUrl={data.profile?.avatar_url ?? null}
       />
+
+      <FadeIn delay={0.02}>
+        <StatsStrip
+          level={progress.level}
+          intoLevel={progress.intoLevel}
+          span={progress.span}
+          seeds={progress.seeds}
+          dayStreak={progress.dayStreak}
+        />
+      </FadeIn>
 
       <SetupChecklist
         onboardingCompleted={data.onboardingCompleted}
@@ -126,6 +141,8 @@ export default async function DashboardPage() {
           seeds={gameRow?.seeds ?? 0}
           activeBird={gameRow?.active_bird ?? null}
           nickname={gameRow?.active_bird?.nickname ?? null}
+          mood={companion.mood}
+          moodLabel={companion.label}
         />
         <NutritionCard nutrition={data.todayNutrition} />
         <CalendarSyncCard

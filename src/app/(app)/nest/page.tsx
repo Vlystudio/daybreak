@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadGame } from "@/lib/game/rewards";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
 import { resolveSpecies } from "@/lib/game/birds";
+import { companionMood } from "@/lib/game/mood";
 import { NestStage } from "@/components/game/nest-stage";
 import { AviaryPanel } from "@/components/game/aviary-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,11 +16,17 @@ export const dynamic = "force-dynamic";
 export default async function NestPage() {
   const user = await requireUser();
   const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle<{ timezone: string }>();
+  const today = new Date().toISOString().slice(0, 10);
+  const [{ data: profile }, { data: metric }, { data: checkin }] = await Promise.all([
+    supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle<{ timezone: string }>(),
+    supabase.from("health_metrics").select("readiness_score").eq("user_id", user.id).order("date", { ascending: false }).limit(1).maybeSingle<{ readiness_score: number | null }>(),
+    supabase.from("subjective_checkins").select("mood").eq("user_id", user.id).eq("date", today).maybeSingle<{ mood: number | null }>(),
+  ]);
 
   const game = await loadGame(user.id, profile?.timezone ?? "UTC");
   const activeBird = game.birds.find((b) => b.id === game.activeBirdId) ?? null;
   const activeSpecies = activeBird ? resolveSpecies(activeBird) : null;
+  const companion = companionMood(metric?.readiness_score ?? null, checkin?.mood ?? null);
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-5">
@@ -38,6 +45,8 @@ export default async function NestPage() {
         species={activeSpecies}
         nickname={activeBird?.nickname ?? null}
         xp={activeBird?.xp ?? 0}
+        mood={companion.mood}
+        moodLabel={companion.label}
       />
 
       <Card>

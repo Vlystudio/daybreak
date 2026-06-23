@@ -1,23 +1,29 @@
 import type { BirdSpecies } from "@/lib/game/birds";
+import type { Mood } from "@/lib/game/mood";
 
 /**
  * An original, data-driven SVG bird. Shape is the same friendly silhouette for
  * every species; palette + crest/long-tail flags make each one distinct. CSS
  * classes (defined in globals.css) drive the idle bob, blink, and wing flap.
+ * `mood` subtly changes its expression to reflect how the day's going.
  */
 export function BirdSprite({
   species,
   size = 120,
   animated = true,
+  mood = "content",
   className,
 }: {
   species: BirdSpecies;
   size?: number;
   animated?: boolean;
+  mood?: Mood;
   className?: string;
 }) {
   const p = species.palette;
   const a = animated;
+  const happy = mood === "happy";
+  const sleepy = mood === "sleepy";
 
   return (
     <svg
@@ -66,19 +72,34 @@ export function BirdSprite({
           <path d="M60 22 C56 12 60 8 62 6 C62 14 66 18 70 22 C66 21 62 22 60 26 Z" fill={p.wing} />
         )}
 
-        {/* cheeks */}
-        <circle cx="49" cy="50" r="4.5" fill={p.cheek} opacity="0.85" />
-        <circle cx="71" cy="50" r="4.5" fill={p.cheek} opacity="0.85" />
+        {/* cheeks (rosier when happy) */}
+        <circle cx="49" cy="50" r={happy ? 5.6 : 4.5} fill={p.cheek} opacity={happy ? 1 : 0.85} />
+        <circle cx="71" cy="50" r={happy ? 5.6 : 4.5} fill={p.cheek} opacity={happy ? 1 : 0.85} />
 
         {/* eyes */}
-        <g className={a ? "bird-blink" : undefined} style={{ transformOrigin: "60px 42px" }}>
-          <circle cx="52" cy="42" r="5.2" fill="#fff" />
-          <circle cx="68" cy="42" r="5.2" fill="#fff" />
-          <circle cx="53" cy="43" r="2.6" fill="#2a2320" />
-          <circle cx="69" cy="43" r="2.6" fill="#2a2320" />
-          <circle cx="54" cy="42" r="0.9" fill="#fff" />
-          <circle cx="70" cy="42" r="0.9" fill="#fff" />
-        </g>
+        {sleepy ? (
+          // Half-closed, sleepy eyes.
+          <g stroke="#2a2320" strokeWidth="2.4" strokeLinecap="round" fill="none">
+            <path d="M48 43 Q52 46 56 43" />
+            <path d="M64 43 Q68 46 72 43" />
+          </g>
+        ) : (
+          <g className={a ? "bird-blink" : undefined} style={{ transformOrigin: "60px 42px" }}>
+            <circle cx="52" cy="42" r="5.2" fill="#fff" />
+            <circle cx="68" cy="42" r="5.2" fill="#fff" />
+            <circle cx="53" cy={happy ? 41 : 43} r="2.6" fill="#2a2320" />
+            <circle cx="69" cy={happy ? 41 : 43} r="2.6" fill="#2a2320" />
+            <circle cx="54" cy={happy ? 40 : 42} r="0.9" fill="#fff" />
+            <circle cx="70" cy={happy ? 40 : 42} r="0.9" fill="#fff" />
+          </g>
+        )}
+
+        {/* a little sparkle when happy */}
+        {happy && (
+          <g fill={p.cheek}>
+            <path d="M86 28 l1.4 3 3 1.4 -3 1.4 -1.4 3 -1.4 -3 -3 -1.4 3 -1.4 z" opacity="0.9" />
+          </g>
+        )}
 
         {/* beak */}
         <path d="M58 50 L62 50 L60 57 Z" fill={p.beak} />

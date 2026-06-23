@@ -6,6 +6,10 @@ import { AccentPicker } from "@/components/settings/accent-picker";
 import { AvatarUploader } from "@/components/settings/avatar-uploader";
 import { BirdSprite } from "@/components/game/bird-sprite";
 import { resolveSpecies, type OwnedBirdBase } from "@/lib/game/birds";
+import { loadUserProgress } from "@/lib/game/progress";
+import { gatherAchievementStats, computeAchievements } from "@/lib/game/achievements";
+import { StatsStrip } from "@/components/game/stats-strip";
+import { AchievementsCard } from "@/components/profile/achievements-card";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Profile } from "@/lib/types";
 
@@ -34,6 +38,11 @@ export default async function ProfilePage() {
   const bird = gameRow?.active_bird ?? null;
   const species = bird ? resolveSpecies(bird) : null;
   const name = profile?.display_name?.trim() || "Welcome";
+
+  const progress = await loadUserProgress(user.id, profile?.timezone ?? "UTC");
+  const achievements = computeAchievements(
+    await gatherAchievementStats(user.id, progress.totalEarned, progress.dayStreak)
+  );
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -65,6 +74,15 @@ export default async function ProfilePage() {
           {profile?.bio && <p className="text-sm leading-relaxed opacity-90">“{profile.bio}”</p>}
         </CardContent>
       </Card>
+
+      <StatsStrip
+        level={progress.level}
+        intoLevel={progress.intoLevel}
+        span={progress.span}
+        seeds={progress.seeds}
+        dayStreak={progress.dayStreak}
+      />
+      <AchievementsCard achievements={achievements} />
 
       <ProfileForm profile={profile ?? null} />
       <AccentPicker current={profile?.accent ?? "sunrise"} />

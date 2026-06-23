@@ -154,6 +154,11 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
   return (
     <Card className="relative h-full">
       {burst > 0 && <ConfettiBurst key={burst} />}
+      {burst > 0 && (
+        <div key={`seed-${burst}`} className="pointer-events-none absolute inset-x-0 top-9 z-10 flex justify-center">
+          <span className="seed-pop text-sm font-bold text-sage">+5 🌱</span>
+        </div>
+      )}
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
           <Repeat className="h-4 w-4 text-sage" aria-hidden />
