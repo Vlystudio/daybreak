@@ -241,13 +241,9 @@ bpy.ops.object.join()
 bpy.ops.object.select_all(action="DESELECT")
 bird.select_set(True); arm.select_set(True); bpy.context.view_layer.objects.active = arm
 bpy.ops.object.parent_set(type="ARMATURE_AUTO")
-# subsurf for clean polygons
-ss = bird.modifiers.new("Subsurf", "SUBSURF"); ss.levels = 1; ss.render_levels = 2
-# ensure armature modifier evaluates before subsurf
-for mod in list(bird.modifiers):
-    if mod.type == "ARMATURE":
-        while bird.modifiers.find(mod.name) > bird.modifiers.find("Subsurf"):
-            bpy.ops.object.modifier_move_up({"object": bird}, modifier=mod.name)
+# decimate to keep the GLB light (the metaball mesh is dense); shade-smooth keeps
+# it looking smooth without a poly-quadrupling subdivision pass.
+dec = bird.modifiers.new("Decimate", "DECIMATE"); dec.ratio = 0.4
 
 # ---------------------------------------------------------------- animations
 bpy.context.view_layer.objects.active = arm
