@@ -47,3 +47,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Blender source files for 3D birds (regenerable via scripts/blender; not needed at runtime)
+public/assets/birds3d/**/*.blend

@@ -27,8 +27,8 @@ export const BIRDS_3D: Bird3D[] = (data as Array<Omit<Bird3D, "model" | "animati
   animations: [...BIRD_ANIMATIONS],
 }));
 
-/** Species whose GLB has actually been generated. */
-export const GENERATED_3D = new Set<string>(["black_capped_chickadee", "cedar_waxwing"]);
+/** Species whose GLB has actually been generated (all 60). */
+export const GENERATED_3D = new Set<string>(BIRDS_3D.map((b) => b.id));
 
 export function model3dFor(id: string | null | undefined): string | null {
   return id && GENERATED_3D.has(id) ? `/assets/birds3d/${id}/${id}.glb` : null;
