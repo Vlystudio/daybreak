@@ -1,15 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { birdAsset } from "@/data/birds";
 import { AccessoryOverlay } from "@/components/game/accessory-overlay";
 
 /**
- * Drag-to-turn companion. The bird has three illustrated frames — left,
- * front, right — generated from the same source sprite, so it reads as one
- * bird turning. Dragging horizontally rotates between them; a tap (no drag)
- * pets it. Falls back to the front frame if a side frame is missing.
+ * Drag-to-turn companion. The bird has five illustrated frames spanning ~180°
+ * (left profile → left 3/4 → front → right 3/4 → right profile), all generated
+ * from its own front sprite so it stays the same bird. Dragging scrubs a
+ * continuous position and we cross-fade between adjacent frames, so it glides
+ * instead of snapping; when idle it gently sways for life. A tap (no drag) pets
+ * it. Missing side frames fall back to the front view.
  */
 export function BirdTurntable({
   speciesKey,
@@ -27,24 +29,62 @@ export function BirdTurntable({
   onPet?: () => void;
 }) {
   const front = birdAsset(speciesKey) ?? "";
-  const frames = [`/assets/birds/${speciesKey}_l.png`, front, `/assets/birds/${speciesKey}_r.png`];
-  const [idx, setIdx] = useState(1);
-  const drag = useRef({ x: 0, moved: false, active: false });
+  const frames = [
+    `/assets/birds/${speciesKey}_ll.png`,
+    `/assets/birds/${speciesKey}_l.png`,
+    front,
+    `/assets/birds/${speciesKey}_r.png`,
+    `/assets/birds/${speciesKey}_rr.png`,
+  ];
+  const N = frames.length;
+  const FRONT = 2;
+
+  const posRef = useRef(FRONT);
+  const [pos, setPos] = useState(FRONT);
+  const drag = useRef({ x: 0, startPos: FRONT, moved: false, active: false });
+
+  // Render loop: gentle idle sway when not dragging.
+  useEffect(() => {
+    if (sleeping) {
+      posRef.current = FRONT;
+      return;
+    }
+    let raf = 0;
+    const loop = (t: number) => {
+      if (!drag.current.active) {
+        const target = FRONT + Math.sin(t / 1000 * 0.55) * 0.6;
+        posRef.current += (target - posRef.current) * 0.045;
+        setPos(posRef.current);
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [sleeping]);
 
   function down(e: React.PointerEvent) {
-    drag.current = { x: e.clientX, moved: false, active: true };
+    drag.current = { x: e.clientX, startPos: posRef.current, moved: false, active: true };
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   }
   function move(e: React.PointerEvent) {
-    if (!drag.current.active) return;
+    if (!drag.current.active || sleeping) return;
     const dx = e.clientX - drag.current.x;
     if (Math.abs(dx) > 4) drag.current.moved = true;
-    setIdx(Math.max(0, Math.min(2, 1 + Math.round(dx / 45))));
+    posRef.current = Math.max(0, Math.min(N - 1, drag.current.startPos + dx / 46));
+    setPos(posRef.current);
   }
   function up() {
     if (drag.current.active && !drag.current.moved) onPet?.();
     drag.current.active = false;
   }
+
+  const p = sleeping ? FRONT : pos;
+  const base = Math.max(0, Math.min(N - 1, Math.floor(p)));
+  const next = Math.min(N - 1, base + 1);
+  const frac = sleeping ? 0 : p - base;
+  const onErr = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    if (front && !e.currentTarget.src.endsWith(front)) e.currentTarget.src = front;
+  };
 
   return (
     <div
@@ -55,18 +95,24 @@ export function BirdTurntable({
       onPointerUp={up}
       onPointerCancel={up}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* eslint-disable @next/next/no-img-element */}
       <img
-        src={frames[idx] || front}
+        src={frames[base] || front}
         alt={name}
-        width={size}
-        height={size}
         draggable={false}
-        onError={(e) => {
-          if (front && e.currentTarget.src !== location.origin + front) e.currentTarget.src = front;
-        }}
-        className={cn("h-full w-full object-contain", sleeping && "opacity-90 saturate-[0.85]")}
+        onError={onErr}
+        className={cn("absolute inset-0 h-full w-full object-contain", sleeping && "opacity-90 saturate-[0.85]")}
       />
+      <img
+        src={frames[next] || front}
+        alt=""
+        aria-hidden
+        draggable={false}
+        onError={onErr}
+        className="absolute inset-0 h-full w-full object-contain"
+        style={{ opacity: frac }}
+      />
+      {/* eslint-enable @next/next/no-img-element */}
       {accessoryKey && <AccessoryOverlay accessoryKey={accessoryKey} size={size} />}
     </div>
   );
