@@ -57,12 +57,18 @@ export type AuditAction =
   | "competition.joined"
   | "cron.morning_sync"
   | "cron.calendar_sync"
-  | "cron.data_sync";
+  | "cron.data_sync"
+  | "data.exported"
+  | "account.deleted";
 
 export async function audit(
   userId: string | null,
   action: AuditAction,
-  details: { entity?: string; entityId?: string; metadata?: Record<string, string | number | boolean> } = {}
+  details: {
+    entity?: string;
+    entityId?: string;
+    metadata?: Record<string, string | number | boolean>;
+  } = {}
 ): Promise<void> {
   try {
     const admin = createAdminClient();

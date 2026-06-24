@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -17,6 +18,7 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
+    Sentry.captureException(error);
     console.error("[app] route error:", error.digest ?? error.message);
   }, [error]);
 
@@ -24,7 +26,7 @@ export default function AppError({
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Something went sideways</h2>
-        <p className="max-w-sm text-sm text-muted-foreground">
+        <p className="text-muted-foreground max-w-sm text-sm">
           This page hit a snag on our end. Your data is safe — give it another try.
         </p>
       </div>

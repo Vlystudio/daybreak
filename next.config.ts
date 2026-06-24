@@ -1,26 +1,9 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV === "development";
-
 const securityHeaders = [
-  // Allow self + Supabase (auth/REST/realtime). unsafe-inline for styles is
-  // required by Tailwind's injected styles; scripts stay strict.
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' blob: data: https://*.supabase.co https://img.spoonacular.com https://spoonacular.com",
-      "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "object-src 'none'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
+  // NOTE: Content-Security-Policy is set per-request in src/proxy.ts so it can
+  // carry a fresh nonce (script-src 'nonce-…' 'strict-dynamic'). Keeping it out
+  // of here avoids emitting a second, weaker CSP header.
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

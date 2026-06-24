@@ -11,7 +11,11 @@ type RateLimitResult = { ok: true } | { ok: false; retryAfterSeconds: number };
 
 export async function rateLimit(
   key: string,
-  { limit, windowSeconds }: { limit: number; windowSeconds: number }
+  {
+    limit,
+    windowSeconds,
+    failClosed = false,
+  }: { limit: number; windowSeconds: number; failClosed?: boolean }
 ): Promise<RateLimitResult> {
   const windowStart = new Date(
     Math.floor(Date.now() / (windowSeconds * 1000)) * windowSeconds * 1000
@@ -36,7 +40,11 @@ export async function rateLimit(
     }
     return { ok: true };
   } catch (err) {
-    console.error("[rate-limit] failed, allowing request:", err);
+    // Default is fail-OPEN: a database blip shouldn't take the whole app down.
+    // But cost- or security-sensitive limits opt into fail-CLOSED so an attacker
+    // who can induce an infra error can't use that to bypass the limit.
+    console.error(`[rate-limit] backend error (failClosed=${failClosed}):`, err);
+    if (failClosed) return { ok: false, retryAfterSeconds: 30 };
     return { ok: true };
   }
 }
@@ -44,11 +52,13 @@ export async function rateLimit(
 /** Standard limits used across the app. */
 export const RATE_LIMITS = {
   mutation: { limit: 60, windowSeconds: 60 },
-  aiSummary: { limit: 5, windowSeconds: 3600 },
   oauth: { limit: 10, windowSeconds: 600 },
   sync: { limit: 12, windowSeconds: 3600 },
-  aiFitness: { limit: 25, windowSeconds: 86400 }, // daily cap on AI fitness generations
-  aiMeals: { limit: 15, windowSeconds: 86400 }, // daily cap on AI meal-plan generations
-  aiChat: { limit: 40, windowSeconds: 3600 }, // health check-in conversation turns
-  aiVision: { limit: 30, windowSeconds: 3600 }, // food-photo nutrition analyses
+  // The AI limits guard real OpenAI spend, so they fail CLOSED — better to make a
+  // user retry than to let a forced infra error run up the bill.
+  aiSummary: { limit: 5, windowSeconds: 3600, failClosed: true },
+  aiFitness: { limit: 25, windowSeconds: 86400, failClosed: true }, // daily cap on AI fitness generations
+  aiMeals: { limit: 15, windowSeconds: 86400, failClosed: true }, // daily cap on AI meal-plan generations
+  aiChat: { limit: 40, windowSeconds: 3600, failClosed: true }, // health check-in conversation turns
+  aiVision: { limit: 30, windowSeconds: 3600, failClosed: true }, // food-photo nutrition analyses
 } as const;

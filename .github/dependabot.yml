@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # npm dependencies — group routine minor/patch bumps into one PR to cut noise,
+  # keep major bumps as their own PRs so they get a closer look.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Keep the GitHub Actions used in CI current too.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
