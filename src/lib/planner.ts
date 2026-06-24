@@ -498,6 +498,32 @@ export async function maybeAutoPlanForUser(userId: string): Promise<number | nul
     if (daysSince < minGap) return null;
   }
 
+  // Build it from how the user actually feels THIS morning: if they wear a
+  // tracker, hold off until today's sleep/recovery has synced so the plan
+  // reflects their morning scores rather than yesterday's. After ~late morning
+  // we build anyway, so a missed/late sync never leaves them without a plan.
+  const { data: wearable } = await admin
+    .from("oauth_connections")
+    .select("provider")
+    .eq("user_id", userId)
+    .in("provider", ["oura", "fitbit"])
+    .limit(1)
+    .returns<{ provider: string }[]>();
+  if (wearable && wearable.length > 0) {
+    const { data: todayMetric } = await admin
+      .from("health_metrics")
+      .select("readiness_score")
+      .eq("user_id", userId)
+      .eq("date", todayStr)
+      .maybeSingle<{ readiness_score: number | null }>();
+    if (todayMetric?.readiness_score == null) {
+      const localHour = Number(
+        new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date())
+      );
+      if (localHour < 11) return null; // wait for this morning's scores to land
+    }
+  }
+
   const count = await planDays(userId, planningDays(prefs.planning_scope, tz));
   if (count !== null) {
     await admin.from("user_preferences").update({ last_autoplan_date: todayStr }).eq("user_id", userId);
