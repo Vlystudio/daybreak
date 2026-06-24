@@ -187,6 +187,20 @@ async function planDays(
   };
 
   const todayStr = localToday(tz);
+
+  // How they say they feel this morning — folded into today's plan so it can
+  // gently override the wearable (e.g. low energy / sore -> a lighter day).
+  const { data: checkinRow } = await admin
+    .from("subjective_checkins")
+    .select("mood, energy, stress, soreness")
+    .eq("user_id", userId)
+    .eq("date", todayStr)
+    .maybeSingle<{ mood: number | null; energy: number | null; stress: number | null; soreness: number | null }>();
+  const todayCheckin =
+    checkinRow && (checkinRow.mood != null || checkinRow.energy != null || checkinRow.stress != null || checkinRow.soreness != null)
+      ? checkinRow
+      : null;
+
   const lat = profile?.latitude;
   const lon = profile?.longitude;
   const weatherToday =
@@ -253,6 +267,7 @@ async function planDays(
           }
         : null,
       reflection: d.date === earliestDate ? reflection : null,
+      checkin: d.date === todayStr ? todayCheckin : null,
     });
     if (!blocks) continue;
 

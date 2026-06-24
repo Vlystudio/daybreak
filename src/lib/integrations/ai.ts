@@ -334,6 +334,7 @@ Rules:
 - NEVER overlap a "busy" block or another block you create; leave a little buffer.
 - Respect their work type and work_schedule. If planning_scope is "after_hours", only place blocks before work or in the evening. If "weekends", only use the weekend days provided.
 - Workouts: match their exercise_frequency and fitness_goal across the days (muscle_gain -> strength; weight_loss/endurance -> a mix of cardio and strength; general_fitness -> varied; maintain -> light/steady). If a recent readiness score is low (under 60), make that day lighter (mobility, a walk, or rest) rather than intense; if readiness is high, it's a good day to push.
+- Self-reported check-in (when "checkin" is provided, it applies to the EARLIEST/today day; mood/energy/stress/soreness each 1-5 where 5 is high): this is how the person says they feel today — let it gently override the wearable. If energy or mood is low (1-2), or soreness or stress is high (4-5), make today noticeably lighter and kinder (shorter blocks, gentle movement or rest, more downtime) even if readiness looks fine. If energy is high (4-5), it's a good day to do a bit more. Honor how they say they feel.
 - Weather (when provided, applies to that day): prefer indoor activities in rain/snow or uncomfortable temperatures, and outdoor options when it's pleasant. Temperatures are in Fahrenheit.
 - Chores: schedule each listed chore consistent with its frequency over the window ("daily" most days, "weekly" once, etc.).
 - Hobbies & downtime: include their hobbies and genuine rest. Homebody -> favor at-home activities; social -> include getting-out/social time.
@@ -362,6 +363,12 @@ export async function generateWeeklyPlan(input: {
     wentWell: string | null;
     toImprove: string | null;
     tomorrowIntention: string | null;
+  } | null;
+  checkin?: {
+    mood: number | null;
+    energy: number | null;
+    stress: number | null;
+    soreness: number | null;
   } | null;
 }): Promise<PlanBlock[] | null> {
   const apiKey = serverEnv().OPENAI_API_KEY;
