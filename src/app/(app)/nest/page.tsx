@@ -69,6 +69,7 @@ export default async function NestPage() {
         timezone={profile?.timezone ?? "UTC"}
         accessoryKey={activeBird?.accessory ?? null}
         decor={game.decor}
+        birdHouse={game.birdHouse}
       />
 
       <Card>
@@ -105,6 +106,7 @@ export default async function NestPage() {
         seeds={game.seeds}
         inventory={game.inventory}
         decor={game.decor}
+        birdHouse={game.birdHouse}
         activeBird={
           activeBird && activeSpecies
             ? { id: activeBird.id, name: activeBird.nickname || activeSpecies.name, speciesKey: activeSpecies.key, happiness: activeBird.happiness, accessory: activeBird.accessory }

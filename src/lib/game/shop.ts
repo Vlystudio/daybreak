@@ -177,11 +177,31 @@ export const DECOR_ITEMS: Decor[] = [
   { key: "lantern", name: "Paper Lantern", emoji: "🏮", cost: 30 },
   { key: "tulips", name: "Tulip Patch", emoji: "🌷", cost: 30 },
   { key: "pine_tree", name: "Little Pine", emoji: "🌲", cost: 40 },
-  { key: "bird_house", name: "Bird House", emoji: "🏠", cost: 60 },
   { key: "fountain", name: "Stone Fountain", emoji: "⛲", cost: 75 },
   { key: "rainbow", name: "Rainbow", emoji: "🌈", cost: 120 },
 ];
 export const DECOR_BY_KEY: Record<string, Decor> = Object.fromEntries(DECOR_ITEMS.map((d) => [d.key, d]));
+
+/* ── bird houses (own several, equip one; the bird sleeps inside at night) ── */
+export interface BirdHouse {
+  key: string;
+  name: string;
+  asset: string;
+  cost: number;
+}
+
+export const BIRD_HOUSES: BirdHouse[] = [
+  { key: "gourd", name: "Gourd House", asset: "/assets/houses/gourd.png", cost: 55 },
+  { key: "classic_box", name: "Classic Box", asset: "/assets/houses/classic_box.png", cost: 65 },
+  { key: "a_frame", name: "A-Frame", asset: "/assets/houses/a_frame.png", cost: 80 },
+  { key: "modern", name: "Modern", asset: "/assets/houses/modern.png", cost: 110 },
+  { key: "log_cabin", name: "Log Cabin", asset: "/assets/houses/log_cabin.png", cost: 120 },
+  { key: "cottage", name: "Cozy Cottage", asset: "/assets/houses/cottage.png", cost: 160 },
+];
+export const HOUSE_BY_KEY: Record<string, BirdHouse> = Object.fromEntries(BIRD_HOUSES.map((h) => [h.key, h]));
+
+/** Top-down open nest-box art used for the night "sleeping inside" view. */
+export const HOUSE_INTERIOR = "/assets/houses/interior.png";
 
 /* ── breeding ──────────────────────────────────────────────────────────── */
 export const EGG_INCUBATION_MIN = 30;

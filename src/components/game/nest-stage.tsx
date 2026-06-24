@@ -8,7 +8,7 @@ import { birdAsset } from "@/data/birds";
 import { archetypeFor, birdLevel, type BirdSpecies } from "@/lib/game/birds";
 import { playBirdCall } from "@/lib/game/bird-sounds";
 import { petBird } from "@/actions/game";
-import { DECOR_BY_KEY } from "@/lib/game/shop";
+import { DECOR_BY_KEY, HOUSE_BY_KEY, HOUSE_INTERIOR } from "@/lib/game/shop";
 import type { Mood } from "@/lib/game/mood";
 
 /** Local hour (0-23.99) in the given timezone. */
@@ -46,6 +46,7 @@ export function NestStage({
   timezone = "UTC",
   accessoryKey = null,
   decor = [],
+  birdHouse = null,
 }: {
   species: BirdSpecies | null;
   nickname: string | null;
@@ -55,6 +56,7 @@ export function NestStage({
   timezone?: string;
   accessoryKey?: string | null;
   decor?: string[];
+  birdHouse?: string | null;
 }) {
   const [pops, setPops] = useState<{ id: number }[]>([]);
   const [now, setNow] = useState(() => Date.now());
@@ -97,6 +99,8 @@ export function NestStage({
       ? "linear-gradient(to bottom,#f4b97a,#f6d6a8 50%,#e9e0bf)"
       : "linear-gradient(to bottom,#bfe3f0,#dff1e3 55%,#f3e7c9)";
   const foliage = isNight ? "#3a5a47" : "#9ed089";
+  const houseAsset = birdHouse ? HOUSE_BY_KEY[birdHouse]?.asset ?? null : null;
+  const sleepingInHouse = isNight && !!houseAsset && !!species;
 
   return (
     <div className="relative h-80 overflow-hidden rounded-3xl sm:h-96" style={{ background: sky }}>
@@ -124,6 +128,12 @@ export function NestStage({
       {/* ground */}
       <div className="absolute inset-x-0 bottom-0 h-20" style={{ background: isNight ? "#6b5a3f" : "#cdb079" }} />
 
+      {/* equipped bird house (daytime, mounted to the side) */}
+      {houseAsset && !sleepingInHouse && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={houseAsset} alt="bird house" className="pointer-events-none absolute bottom-12 right-[7%] z-0 h-24 w-24 object-contain drop-shadow-md" />
+      )}
+
       {/* placed decor */}
       {decor.length > 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-7 z-0 flex items-end justify-between px-5">
@@ -139,21 +149,34 @@ export function NestStage({
 
       {species ? (
         <>
-          {/* the companion — drag to turn (illustrated frames), tap to pet */}
-          <div className="absolute inset-0 z-10 flex items-end justify-center pb-6">
-            <span className="flex flex-col items-center">
-              <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
-                {birdAsset(species.key) ? (
-                  <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} accessoryKey={accessoryKey} onPet={pet} />
-                ) : (
-                  <button type="button" onClick={pet} aria-label={`Pet ${nickname || species.name}`}>
-                    <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} accessoryKey={accessoryKey} />
-                  </button>
-                )}
+          {sleepingInHouse ? (
+            /* night: top-down view of the bird tucked asleep inside its house */
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <div className="relative" style={{ width: 230, height: 230 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={HOUSE_INTERIOR} alt="bird house, top down" className="absolute inset-0 h-full w-full object-contain drop-shadow-lg" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[42%]">
+                  <BirdSprite species={species} size={96} sleeping accessoryKey={accessoryKey} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* the companion — drag to turn (illustrated frames), tap to pet */
+            <div className="absolute inset-0 z-10 flex items-end justify-center pb-6">
+              <span className="flex flex-col items-center">
+                <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
+                  {birdAsset(species.key) ? (
+                    <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} accessoryKey={accessoryKey} onPet={pet} />
+                  ) : (
+                    <button type="button" onClick={pet} aria-label={`Pet ${nickname || species.name}`}>
+                      <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} accessoryKey={accessoryKey} />
+                    </button>
+                  )}
+                </span>
+                <span className="-mt-2 h-2.5 w-24 rounded-full bg-black/15 blur-sm" />
               </span>
-              <span className="-mt-2 h-2.5 w-24 rounded-full bg-black/15 blur-sm" />
-            </span>
-          </div>
+            </div>
+          )}
 
           {isNight && (
             <span className="pointer-events-none absolute right-1/3 top-10 z-20 text-lg" aria-hidden>

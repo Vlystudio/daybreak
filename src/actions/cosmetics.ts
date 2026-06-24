@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
-import { ACCESSORY_BY_KEY, DECOR_BY_KEY } from "@/lib/game/shop";
+import { ACCESSORY_BY_KEY, DECOR_BY_KEY, HOUSE_BY_KEY } from "@/lib/game/shop";
 
 type Res = { ok: true; seeds?: number } | { ok: false; error: string };
 
@@ -75,4 +75,44 @@ export async function buyDecor(key: string): Promise<Res> {
   await audit(user.id, "shop.buy", { metadata: { item: item.key, kind: "decor" } });
   revalidatePath("/nest");
   return { ok: true, seeds: seeds - item.cost };
+}
+
+/** Buy a bird house (kept in inventory; equip one to show it in the nest). */
+export async function buyHouse(key: string): Promise<Res> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Slow down a moment." };
+
+  const item = HOUSE_BY_KEY[key];
+  if (!item) return { ok: false, error: "No such bird house." };
+
+  const admin = createAdminClient();
+  const { data: game } = await admin.from("user_game").select("seeds").eq("user_id", user.id).maybeSingle<{ seeds: number }>();
+  const seeds = game?.seeds ?? 0;
+  const { data: inv } = await admin.from("user_inventory").select("qty").eq("user_id", user.id).eq("item_key", item.key).maybeSingle<{ qty: number }>();
+  if ((inv?.qty ?? 0) > 0) return { ok: false, error: "You already own that house." };
+  if (seeds < item.cost) return { ok: false, error: `You need ${item.cost - seeds} more seeds.` };
+
+  await admin.from("user_game").update({ seeds: seeds - item.cost }).eq("user_id", user.id);
+  await admin.from("user_inventory").upsert({ user_id: user.id, item_key: item.key, qty: 1, updated_at: new Date().toISOString() }, { onConflict: "user_id,item_key" });
+  await audit(user.id, "shop.buy", { metadata: { item: item.key, kind: "house" } });
+  revalidatePath("/nest");
+  return { ok: true, seeds: seeds - item.cost };
+}
+
+/** Equip an owned bird house in the nest (or pass null to put it away). */
+export async function equipHouse(key: string | null): Promise<Res> {
+  const user = await requireUser();
+  if (key !== null && !HOUSE_BY_KEY[key]) return { ok: false, error: "No such bird house." };
+
+  const admin = createAdminClient();
+  if (key) {
+    const { data: inv } = await admin.from("user_inventory").select("qty").eq("user_id", user.id).eq("item_key", key).maybeSingle<{ qty: number }>();
+    if (!inv || inv.qty < 1) return { ok: false, error: "You don't own that house yet." };
+  }
+  await admin.from("user_game").update({ bird_house: key }).eq("user_id", user.id);
+  await audit(user.id, "shop.equip", { metadata: { house: key ?? "none" } });
+  revalidatePath("/nest");
+  revalidatePath("/dashboard");
+  return { ok: true };
 }

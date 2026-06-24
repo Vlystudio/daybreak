@@ -15,10 +15,11 @@ import {
   dietOf,
   ACCESSORIES,
   DECOR_ITEMS,
+  BIRD_HOUSES,
   type FoodItem,
 } from "@/lib/game/shop";
 import { buyFood, feedBird } from "@/actions/shop";
-import { buyAccessory, equipAccessory, buyDecor } from "@/actions/cosmetics";
+import { buyAccessory, equipAccessory, buyDecor, buyHouse, equipHouse } from "@/actions/cosmetics";
 
 interface ActiveBird {
   id: string;
@@ -28,17 +29,19 @@ interface ActiveBird {
   accessory: string | null;
 }
 
-type Tab = "feed" | "style" | "food" | "decor";
+type Tab = "feed" | "style" | "food" | "decor" | "houses";
 
 export function ShopPanel({
   seeds,
   inventory,
   decor,
+  birdHouse,
   activeBird,
 }: {
   seeds: number;
   inventory: Record<string, number>;
   decor: string[];
+  birdHouse: string | null;
   activeBird: ActiveBird | null;
 }) {
   const router = useRouter();
@@ -46,6 +49,7 @@ export function ShopPanel({
   const [pending, startTransition] = useTransition();
   const [happiness, setHappiness] = useState(activeBird?.happiness ?? 60);
   const [equipped, setEquipped] = useState<string | null>(activeBird?.accessory ?? null);
+  const [house, setHouse] = useState<string | null>(birdHouse);
 
   const diet = dietOf(activeBird?.speciesKey);
   const asset = activeBird ? birdAsset(activeBird.speciesKey) : null;
@@ -70,7 +74,7 @@ export function ShopPanel({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-1 rounded-full bg-muted p-1 text-xs sm:text-sm">
-          {(["feed", "style", "food", "decor"] as const).map((t) => (
+          {(["feed", "style", "food", "decor", "houses"] as const).map((t) => (
             <button
               key={t}
               type="button"
@@ -258,6 +262,38 @@ export function ShopPanel({
                 </div>
               );
             })}
+          </div>
+        )}
+        {/* ── HOUSES ── */}
+        {tab === "houses" && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Own a few, equip one — it appears in your nest, and your bird sleeps inside it at night. 🌙</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {BIRD_HOUSES.map((h) => {
+                const owned = (inventory[h.key] ?? 0) > 0;
+                const on = house === h.key;
+                return (
+                  <div key={h.key} className={cn("flex flex-col items-center rounded-2xl border p-2 text-center", on ? "border-primary bg-primary/5" : "border-border")}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={h.asset} alt={h.name} className="h-16 w-16 object-contain" />
+                    <span className="text-xs font-medium leading-tight">{h.name}</span>
+                    {!owned ? (
+                      <Button size="sm" className="mt-1 h-7 w-full text-xs" disabled={pending || seeds < h.cost} onClick={() => run(() => buyHouse(h.key), undefined, `Bought the ${h.name} 🏠`)}>
+                        {h.cost} 🌱
+                      </Button>
+                    ) : on ? (
+                      <Button size="sm" variant="secondary" className="mt-1 h-7 w-full text-xs" disabled={pending} onClick={() => run(() => equipHouse(null), () => setHouse(null))}>
+                        Put away
+                      </Button>
+                    ) : (
+                      <Button size="sm" className="mt-1 h-7 w-full text-xs" disabled={pending} onClick={() => run(() => equipHouse(h.key), () => setHouse(h.key))}>
+                        Equip
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </CardContent>
