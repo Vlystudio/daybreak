@@ -79,14 +79,17 @@ export async function getValidAccessToken(
   if (!data.refresh_token_enc) return null;
 
   const refreshed = await refreshTokens(provider, decryptToken(data.refresh_token_enc));
-  if (!refreshed) {
-    // Refresh token revoked or invalid — drop the dead connection.
-    await deleteConnection(userId, provider);
+  if (!refreshed.ok) {
+    // Only drop the connection when the provider DEFINITIVELY rejected the
+    // refresh token (revoked/invalid). A transient outage (5xx/429/network)
+    // leaves it in place so the next sync can try again, instead of silently
+    // unlinking the user's wearable over a momentary blip.
+    if (refreshed.permanent) await deleteConnection(userId, provider);
     return null;
   }
 
-  await saveConnection(userId, provider, refreshed);
-  return refreshed.accessToken;
+  await saveConnection(userId, provider, refreshed.tokens);
+  return refreshed.tokens.accessToken;
 }
 
 const TOKEN_ENDPOINTS: Record<Provider, string> = {
@@ -95,7 +98,13 @@ const TOKEN_ENDPOINTS: Record<Provider, string> = {
   fitbit: "https://api.fitbit.com/oauth2/token",
 };
 
-async function refreshTokens(provider: Provider, refreshToken: string): Promise<TokenSet | null> {
+/** Refresh outcome: a token set, or a failure tagged permanent (revoked →
+ *  drop the connection) vs. transient (provider blip → keep and retry later). */
+type RefreshResult = { ok: true; tokens: TokenSet } | { ok: false; permanent: boolean };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function refreshTokens(provider: Provider, refreshToken: string): Promise<RefreshResult> {
   const env = serverEnv();
 
   const body = new URLSearchParams({
@@ -113,25 +122,53 @@ async function refreshTokens(provider: Provider, refreshToken: string): Promise<
     body.set("client_secret", (provider === "oura" ? env.OURA_CLIENT_SECRET : env.GOOGLE_CLIENT_SECRET) ?? "");
   }
 
-  const res = await fetch(TOKEN_ENDPOINTS[provider], { method: "POST", headers, body });
+  // Retry transient failures (network error, 5xx, 429, 408) with a short
+  // backoff. A 4xx auth rejection is treated as permanent (the refresh token
+  // was revoked/invalidated) and returns immediately.
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(TOKEN_ENDPOINTS[provider], { method: "POST", headers, body });
+    } catch (err) {
+      console.error(
+        `[oauth] ${provider} token refresh network error (attempt ${attempt}):`,
+        err instanceof Error ? err.message : "unknown"
+      );
+      if (attempt < MAX_ATTEMPTS) {
+        await sleep(500 * attempt);
+        continue;
+      }
+      return { ok: false, permanent: false };
+    }
 
-  if (!res.ok) {
+    if (res.ok) {
+      const json = (await res.json()) as {
+        access_token: string;
+        refresh_token?: string;
+        expires_in?: number;
+        scope?: string;
+      };
+      return {
+        ok: true,
+        tokens: {
+          accessToken: json.access_token,
+          // Google does not return a new refresh token on refresh; keep the old one.
+          refreshToken: json.refresh_token ?? refreshToken,
+          expiresAt: json.expires_in ? new Date(Date.now() + json.expires_in * 1000) : null,
+          scope: json.scope ?? null,
+        },
+      };
+    }
+
+    const transient = res.status >= 500 || res.status === 429 || res.status === 408;
     console.error(`[oauth] ${provider} token refresh failed with status ${res.status}`);
-    return null;
+    if (transient && attempt < MAX_ATTEMPTS) {
+      await sleep(500 * attempt);
+      continue;
+    }
+    return { ok: false, permanent: !transient };
   }
 
-  const json = (await res.json()) as {
-    access_token: string;
-    refresh_token?: string;
-    expires_in?: number;
-    scope?: string;
-  };
-
-  return {
-    accessToken: json.access_token,
-    // Google does not return a new refresh token on refresh; keep the old one.
-    refreshToken: json.refresh_token ?? refreshToken,
-    expiresAt: json.expires_in ? new Date(Date.now() + json.expires_in * 1000) : null,
-    scope: json.scope ?? null,
-  };
+  return { ok: false, permanent: false };
 }

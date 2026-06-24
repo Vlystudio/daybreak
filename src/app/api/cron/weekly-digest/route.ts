@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWeeklyDigestForUser } from "@/lib/weekly-digest";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { integrationsAvailable, serverEnv } from "@/env";
 
 export const maxDuration = 300;
+
+const USER_CONCURRENCY = 8;
 
 /**
  * Weekly "week in review" digest (Vercel Cron, Sundays). Emails every user with
@@ -21,14 +24,18 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const { data: profiles } = await admin.from("profiles").select("id").returns<{ id: string }[]>();
 
+  const results = await mapWithConcurrency(profiles ?? [], USER_CONCURRENCY, (p) =>
+    sendWeeklyDigestForUser(p.id)
+  );
+
   let sent = 0;
   let failed = 0;
-  for (const p of profiles ?? []) {
-    try {
-      if (await sendWeeklyDigestForUser(p.id)) sent++;
-    } catch (err) {
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      if (r.value) sent++;
+    } else {
       failed++;
-      console.error("[cron] weekly digest failed for a user:", err);
+      console.error("[cron] weekly digest failed for a user:", r.reason);
     }
   }
 

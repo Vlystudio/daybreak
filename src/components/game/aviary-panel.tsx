@@ -185,7 +185,9 @@ export function AviaryPanel({
                   {renaming === b.id ? (
                     <div className="mt-1 flex w-full items-center gap-1">
                       <Input value={nameDraft} maxLength={40} autoFocus onChange={(e) => setNameDraft(e.target.value)} className="h-6 px-1 text-xs" />
-                      <button type="button" onClick={() => saveName(b.id)} aria-label="Save name"><Check className="h-3.5 w-3.5 text-sage" aria-hidden /></button>
+                      <button type="button" onClick={() => saveName(b.id)} disabled={pending} aria-label="Save name">
+                        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin text-sage" aria-hidden /> : <Check className="h-3.5 w-3.5 text-sage" aria-hidden />}
+                      </button>
                     </div>
                   ) : (
                     <div className="mt-0.5 flex items-center gap-1.5">

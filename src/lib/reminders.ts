@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { integrationsAvailable } from "@/env";
 import { sendPushToUser } from "@/lib/push";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import type { ReminderKind } from "@/lib/types";
 
 /**
@@ -61,18 +62,28 @@ export async function dispatchReminders(): Promise<number> {
     .returns<{ id: string; timezone: string | null }[]>();
   const tzById = new Map((profiles ?? []).map((p) => [p.id, p.timezone || "UTC"]));
 
-  let sent = 0;
-  for (const r of reminders) {
+  // Only the reminders due this hour do any work; fan those out concurrently
+  // (was sequential) so a busy hour can't serialize into a timeout.
+  const results = await mapWithConcurrency(reminders, 10, async (r) => {
     const { hour, date } = localParts(tzById.get(r.user_id) ?? "UTC");
-    if (hour !== r.hour) continue;
-    if (r.last_sent_on === date) continue;
+    if (hour !== r.hour) return false;
+    if (r.last_sent_on === date) return false;
 
     const preset = REMINDER_PRESETS[r.kind];
     const body = r.kind === "custom" && r.message ? r.message : r.message || preset.body;
     const delivered = await sendPushToUser(r.user_id, { title: preset.title, body, url: preset.url });
     // Mark sent regardless of delivery count so we don't retry every hour.
     await admin.from("reminders").update({ last_sent_on: date }).eq("id", r.id);
-    if (delivered > 0) sent++;
+    return delivered > 0;
+  });
+
+  let sent = 0;
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      if (r.value) sent++;
+    } else {
+      console.error("[reminders] dispatch failed for one:", r.reason);
+    }
   }
   return sent;
 }

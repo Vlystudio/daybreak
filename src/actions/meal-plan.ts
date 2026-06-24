@@ -97,32 +97,48 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
   if (planErr || !plan) return { ok: false, error: "Couldn't save the plan." };
 
   // Persist each distinct recipe; map the AI's numeric id to its new uuid.
+  // Insert every recipe CONCURRENTLY (was one sequential round-trip each), then
+  // batch ALL their ingredients into a single insert. For a long plan this turns
+  // ~2N round-trips into N parallel inserts + 1.
   const recipeIdMap = new Map<number, string>();
   const recipeMeta = new Map(content.recipes.map((r) => [r.id, r]));
-  for (const r of content.recipes) {
-    const { data: recipe, error: rErr } = await supabase
-      .from("recipes")
-      .insert({
-        created_by: user.id,
-        household_id: hh,
-        source: "ai",
-        title: r.title.slice(0, 200),
-        description: r.description?.slice(0, 1000) || null,
-        instructions: [],
-        servings: clampInt(r.servings, 1, 50),
-        prep_minutes: r.prep_minutes != null ? clampInt(r.prep_minutes, 0, 1440) : null,
-        calories: r.calories != null ? Math.round(r.calories) : null,
-        protein_g: r.protein_g != null ? Math.round(r.protein_g) : null,
-        carbs_g: r.carbs_g != null ? Math.round(r.carbs_g) : null,
-        fat_g: r.fat_g != null ? Math.round(r.fat_g) : null,
-        tags: [r.slot],
-      })
-      .select("id")
-      .single<{ id: string }>();
-    if (rErr || !recipe) continue;
-    recipeIdMap.set(r.id, recipe.id);
 
-    const ingredients = r.ingredients
+  const insertedRecipes = await Promise.all(
+    content.recipes.map((r) =>
+      supabase
+        .from("recipes")
+        .insert({
+          created_by: user.id,
+          household_id: hh,
+          source: "ai",
+          title: r.title.slice(0, 200),
+          description: r.description?.slice(0, 1000) || null,
+          instructions: [],
+          servings: clampInt(r.servings, 1, 50),
+          prep_minutes: r.prep_minutes != null ? clampInt(r.prep_minutes, 0, 1440) : null,
+          calories: r.calories != null ? Math.round(r.calories) : null,
+          protein_g: r.protein_g != null ? Math.round(r.protein_g) : null,
+          carbs_g: r.carbs_g != null ? Math.round(r.carbs_g) : null,
+          fat_g: r.fat_g != null ? Math.round(r.fat_g) : null,
+          tags: [r.slot],
+        })
+        .select("id")
+        .single<{ id: string }>()
+    )
+  );
+
+  const ingredientRows: {
+    recipe_id: string;
+    raw_name: string;
+    quantity: number | null;
+    unit: string | null;
+    sort: number;
+  }[] = [];
+  content.recipes.forEach((r, i) => {
+    const recipe = insertedRecipes[i]?.data;
+    if (insertedRecipes[i]?.error || !recipe) return;
+    recipeIdMap.set(r.id, recipe.id);
+    const ings = r.ingredients
       .map((ing, idx) => ({
         recipe_id: recipe.id,
         raw_name: ing.name.trim().slice(0, 120),
@@ -132,8 +148,9 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
       }))
       .filter((ing) => ing.raw_name.length > 0)
       .slice(0, 40);
-    if (ingredients.length) await supabase.from("recipe_ingredients").insert(ingredients);
-  }
+    ingredientRows.push(...ings);
+  });
+  if (ingredientRows.length) await supabase.from("recipe_ingredients").insert(ingredientRows);
 
   // Build the day-by-day schedule referencing the stored recipes.
   const dayRows: { meal_plan_id: string; date: string; meals: MealPlanDayMeal[] }[] = [];

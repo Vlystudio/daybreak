@@ -230,7 +230,13 @@ async function planDays(
   const clearDates: string[] = [];
   let todayWorkoutAccepted = false;
 
-  for (const d of dateList) {
+  // Build each day's request context up front (CPU only), then generate all
+  // days CONCURRENTLY. This previously awaited one model call per day in
+  // sequence, so a 7-day plan took ~7x a single call's latency; firing them
+  // together collapses that to roughly one call's wall-clock. Each day still
+  // gets its own focused call with that day's recovery, weather, and check-in,
+  // so the resulting plans are identical — only the timing changes.
+  const dayCtx = dateList.map((d) => {
     const isWorkDay = workDays.includes(d.weekday);
     const workBusy =
       workStart && workEnd && isWorkDay
@@ -246,29 +252,38 @@ async function planDays(
       })),
       ...workBusy,
     ];
-
     const dm = metricsByDate.get(d.date) ?? latestMetric;
     const recent = dm ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }] : [];
     const weather = d.date === todayStr ? weatherToday : null;
+    return { d, dayFixed, workBusy, busyForDay, recent, weather };
+  });
 
-    const blocks = await generateWeeklyPlan({
-      preferences,
-      days: [d],
-      busy: busyForDay,
-      dayWindow,
-      recent,
-      weather: weather
-        ? {
-            description: weather.description,
-            temperature: weather.temperature,
-            high: weather.tempMax,
-            low: weather.tempMin,
-            precipitationChance: weather.precipitationChance,
-          }
-        : null,
-      reflection: d.date === earliestDate ? reflection : null,
-      checkin: d.date === todayStr ? todayCheckin : null,
-    });
+  const dayPlans = await Promise.all(
+    dayCtx.map((c) =>
+      generateWeeklyPlan({
+        preferences,
+        days: [c.d],
+        busy: c.busyForDay,
+        dayWindow,
+        recent: c.recent,
+        weather: c.weather
+          ? {
+              description: c.weather.description,
+              temperature: c.weather.temperature,
+              high: c.weather.tempMax,
+              low: c.weather.tempMin,
+              precipitationChance: c.weather.precipitationChance,
+            }
+          : null,
+        reflection: c.d.date === earliestDate ? reflection : null,
+        checkin: c.d.date === todayStr ? todayCheckin : null,
+      })
+    )
+  );
+
+  for (let i = 0; i < dayCtx.length; i++) {
+    const { d, dayFixed, workBusy } = dayCtx[i];
+    const blocks = dayPlans[i];
     if (!blocks) continue;
 
     const busyIntervals: [number, number][] = [

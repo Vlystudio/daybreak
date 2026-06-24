@@ -4,10 +4,15 @@ import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser, generateSummar
 import { sendMorningEmailForUser, sendMorningPushForUser } from "@/lib/notifications";
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
 import { notifyFavoriteDeals } from "@/lib/grocery/deal-alerts";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { integrationsAvailable, serverEnv } from "@/env";
 
 export const maxDuration = 300;
+
+// Users processed at once. Each user's task chains several provider syncs + an
+// AI briefing, so this overlaps the slow I/O without flooding the providers.
+const USER_CONCURRENCY = 8;
 
 /**
  * Daily morning job (Vercel Cron): pull fresh Oura data, refresh calendars,
@@ -45,23 +50,24 @@ export async function GET(request: NextRequest) {
     byUser.get(c.user_id)!.add(c.provider);
   }
 
+  const results = await mapWithConcurrency([...byUser], USER_CONCURRENCY, async ([userId, providers]) => {
+    if (providers.has("oura")) await syncOuraForUser(userId, 7);
+    if (providers.has("fitbit")) await syncFitbitForUser(userId, 7);
+    if (providers.has("google")) await syncCalendarForUser(userId);
+    const briefed = await generateSummaryForUser(userId);
+    if (briefed) {
+      await sendMorningEmailForUser(userId);
+      await sendMorningPushForUser(userId);
+    }
+  });
+
   let synced = 0;
   let failed = 0;
-
-  for (const [userId, providers] of byUser) {
-    try {
-      if (providers.has("oura")) await syncOuraForUser(userId, 7);
-      if (providers.has("fitbit")) await syncFitbitForUser(userId, 7);
-      if (providers.has("google")) await syncCalendarForUser(userId);
-      const briefed = await generateSummaryForUser(userId);
-      if (briefed) {
-        await sendMorningEmailForUser(userId);
-        await sendMorningPushForUser(userId);
-      }
-      synced++;
-    } catch (err) {
+  for (const r of results) {
+    if (r.status === "fulfilled") synced++;
+    else {
       failed++;
-      console.error(`[cron] morning sync failed for a user:`, err);
+      console.error("[cron] morning sync failed for a user:", r.reason);
     }
   }
 

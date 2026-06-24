@@ -174,7 +174,7 @@ export async function renameBird(birdId: string, nickname: string): Promise<{ ok
 }
 
 /** Pet the companion: a tiny once-a-day affection bonus + XP. */
-export async function petBird(): Promise<{ ok: boolean; seeds?: number }> {
+export async function petBird(): Promise<{ ok: boolean; seeds?: number; error?: string }> {
   const user = await requireUser();
   const admin = createAdminClient();
 
@@ -182,11 +182,12 @@ export async function petBird(): Promise<{ ok: boolean; seeds?: number }> {
   const tz = profile?.timezone ?? "UTC";
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
-  const { data: inserted } = await admin
+  const { data: inserted, error: ledgerErr } = await admin
     .from("reward_ledger")
     .upsert({ user_id: user.id, key: `${today}|pet`, source: "pet", amount: 2, awarded_on: today }, { onConflict: "user_id,key", ignoreDuplicates: true })
     .select("amount")
     .returns<{ amount: number }[]>();
+  if (ledgerErr) return { ok: false, error: "Couldn't reach your nest just now." };
 
   const bonus = (inserted ?? []).reduce((s, r) => s + r.amount, 0);
   if (bonus > 0) {

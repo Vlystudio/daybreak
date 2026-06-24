@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { integrationsAvailable } from "@/env";
 import { sendPushToUser } from "@/lib/push";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { activeDeals, matchFavoritesToDeals } from "@/lib/grocery/on-sale";
 
 /**
@@ -21,13 +22,14 @@ export async function notifyFavoriteDeals(): Promise<number> {
     .select("user_id, favorites")
     .returns<{ user_id: string; favorites: string[] | null }[]>();
 
-  let notified = 0;
-  for (const s of settings ?? []) {
+  // Push each match concurrently (was one user at a time) so a daily fan-out
+  // across many users doesn't serialize into a long, timeout-prone run.
+  const results = await mapWithConcurrency(settings ?? [], 10, async (s) => {
     const favorites = Array.isArray(s.favorites) ? s.favorites : [];
-    if (favorites.length === 0) continue;
+    if (favorites.length === 0) return false;
 
     const matches = matchFavoritesToDeals(favorites, deals);
-    if (matches.length === 0) continue;
+    if (matches.length === 0) return false;
 
     const lead = matches[0];
     const extra = matches.length - 1;
@@ -40,7 +42,16 @@ export async function notifyFavoriteDeals(): Promise<number> {
       body,
       url: "/grocery/prices",
     });
-    if (sent > 0) notified++;
+    return sent > 0;
+  });
+
+  let notified = 0;
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      if (r.value) notified++;
+    } else {
+      console.error("[deal-alerts] push failed for a user:", r.reason);
+    }
   }
   return notified;
 }

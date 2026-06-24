@@ -3,10 +3,15 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser } from "@/lib/sync";
 import { maybeRefreshTodayPlanForUser, maybeAutoPlanForUser } from "@/lib/planner";
 import { dispatchReminders } from "@/lib/reminders";
+import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { serverEnv } from "@/env";
 
 export const maxDuration = 300;
+
+// Kept modest because each user's plan refresh can itself fan out a handful of
+// model calls — this bounds the total OpenAI calls in flight at any moment.
+const USER_CONCURRENCY = 5;
 
 /**
  * Periodic job (hourly): keep Oura health data and Google Calendar mirrors
@@ -36,25 +41,26 @@ export async function GET(request: NextRequest) {
     byUser.get(c.user_id)!.add(c.provider);
   }
 
+  const syncResults = await mapWithConcurrency([...byUser], USER_CONCURRENCY, async ([userId, providers]) => {
+    // Pull the last 2 days for intraday refresh (the morning job backfills 7).
+    if (providers.has("oura")) await syncOuraForUser(userId, 2);
+    if (providers.has("fitbit")) await syncFitbitForUser(userId, 2);
+    if (providers.has("google")) await syncCalendarForUser(userId);
+    // Rebuild today's plan once that day's recovery is in (gated internally).
+    try {
+      await maybeRefreshTodayPlanForUser(userId);
+    } catch (err) {
+      console.error("[cron] plan refresh failed for a user:", err);
+    }
+  });
+
   let synced = 0;
   let failed = 0;
-
-  for (const [userId, providers] of byUser) {
-    try {
-      // Pull the last 2 days for intraday refresh (the morning job backfills 7).
-      if (providers.has("oura")) await syncOuraForUser(userId, 2);
-      if (providers.has("fitbit")) await syncFitbitForUser(userId, 2);
-      if (providers.has("google")) await syncCalendarForUser(userId);
-      // Rebuild today's plan once that day's recovery is in (gated internally).
-      try {
-        await maybeRefreshTodayPlanForUser(userId);
-      } catch (err) {
-        console.error("[cron] plan refresh failed for a user:", err);
-      }
-      synced++;
-    } catch (err) {
+  for (const r of syncResults) {
+    if (r.status === "fulfilled") synced++;
+    else {
       failed++;
-      console.error("[cron] data sync failed for a user:", err);
+      console.error("[cron] data sync failed for a user:", r.reason);
     }
   }
 
@@ -70,12 +76,16 @@ export async function GET(request: NextRequest) {
     .not("auto_plan_cadence", "is", null)
     .returns<{ user_id: string }[]>();
 
-  for (const { user_id } of cadenceUsers ?? []) {
-    try {
-      const count = await maybeAutoPlanForUser(user_id);
-      if (count !== null) autoPlanned++;
-    } catch (err) {
-      console.error("[cron] auto-plan failed for a user:", err);
+  const autoPlanResults = await mapWithConcurrency(
+    cadenceUsers ?? [],
+    USER_CONCURRENCY,
+    ({ user_id }) => maybeAutoPlanForUser(user_id)
+  );
+  for (const r of autoPlanResults) {
+    if (r.status === "fulfilled") {
+      if (r.value !== null) autoPlanned++;
+    } else {
+      console.error("[cron] auto-plan failed for a user:", r.reason);
     }
   }
 
