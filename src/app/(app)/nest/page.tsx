@@ -7,6 +7,7 @@ import { resolveSpecies } from "@/lib/game/birds";
 import { companionMood } from "@/lib/game/mood";
 import { NestStage } from "@/components/game/nest-stage";
 import { AviaryPanel } from "@/components/game/aviary-panel";
+import { ShopPanel } from "@/components/game/shop-panel";
 import { StarterEggs } from "@/components/game/starter-eggs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
@@ -96,6 +97,16 @@ export default async function NestPage() {
           </p>
         </CardContent>
       </Card>
+
+      <ShopPanel
+        seeds={game.seeds}
+        inventory={game.inventory}
+        activeBird={
+          activeBird && activeSpecies
+            ? { id: activeBird.id, name: activeBird.nickname || activeSpecies.name, speciesKey: activeSpecies.key, happiness: activeBird.happiness }
+            : null
+        }
+      />
 
       <AviaryPanel
         seeds={game.seeds}

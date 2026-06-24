@@ -27,6 +27,8 @@ export type AuditAction =
   | "goal.created"
   | "nudge.sent"
   | "game.hatched"
+  | "shop.buy"
+  | "shop.feed"
   | "health.analyzed"
   | "household.created"
   | "household.joined"
