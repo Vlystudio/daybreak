@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { BirdSprite } from "@/components/game/bird-sprite";
+import { BirdTurntable } from "@/components/game/bird-turntable";
+import { birdAsset } from "@/data/birds";
 import { archetypeFor, birdLevel, type BirdSpecies } from "@/lib/game/birds";
 import { playBirdCall } from "@/lib/game/bird-sounds";
 import { petBird } from "@/actions/game";
@@ -119,20 +121,21 @@ export function NestStage({
 
       {species ? (
         <>
-          {/* the companion — its illustrated sprite, tappable to pet */}
-          <button
-            type="button"
-            onClick={pet}
-            aria-label={`Pet ${nickname || species.name}`}
-            className="absolute inset-0 z-10 flex items-end justify-center pb-6"
-          >
+          {/* the companion — drag to turn (illustrated frames), tap to pet */}
+          <div className="absolute inset-0 z-10 flex items-end justify-center pb-6">
             <span className="flex flex-col items-center">
               <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
-                <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} />
+                {birdAsset(species.key) ? (
+                  <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} onPet={pet} />
+                ) : (
+                  <button type="button" onClick={pet} aria-label={`Pet ${nickname || species.name}`}>
+                    <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} />
+                  </button>
+                )}
               </span>
               <span className="-mt-2 h-2.5 w-24 rounded-full bg-black/15 blur-sm" />
             </span>
-          </button>
+          </div>
 
           {isNight && (
             <span className="pointer-events-none absolute right-1/3 top-10 z-20 text-lg" aria-hidden>
@@ -153,7 +156,7 @@ export function NestStage({
             {isNight ? "😴 fast asleep" : mood === "happy" ? "😊" : mood === "sleepy" ? "😴" : "🙂"} {isNight ? "" : moodLabel}
           </div>
           <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/55 px-2.5 py-0.5 text-[10px] text-[#5a3d1a] backdrop-blur">
-            tap to pet
+            {birdAsset(species.key) ? "drag to turn · tap to pet" : "tap to pet"}
           </div>
         </>
       ) : (
