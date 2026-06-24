@@ -1,14 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { BirdSprite } from "@/components/game/bird-sprite";
 import { BirdTurntable } from "@/components/game/bird-turntable";
 import { birdAsset } from "@/data/birds";
-import { model3dFor } from "@/data/birds3d";
-
-const Bird3DViewer = dynamic(() => import("@/components/game/bird-3d-viewer").then((m) => m.Bird3DViewer), { ssr: false });
 import { archetypeFor, birdLevel, type BirdSpecies } from "@/lib/game/birds";
 import { playBirdCall } from "@/lib/game/bird-sounds";
 import { petBird } from "@/actions/game";
@@ -62,9 +58,7 @@ export function NestStage({
 }) {
   const [pops, setPops] = useState<{ id: number }[]>([]);
   const [now, setNow] = useState(() => Date.now());
-  const [view3d, setView3d] = useState(false);
   const petting = useRef(false);
-  const model3d = species ? model3dFor(species.key) : null;
 
   // Tick the clock every minute so the sun/day-night track real local time.
   useEffect(() => {
@@ -145,37 +139,21 @@ export function NestStage({
 
       {species ? (
         <>
-          {/* the companion — true 3D model, or the illustrated drag-to-turn sprite */}
-          {view3d && model3d ? (
-            <div className="absolute inset-0 z-10">
-              <Bird3DViewer url={model3d} />
-            </div>
-          ) : (
-            <div className="absolute inset-0 z-10 flex items-end justify-center pb-6">
-              <span className="flex flex-col items-center">
-                <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
-                  {birdAsset(species.key) ? (
-                    <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} accessoryKey={accessoryKey} onPet={pet} />
-                  ) : (
-                    <button type="button" onClick={pet} aria-label={`Pet ${nickname || species.name}`}>
-                      <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} accessoryKey={accessoryKey} />
-                    </button>
-                  )}
-                </span>
-                <span className="-mt-2 h-2.5 w-24 rounded-full bg-black/15 blur-sm" />
+          {/* the companion — drag to turn (illustrated frames), tap to pet */}
+          <div className="absolute inset-0 z-10 flex items-end justify-center pb-6">
+            <span className="flex flex-col items-center">
+              <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
+                {birdAsset(species.key) ? (
+                  <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} accessoryKey={accessoryKey} onPet={pet} />
+                ) : (
+                  <button type="button" onClick={pet} aria-label={`Pet ${nickname || species.name}`}>
+                    <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} accessoryKey={accessoryKey} />
+                  </button>
+                )}
               </span>
-            </div>
-          )}
-
-          {model3d && (
-            <button
-              type="button"
-              onClick={() => setView3d((v) => !v)}
-              className="absolute bottom-3 right-3 z-30 rounded-full bg-white/80 px-3 py-1 text-[11px] font-semibold text-[#5a3d1a] shadow backdrop-blur"
-            >
-              {view3d ? "View in 2D" : "🧊 View in 3D"}
-            </button>
-          )}
+              <span className="-mt-2 h-2.5 w-24 rounded-full bg-black/15 blur-sm" />
+            </span>
+          </div>
 
           {isNight && (
             <span className="pointer-events-none absolute right-1/3 top-10 z-20 text-lg" aria-hidden>
@@ -196,7 +174,7 @@ export function NestStage({
             {isNight ? "😴 fast asleep" : mood === "happy" ? "😊" : mood === "sleepy" ? "😴" : "🙂"} {isNight ? "" : moodLabel}
           </div>
           <div className="pointer-events-none absolute bottom-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-white/55 px-2.5 py-0.5 text-[10px] text-[#5a3d1a] backdrop-blur">
-            {view3d ? "drag to rotate · true 3D" : birdAsset(species.key) ? "drag to turn · tap to pet" : "tap to pet"}
+            {birdAsset(species.key) ? "drag to turn · tap to pet" : "tap to pet"}
           </div>
         </>
       ) : (
