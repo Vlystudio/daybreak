@@ -1,6 +1,5 @@
 import "server-only";
-import OpenAI from "openai";
-import { serverEnv } from "@/env";
+import { openaiClient, logUsage } from "@/lib/integrations/openai";
 
 /**
  * Grocery receipt OCR → structured purchase via OpenAI vision. Returns the
@@ -25,11 +24,10 @@ Respond with JSON exactly: {"store": string|null, "date": "YYYY-MM-DD"|null, "to
 Use the printed grand total for "total" (after discounts, before/with tax as printed). Skip non-item lines (subtotal, tax, change). If it isn't a receipt, return all nulls and an empty items array.`;
 
 export async function analyzeReceipt(dataUrl: string): Promise<ReceiptAnalysis | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
   if (!/^data:image\//.test(dataUrl)) return null;
 
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
@@ -47,6 +45,7 @@ export async function analyzeReceipt(dataUrl: string): Promise<ReceiptAnalysis |
         },
       ],
     });
+    logUsage("receipt-vision", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
     const p = JSON.parse(raw) as Record<string, unknown>;

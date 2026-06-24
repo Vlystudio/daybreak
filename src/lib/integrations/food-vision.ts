@@ -1,5 +1,5 @@
 import "server-only";
-import OpenAI from "openai";
+import { openaiClient, logUsage } from "@/lib/integrations/openai";
 import { serverEnv } from "@/env";
 
 /**
@@ -122,9 +122,8 @@ Respond with JSON exactly: {"description": "short plate description", "items": [
 Totals should be the sum across items. If you cannot tell it's food, return all numbers as 0 and description "Not food".`;
 
 async function analyzeWithOpenAI(dataUrl: string): Promise<FoodAnalysis | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
 
   try {
     const completion = await client.chat.completions.create({
@@ -144,6 +143,7 @@ async function analyzeWithOpenAI(dataUrl: string): Promise<FoodAnalysis | null> 
       ],
     });
 
+    logUsage("food-vision", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
     const p = JSON.parse(raw) as Record<string, unknown>;

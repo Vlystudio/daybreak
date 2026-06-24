@@ -1,6 +1,7 @@
 // Generate cozy illustrated bird-house art (several types + a top-down interior
 // for the night "sleeping inside" view). Same style as the bird sprites.
-//   node --use-system-ca scripts/gen-houses.mjs
+//   node --use-system-ca scripts/gen-houses.mjs [quality=medium]
+// quality: low|medium|high — medium is ~4x cheaper than high and fine at 512px.
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
@@ -13,6 +14,7 @@ const env = Object.fromEntries(
   }),
 );
 const client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
+const QUALITY = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "medium";
 const DIR = "public/assets/houses";
 fs.mkdirSync(DIR, { recursive: true });
 
@@ -34,7 +36,7 @@ const INTERIOR = ["interior", "Top-down view looking straight down into an open 
 async function gen(id, prompt) {
   const dest = path.join(DIR, `${id}.png`);
   if (fs.existsSync(dest)) { console.log("skip", id); return; }
-  const res = await client.images.generate({ model: "gpt-image-1", prompt: `${prompt} ${STYLE}`, size: "1024x1024", background: "transparent", quality: "high", n: 1 });
+  const res = await client.images.generate({ model: "gpt-image-1", prompt: `${prompt} ${STYLE}`, size: "1024x1024", background: "transparent", quality: QUALITY, n: 1 });
   let buf = Buffer.from(res.data[0].b64_json, "base64");
   try { buf = await sharp(buf).trim({ threshold: 12 }).toBuffer(); } catch {}
   const fit = await sharp(buf).resize(472, 472, { fit: "inside" }).toBuffer();

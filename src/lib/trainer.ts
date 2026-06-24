@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateFitnessPlan } from "@/lib/integrations/ai";
+import { inputHash } from "@/lib/integrations/openai";
 import { audit } from "@/lib/audit";
 import type { UserPreferences } from "@/lib/planning";
 
@@ -64,7 +65,7 @@ export async function generateFitnessPlanForUser(userId: string): Promise<Traine
   const targets = computeTargets(prefs);
   if (!targets) return "missing_metrics";
 
-  const content = await generateFitnessPlan({
+  const planInput = {
     profile: {
       age: prefs.birth_year ? new Date().getFullYear() - prefs.birth_year : null,
       sex: prefs.sex,
@@ -76,7 +77,20 @@ export async function generateFitnessPlanForUser(userId: string): Promise<Traine
       dietaryRestrictions: prefs.dietary_restrictions ?? [],
     },
     targets,
-  });
+  };
+
+  // Skip-if-unchanged: identical profile + macro targets deterministically
+  // produce the same plan (low temperature + seed), so reuse the stored one
+  // instead of re-billing a "regenerate" that wouldn't differ.
+  const hash = inputHash(planInput);
+  const { data: existingPlan } = await admin
+    .from("fitness_plans")
+    .select("input_hash")
+    .eq("user_id", userId)
+    .maybeSingle<{ input_hash: string | null }>();
+  if (existingPlan?.input_hash === hash) return "ok";
+
+  const content = await generateFitnessPlan(planInput);
   if (!content) return "failed";
 
   const { error } = await admin.from("fitness_plans").upsert(
@@ -89,6 +103,7 @@ export async function generateFitnessPlanForUser(userId: string): Promise<Traine
       fat_g: targets.fat,
       workout: content.workout,
       nutrition: content.nutrition,
+      input_hash: hash,
       generated_at: new Date().toISOString(),
     },
     { onConflict: "user_id" }

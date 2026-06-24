@@ -1,6 +1,7 @@
 // Generate cozy mobile-game bird sprites via OpenAI Images (gpt-image-1),
 // then normalize each to a clean, centered, transparent 512px PNG.
-//   node --use-system-ca scripts/gen-birds.mjs <all|slug> [quality] [--force]
+//   node --use-system-ca scripts/gen-birds.mjs <all|slug> [quality=medium] [--force]
+// quality: low|medium|high — medium is ~4x cheaper than high and fine at 512px.
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI from "openai";
@@ -49,7 +50,7 @@ async function gen(b, quality, outDir) {
 }
 
 const which = process.argv[2] ?? "all";
-const quality = (process.argv[3] && !process.argv[3].startsWith("--")) ? process.argv[3] : "high";
+const quality = (process.argv[3] && !process.argv[3].startsWith("--")) ? process.argv[3] : "medium";
 const force = process.argv.includes("--force");
 const outDir = "public/assets/birds";
 

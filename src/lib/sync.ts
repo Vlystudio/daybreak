@@ -15,6 +15,7 @@ import { getValidAccessToken, type Provider } from "@/lib/integrations/tokens";
 import { fetchFitbitDailyMetrics } from "@/lib/integrations/fitbit";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateMorningBriefing, type MetricsForPrompt } from "@/lib/integrations/ai";
+import { inputHash } from "@/lib/integrations/openai";
 import { audit } from "@/lib/audit";
 
 /**
@@ -330,7 +331,7 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       }
     : null;
 
-  const briefing = await generateMorningBriefing({
+  const briefingInput = {
     displayName: profile?.display_name ?? "",
     todayMetrics,
     recentMetrics: metrics ?? [],
@@ -342,7 +343,23 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       allDay: e.all_day,
     })),
     subjective,
-  });
+  };
+
+  // Skip-if-unchanged: if today's row was generated from byte-identical inputs
+  // (same metrics, weather, schedule, check-in), reuse it rather than paying
+  // OpenAI to reproduce the same briefing. generateSummaryForUser runs from the
+  // cron, settings changes, and OAuth callbacks, so this collapses redundant
+  // same-day regenerations to one billed call.
+  const hash = inputHash(briefingInput);
+  const { data: existingSummary } = await admin
+    .from("daily_summaries")
+    .select("input_hash")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle<{ input_hash: string | null }>();
+  if (existingSummary?.input_hash === hash) return true;
+
+  const briefing = await generateMorningBriefing(briefingInput);
 
   if (!briefing) return false;
 
@@ -354,6 +371,7 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       focus: briefing.focus,
       insights: briefing.insights,
       recommendations: briefing.recommendations,
+      input_hash: hash,
       generated_at: new Date().toISOString(),
     },
     { onConflict: "user_id,date" }

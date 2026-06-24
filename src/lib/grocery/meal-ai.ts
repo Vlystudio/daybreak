@@ -1,8 +1,7 @@
 import "server-only";
-import OpenAI from "openai";
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { serverEnv } from "@/env";
+import { openaiClient, logUsage } from "@/lib/integrations/openai";
 
 /**
  * AI meal-plan generation via strict structured outputs. The model returns a
@@ -78,10 +77,9 @@ HARD RULES:
 - "onSale" is a list of grocery items discounted at the person's local stores this week. Where it fits their tastes and constraints, prefer recipes built around the FOOD items in this list to save money — ignore any non-food entries. Don't compromise variety, balance, allergies, or dislikes to chase a sale.`;
 
 export async function generateMealPlanContent(ctx: MealPlanContext): Promise<MealPlanContent | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
+  const client = openaiClient();
+  if (!client) return null;
 
-  const client = new OpenAI({ apiKey });
   const user = `Create a ${ctx.durationDays}-day meal plan. Context: ${JSON.stringify(ctx)}. Provide exactly ${ctx.durationDays} day entries (day_index 0..${ctx.durationDays - 1}).`;
 
   try {
@@ -95,6 +93,7 @@ export async function generateMealPlanContent(ctx: MealPlanContext): Promise<Mea
       response_format: zodResponseFormat(MealPlanContentSchema, "meal_plan"),
     });
 
+    logUsage("meal-plan", completion.usage);
     const content = completion.choices[0]?.message?.content;
     if (!content) return null;
     const parsed = MealPlanContentSchema.safeParse(JSON.parse(content));

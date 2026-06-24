@@ -1,6 +1,5 @@
 import "server-only";
-import OpenAI from "openai";
-import { serverEnv } from "@/env";
+import { openaiClient, logUsage } from "@/lib/integrations/openai";
 import type { BirdPalette } from "@/lib/game/birds";
 
 /**
@@ -30,11 +29,10 @@ const PROMPT = `You identify birds from photos for a friendly bird-collecting ga
 Pick the palette hex colors from the bird's actual plumage so a cartoon of it would resemble it. If the image is not a bird, set isBird false and use any values.`;
 
 export async function identifyBird(dataUrl: string): Promise<BirdIdentification | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
   if (!/^data:image\//.test(dataUrl)) return null;
 
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
@@ -52,6 +50,7 @@ export async function identifyBird(dataUrl: string): Promise<BirdIdentification 
         },
       ],
     });
+    logUsage("bird-identify", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
     const p = JSON.parse(raw) as Record<string, unknown>;

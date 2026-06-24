@@ -1,6 +1,5 @@
 import "server-only";
-import OpenAI from "openai";
-import { serverEnv } from "@/env";
+import { openaiClient, logUsage } from "@/lib/integrations/openai";
 import type { WeatherSnapshot } from "@/lib/integrations/weather";
 import type { WorkoutProgram, NutritionGuide } from "@/lib/planning";
 
@@ -75,10 +74,8 @@ export async function generateMorningBriefing(input: {
   todayEvents: EventForPrompt[];
   subjective?: SubjectiveForPrompt | null;
 }): Promise<MorningBriefing | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
 
   const userPayload = {
     name: input.displayName || "there",
@@ -112,6 +109,7 @@ export async function generateMorningBriefing(input: {
       ],
     });
 
+    logUsage("morning-briefing", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
 
@@ -171,10 +169,8 @@ export async function analyzeHealthTrends(input: {
   metrics: Record<string, unknown>[];
   flags: { title: string; detail: string }[];
 }): Promise<HealthAnalysis | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
 
   try {
     const completion = await client.chat.completions.create({
@@ -188,6 +184,7 @@ export async function analyzeHealthTrends(input: {
       ],
     });
 
+    logUsage("health-analysis", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<HealthAnalysis>;
@@ -255,10 +252,8 @@ export async function healthCheckinReply(input: {
   flags: { title: string; detail: string }[];
   history: CheckinTurn[];
 }): Promise<CheckinReply | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
 
   try {
     const completion = await client.chat.completions.create({
@@ -275,6 +270,7 @@ export async function healthCheckinReply(input: {
         ...input.history.map((t) => ({ role: t.role, content: t.content })),
       ],
     });
+    logUsage("health-checkin", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { message?: unknown; action?: unknown };
@@ -371,10 +367,8 @@ export async function generateWeeklyPlan(input: {
     soreness: number | null;
   } | null;
 }): Promise<PlanBlock[] | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
   const validDates = new Set(input.days.map((d) => d.date));
   const validTypes = new Set<string>([
     "workout",
@@ -400,6 +394,7 @@ export async function generateWeeklyPlan(input: {
       ],
     });
 
+    logUsage("weekly-plan", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
 
@@ -478,10 +473,8 @@ export async function generateFitnessPlan(input: {
   };
   targets: { calories: number; protein: number; carbs: number; fat: number };
 }): Promise<FitnessPlanContent | null> {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const client = new OpenAI({ apiKey });
+  const client = openaiClient();
+  if (!client) return null;
 
   try {
     const completion = await client.chat.completions.create({
@@ -496,6 +489,7 @@ export async function generateFitnessPlan(input: {
       ],
     });
 
+    logUsage("fitness-plan", completion.usage);
     const raw = completion.choices[0]?.message?.content;
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;

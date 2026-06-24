@@ -1,6 +1,7 @@
 // Generate turn-angle frames for a bird FROM its existing front sprite (image
 // edit, so colours/markings stay consistent). Writes <slug>_l.png / <slug>_r.png.
-//   node --use-system-ca scripts/gen-angles.mjs <slug> [--force]
+//   node --use-system-ca scripts/gen-angles.mjs <slug|all> [quality=medium] [--force]
+// quality: low|medium|high — image edits default to high, so set this explicitly.
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI, { toFile } from "openai";
@@ -37,12 +38,14 @@ async function angle(b, side) {
       `${b.fieldMarks.join(", ")}. Single bird, full body, centered, transparent background, no text, no scenery.`,
     size: "1024x1024",
     background: "transparent",
+    quality: QUALITY,
   });
   return normalize(Buffer.from(res.data[0].b64_json, "base64"));
 }
 
 const slug = process.argv[2];
 const force = process.argv.includes("--force");
+const QUALITY = process.argv[3] && !process.argv[3].startsWith("--") ? process.argv[3] : "medium";
 const list = slug === "all" ? BIRDS : BIRDS.filter((b) => b.id === slug);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

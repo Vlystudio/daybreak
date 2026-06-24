@@ -1,7 +1,6 @@
 import "server-only";
-import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { serverEnv } from "@/env";
+import { openaiClient, logUsage } from "@/lib/integrations/openai";
 import {
   ExerciseListSchema,
   WorkoutPlanSchema,
@@ -19,12 +18,6 @@ import { SAFETY_SYSTEM_RULES } from "@/lib/fitness-safety";
 const MODEL_FAST = "gpt-4o-mini";
 const MODEL_STRONG = "gpt-4o";
 
-function client(): OpenAI | null {
-  const apiKey = serverEnv().OPENAI_API_KEY;
-  if (!apiKey) return null;
-  return new OpenAI({ apiKey });
-}
-
 export interface ExerciseFilters {
   muscleGroup?: string;
   equipment?: string[];
@@ -40,7 +33,7 @@ export async function generateExercises(
   filters: ExerciseFilters,
   count = 8
 ): Promise<GeneratedExercise[] | null> {
-  const ai = client();
+  const ai = openaiClient();
   if (!ai) return null;
 
   const system = `You are an expert exercise physiologist building a structured exercise library for a personal fitness app. Generate accurate, real exercises with correct muscle targeting and safe technique. ${SAFETY_SYSTEM_RULES}`;
@@ -58,6 +51,7 @@ export async function generateExercises(
       ],
       response_format: zodResponseFormat(ExerciseListSchema, "exercise_list"),
     });
+    logUsage("exercise-generation", completion.usage);
     const content = completion.choices[0]?.message?.content;
     if (!content) return null;
     const parsed = ExerciseListSchema.safeParse(JSON.parse(content));
@@ -94,7 +88,7 @@ export interface WorkoutContext {
 }
 
 export async function generateWorkoutPlan(ctx: WorkoutContext): Promise<WorkoutPlan | null> {
-  const ai = client();
+  const ai = openaiClient();
   if (!ai) return null;
 
   const system = `You are an intelligent strength & conditioning coach generating a single session for a personal fitness app. Use the person's recovery data to set intensity: low sleep / low HRV / low readiness means a lighter, recovery-oriented session (mobility, light cardio) rather than heavy lifting; good recovery means you can push appropriately. Apply progressive overload using recent workouts: increase reps before load, avoid spiking volume, alternate emphasis, and deload when recovery is poor. Only use the available equipment.
@@ -111,6 +105,7 @@ When an "autoregulation" directive is provided, it is derived from multi-day rec
       ],
       response_format: zodResponseFormat(WorkoutPlanSchema, "workout_plan"),
     });
+    logUsage("workout-plan", completion.usage);
     const content = completion.choices[0]?.message?.content;
     if (!content) return null;
     const parsed = WorkoutPlanSchema.safeParse(JSON.parse(content));

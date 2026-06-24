@@ -1,6 +1,7 @@
 // Generate full side-profile turn frames (_ll left, _rr right) from each bird's
 // front sprite via image edit, to extend the turntable to a ~180° arc.
-//   node --use-system-ca scripts/gen-sides.mjs <slug|all> [--force]
+//   node --use-system-ca scripts/gen-sides.mjs <slug|all> [quality=medium] [--force]
+// quality: low|medium|high — image edits default to high, so set this explicitly.
 import fs from "node:fs";
 import path from "node:path";
 import OpenAI, { toFile } from "openai";
@@ -37,12 +38,14 @@ async function side(b, dir) {
       `Single bird, full body, centered, transparent background, no text, no scenery.`,
     size: "1024x1024",
     background: "transparent",
+    quality: QUALITY,
   });
   return normalize(Buffer.from(res.data[0].b64_json, "base64"));
 }
 
 const which = process.argv[2] ?? "all";
 const force = process.argv.includes("--force");
+const QUALITY = process.argv[3] && !process.argv[3].startsWith("--") ? process.argv[3] : "medium";
 const list = which === "all" ? BIRDS : BIRDS.filter((b) => b.id === which);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
