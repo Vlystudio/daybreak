@@ -58,7 +58,14 @@ export interface OwnedBird {
   level: number;
   happiness: number;
   last_fed_at: string | null;
+  accessory: string | null;
   hatched_at: string;
+}
+
+export interface BredEgg {
+  id: string;
+  rarity: string;
+  hatchAt: string;
 }
 
 export interface GameState {
@@ -72,6 +79,8 @@ export interface GameState {
   starterDone: boolean;
   freeHatches: number;
   inventory: Record<string, number>;
+  decor: string[];
+  eggs: BredEgg[];
 }
 
 /** Build the day's earn candidates from real completions. */
@@ -175,11 +184,12 @@ export async function loadGame(userId: string, timeZone: string): Promise<GameSt
   const admin = createAdminClient();
   const today = localToday(timeZone);
 
-  const [{ data: game }, { data: birds }, { data: todayLedger }, { data: invRows }, { earnable }] = await Promise.all([
-    admin.from("user_game").select("seeds, total_earned, active_bird_id, starter_done, free_hatches").eq("user_id", userId).maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null; starter_done: boolean; free_hatches: number }>(),
-    admin.from("user_birds").select("id, species_key, source, nickname, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail, xp, happiness, last_fed_at, hatched_at").eq("user_id", userId).order("hatched_at", { ascending: false }).returns<Omit<OwnedBird, "level">[]>(),
+  const [{ data: game }, { data: birds }, { data: todayLedger }, { data: invRows }, { data: eggRows }, { earnable }] = await Promise.all([
+    admin.from("user_game").select("seeds, total_earned, active_bird_id, starter_done, free_hatches, decor").eq("user_id", userId).maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null; starter_done: boolean; free_hatches: number; decor: string[] }>(),
+    admin.from("user_birds").select("id, species_key, source, nickname, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail, xp, happiness, last_fed_at, accessory, hatched_at").eq("user_id", userId).order("hatched_at", { ascending: false }).returns<Omit<OwnedBird, "level">[]>(),
     admin.from("reward_ledger").select("amount").eq("user_id", userId).eq("awarded_on", today).returns<{ amount: number }[]>(),
     admin.from("user_inventory").select("item_key, qty").eq("user_id", userId).gt("qty", 0).returns<{ item_key: string; qty: number }[]>(),
+    admin.from("user_eggs").select("id, rarity, hatch_at").eq("user_id", userId).order("created_at", { ascending: true }).returns<{ id: string; rarity: string; hatch_at: string }[]>(),
     candidatesForToday(admin, userId, today),
   ]);
 
@@ -194,5 +204,7 @@ export async function loadGame(userId: string, timeZone: string): Promise<GameSt
     starterDone: game?.starter_done ?? false,
     freeHatches: game?.free_hatches ?? 0,
     inventory: Object.fromEntries((invRows ?? []).map((r) => [r.item_key, r.qty])),
+    decor: game?.decor ?? [],
+    eggs: (eggRows ?? []).map((e) => ({ id: e.id, rarity: e.rarity, hatchAt: e.hatch_at })),
   };
 }

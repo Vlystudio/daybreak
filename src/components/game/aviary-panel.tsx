@@ -17,6 +17,7 @@ interface OwnedBird extends OwnedBirdBase {
   nickname: string | null;
   xp: number;
   level: number;
+  accessory?: string | null;
 }
 
 function imageToDataUrl(file: File, maxDim = 1024): Promise<string> {
@@ -176,7 +177,7 @@ export function AviaryPanel({
                   )}
                 >
                   <button type="button" onClick={() => { playBirdCall(archetypeFor(species)); activate(b.id); }} disabled={pending} className="flex flex-col items-center" aria-label={`Set ${b.nickname || species.name} active`}>
-                    <BirdSprite species={species} size={64} animated={false} />
+                    <BirdSprite species={species} size={64} animated={false} accessoryKey={b.accessory ?? null} />
                     {renaming === b.id ? null : (
                       <span className="mt-0.5 max-w-full truncate text-xs font-medium">{b.nickname || species.name}</span>
                     )}

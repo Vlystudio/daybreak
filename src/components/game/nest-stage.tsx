@@ -8,6 +8,7 @@ import { birdAsset } from "@/data/birds";
 import { archetypeFor, birdLevel, type BirdSpecies } from "@/lib/game/birds";
 import { playBirdCall } from "@/lib/game/bird-sounds";
 import { petBird } from "@/actions/game";
+import { DECOR_BY_KEY } from "@/lib/game/shop";
 import type { Mood } from "@/lib/game/mood";
 
 /** Local hour (0-23.99) in the given timezone. */
@@ -43,6 +44,8 @@ export function NestStage({
   mood = "content",
   moodLabel,
   timezone = "UTC",
+  accessoryKey = null,
+  decor = [],
 }: {
   species: BirdSpecies | null;
   nickname: string | null;
@@ -50,6 +53,8 @@ export function NestStage({
   mood?: Mood;
   moodLabel?: string;
   timezone?: string;
+  accessoryKey?: string | null;
+  decor?: string[];
 }) {
   const [pops, setPops] = useState<{ id: number }[]>([]);
   const [now, setNow] = useState(() => Date.now());
@@ -119,6 +124,19 @@ export function NestStage({
       {/* ground */}
       <div className="absolute inset-x-0 bottom-0 h-20" style={{ background: isNight ? "#6b5a3f" : "#cdb079" }} />
 
+      {/* placed decor */}
+      {decor.length > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-7 z-0 flex items-end justify-between px-5">
+          {decor.map((k, i) =>
+            DECOR_BY_KEY[k] ? (
+              <span key={k} className="drop-shadow" style={{ fontSize: i % 2 ? "1.7rem" : "2.1rem", opacity: isNight ? 0.85 : 1 }}>
+                {DECOR_BY_KEY[k].emoji}
+              </span>
+            ) : null,
+          )}
+        </div>
+      )}
+
       {species ? (
         <>
           {/* the companion — drag to turn (illustrated frames), tap to pet */}
@@ -126,10 +144,10 @@ export function NestStage({
             <span className="flex flex-col items-center">
               <span className={isNight ? undefined : "bird-bob"} style={{ transformOrigin: "center bottom" }}>
                 {birdAsset(species.key) ? (
-                  <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} onPet={pet} />
+                  <BirdTurntable speciesKey={species.key} name={nickname || species.name} size={200} sleeping={isNight} accessoryKey={accessoryKey} onPet={pet} />
                 ) : (
                   <button type="button" onClick={pet} aria-label={`Pet ${nickname || species.name}`}>
-                    <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} />
+                    <BirdSprite species={species} size={200} mood={mood} sleeping={isNight} accessoryKey={accessoryKey} />
                   </button>
                 )}
               </span>

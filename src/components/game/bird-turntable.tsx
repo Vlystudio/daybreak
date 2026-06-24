@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { birdAsset } from "@/data/birds";
+import { AccessoryOverlay } from "@/components/game/accessory-overlay";
 
 /**
  * Drag-to-turn companion. The bird has three illustrated frames — left,
@@ -15,12 +16,14 @@ export function BirdTurntable({
   name,
   size = 200,
   sleeping = false,
+  accessoryKey = null,
   onPet,
 }: {
   speciesKey: string;
   name: string;
   size?: number;
   sleeping?: boolean;
+  accessoryKey?: string | null;
   onPet?: () => void;
 }) {
   const front = birdAsset(speciesKey) ?? "";
@@ -45,7 +48,7 @@ export function BirdTurntable({
 
   return (
     <div
-      className="select-none"
+      className="relative select-none"
       style={{ width: size, height: size, touchAction: "none", cursor: "grab" }}
       onPointerDown={down}
       onPointerMove={move}
@@ -64,6 +67,7 @@ export function BirdTurntable({
         }}
         className={cn("h-full w-full object-contain", sleeping && "opacity-90 saturate-[0.85]")}
       />
+      {accessoryKey && <AccessoryOverlay accessoryKey={accessoryKey} size={size} />}
     </div>
   );
 }

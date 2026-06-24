@@ -137,3 +137,53 @@ export function dietLabel(speciesKey: string | null | undefined): string {
   if (labels.length === 1) return labels[0];
   return labels.slice(0, -1).join(", ") + " & " + labels[labels.length - 1];
 }
+
+/* ── accessories (worn on a bird) ──────────────────────────────────────── */
+export type AccessorySlot = "head" | "face" | "neck";
+
+export interface Accessory {
+  key: string;
+  name: string;
+  emoji: string;
+  slot: AccessorySlot;
+  cost: number;
+}
+
+export const ACCESSORIES: Accessory[] = [
+  { key: "ball_cap", name: "Ball Cap", emoji: "🧢", slot: "head", cost: 25 },
+  { key: "bow", name: "Ribbon Bow", emoji: "🎀", slot: "head", cost: 30 },
+  { key: "flower_crown", name: "Flower Crown", emoji: "🌸", slot: "head", cost: 35 },
+  { key: "top_hat", name: "Top Hat", emoji: "🎩", slot: "head", cost: 45 },
+  { key: "headphones", name: "Headphones", emoji: "🎧", slot: "head", cost: 55 },
+  { key: "crown", name: "Gold Crown", emoji: "👑", slot: "head", cost: 95 },
+  { key: "glasses", name: "Round Glasses", emoji: "👓", slot: "face", cost: 25 },
+  { key: "sunglasses", name: "Sunglasses", emoji: "🕶️", slot: "face", cost: 45 },
+  { key: "scarf", name: "Cozy Scarf", emoji: "🧣", slot: "neck", cost: 35 },
+  { key: "necklace", name: "Bead Necklace", emoji: "📿", slot: "neck", cost: 40 },
+];
+export const ACCESSORY_BY_KEY: Record<string, Accessory> = Object.fromEntries(ACCESSORIES.map((a) => [a.key, a]));
+
+/* ── decor (placed around the nest) ────────────────────────────────────── */
+export interface Decor {
+  key: string;
+  name: string;
+  emoji: string;
+  cost: number;
+}
+
+export const DECOR_ITEMS: Decor[] = [
+  { key: "mushrooms", name: "Toadstools", emoji: "🍄", cost: 20 },
+  { key: "sunflowers", name: "Sunflowers", emoji: "🌻", cost: 25 },
+  { key: "lantern", name: "Paper Lantern", emoji: "🏮", cost: 30 },
+  { key: "tulips", name: "Tulip Patch", emoji: "🌷", cost: 30 },
+  { key: "pine_tree", name: "Little Pine", emoji: "🌲", cost: 40 },
+  { key: "bird_house", name: "Bird House", emoji: "🏠", cost: 60 },
+  { key: "fountain", name: "Stone Fountain", emoji: "⛲", cost: 75 },
+  { key: "rainbow", name: "Rainbow", emoji: "🌈", cost: 120 },
+];
+export const DECOR_BY_KEY: Record<string, Decor> = Object.fromEntries(DECOR_ITEMS.map((d) => [d.key, d]));
+
+/* ── breeding ──────────────────────────────────────────────────────────── */
+export const EGG_INCUBATION_MIN = 30;
+export const MAX_EGGS = 3;
+

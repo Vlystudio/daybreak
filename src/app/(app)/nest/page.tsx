@@ -8,6 +8,7 @@ import { companionMood } from "@/lib/game/mood";
 import { NestStage } from "@/components/game/nest-stage";
 import { AviaryPanel } from "@/components/game/aviary-panel";
 import { ShopPanel } from "@/components/game/shop-panel";
+import { NurseryPanel } from "@/components/game/nursery-panel";
 import { StarterEggs } from "@/components/game/starter-eggs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
@@ -66,6 +67,8 @@ export default async function NestPage() {
         mood={companion.mood}
         moodLabel={companion.label}
         timezone={profile?.timezone ?? "UTC"}
+        accessoryKey={activeBird?.accessory ?? null}
+        decor={game.decor}
       />
 
       <Card>
@@ -101,11 +104,17 @@ export default async function NestPage() {
       <ShopPanel
         seeds={game.seeds}
         inventory={game.inventory}
+        decor={game.decor}
         activeBird={
           activeBird && activeSpecies
-            ? { id: activeBird.id, name: activeBird.nickname || activeSpecies.name, speciesKey: activeSpecies.key, happiness: activeBird.happiness }
+            ? { id: activeBird.id, name: activeBird.nickname || activeSpecies.name, speciesKey: activeSpecies.key, happiness: activeBird.happiness, accessory: activeBird.accessory }
             : null
         }
+      />
+
+      <NurseryPanel
+        birds={game.birds.map((b) => ({ id: b.id, name: b.nickname || resolveSpecies(b).name }))}
+        eggs={game.eggs}
       />
 
       <AviaryPanel
