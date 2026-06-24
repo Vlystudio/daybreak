@@ -2,13 +2,13 @@
 
 import { Suspense, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, useGLTF, useAnimations } from "@react-three/drei";
+import { OrbitControls, useGLTF, useAnimations, Center, Bounds } from "@react-three/drei";
 import type { Group } from "three";
 
 /**
- * Loads a procedural bird GLB (from the Blender pipeline) and renders it as a
- * true, freely-rotatable 3D model with its rig animations playing. Drag to spin
- * any direction; gentle auto-rotate + soft lighting.
+ * Loads a bird GLB and renders it as a freely-rotatable 3D model with its rig
+ * animation playing. <Center> + <Bounds> auto-frame the model whatever its size
+ * (tiny hummingbird vs tall heron), so it's never cropped or zoomed wrong.
  */
 function Model({ url, clip }: { url: string; clip: string }) {
   const group = useRef<Group>(null);
@@ -29,27 +29,22 @@ function Model({ url, clip }: { url: string; clip: string }) {
 export function Bird3DViewer({ url, clip = "idle" }: { url: string; clip?: string }) {
   return (
     <Canvas
-      camera={{ position: [0, 0.8, 8], fov: 30 }}
+      camera={{ position: [0.6, 0.4, 4], fov: 32 }}
       dpr={[1, 2]}
       gl={{ alpha: true, antialias: true }}
       style={{ width: "100%", height: "100%", touchAction: "none", cursor: "grab" }}
     >
-      <hemisphereLight args={["#fff6e0", "#56624f", 1.1]} />
-      <directionalLight position={[5, 9, 6]} intensity={1.3} />
+      <hemisphereLight args={["#fff6e0", "#56624f", 1.15]} />
+      <directionalLight position={[5, 9, 6]} intensity={1.35} />
       <directionalLight position={[-5, 2, -4]} intensity={0.4} />
       <Suspense fallback={null}>
-        <Model url={url} clip={clip} />
+        <Bounds fit clip observe margin={1.35}>
+          <Center>
+            <Model url={url} clip={clip} />
+          </Center>
+        </Bounds>
       </Suspense>
-      <OrbitControls
-        enablePan={false}
-        autoRotate
-        autoRotateSpeed={1.3}
-        target={[0, 0.5, 0]}
-        minPolarAngle={0.5}
-        maxPolarAngle={2.1}
-        minDistance={4}
-        maxDistance={14}
-      />
+      <OrbitControls makeDefault enablePan={false} autoRotate autoRotateSpeed={1.1} minPolarAngle={0.6} maxPolarAngle={1.95} />
     </Canvas>
   );
 }
