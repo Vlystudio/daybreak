@@ -23,6 +23,10 @@ const serverSchema = z.object({
   TOKEN_ENCRYPTION_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, {
     message: "TOKEN_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32)",
   }),
+  // Optional key rotation: JSON map of `{ keyId: base64Key }` plus the id of the
+  // key that should encrypt new data. Unset = use TOKEN_ENCRYPTION_KEY only.
+  TOKEN_ENCRYPTION_KEYS: z.string().optional(),
+  TOKEN_ENCRYPTION_ACTIVE_KEY: z.string().optional(),
   CRON_SECRET: z.string().min(16),
   OURA_CLIENT_ID: z.string().min(1).optional(),
   OURA_CLIENT_SECRET: z.string().min(1).optional(),

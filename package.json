@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:db": "supabase test db",
     "gen:types": "supabase gen types typescript --project-id cybpuscssilbguypptxi --schema public > src/lib/supabase/database.types.ts",
     "prepare": "husky"
   },
