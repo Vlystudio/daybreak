@@ -72,7 +72,9 @@ workflows:
           # use-profiles-generated plist since we're letting Xcode manage signing).
           # Generate it with Python's plistlib so it's guaranteed parseable by the
           # same library codemagic-cli-tools validates with.
-          python3 -c "import plistlib,os; plistlib.dump({'method':'app-store-connect','signingStyle':'automatic','teamID':os.environ.get('APPLE_TEAM_ID','')}, open('/tmp/export_options.plist','wb'))"
+          # method "app-store" (not the newer "app-store-connect") — codemagic-cli-tools'
+          # validator only accepts the classic value, and xcodebuild still honors it.
+          python3 -c "import plistlib,os; plistlib.dump({'method':'app-store','signingStyle':'automatic','teamID':os.environ.get('APPLE_TEAM_ID','')}, open('/tmp/export_options.plist','wb'))"
           cat /tmp/export_options.plist
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
