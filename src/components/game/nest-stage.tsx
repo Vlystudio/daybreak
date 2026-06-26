@@ -87,7 +87,9 @@ export function NestStage({
     petBird()
       .then((r) => {
         if (r.ok && r.seeds && r.seeds > 0) toast.success(`+${r.seeds} 🌱 — your buddy loves the attention.`);
+        else if (!r.ok) toast.error(r.error ?? "Couldn't reach your nest just now.");
       })
+      .catch(() => toast.error("Couldn't reach your nest just now."))
       .finally(() => {
         petting.current = false;
       });

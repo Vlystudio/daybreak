@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { birdAsset } from "@/data/birds";
 import type { BirdSpecies } from "@/lib/game/birds";
@@ -32,8 +33,7 @@ export function BirdSprite({
   let content;
   if (asset) {
     content = (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={asset}
         alt={species.name}
         width={size}

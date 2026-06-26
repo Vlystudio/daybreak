@@ -7,17 +7,25 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { analyzeFoodImage, type FoodAnalysis } from "@/lib/integrations/food-vision";
+import { validateImageDataUrl } from "@/lib/image-upload";
 import type { ActionResult } from "@/actions/schedule";
 
 /** YYYY-MM-DD for "now" in the user's timezone. */
 async function localToday(userId: string): Promise<string> {
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("timezone").eq("id", userId).maybeSingle<{ timezone: string }>();
+  const { data } = await supabase
+    .from("profiles")
+    .select("timezone")
+    .eq("id", userId)
+    .maybeSingle<{ timezone: string }>();
   const tz = data?.timezone ?? "UTC";
   try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(
-      new Date()
-    );
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
   } catch {
     return new Date().toISOString().slice(0, 10);
   }
@@ -25,23 +33,17 @@ async function localToday(userId: string): Promise<string> {
 
 // ── food photo → nutrition ───────────────────────────────────────────────────
 
-// ~7MB of base64 ≈ 5MB image; reject larger to keep the request sane.
-const MAX_IMAGE_CHARS = 7_000_000;
-
 export type AnalyzeResult = { ok: true; analysis: FoodAnalysis } | { ok: false; error: string };
 
 export async function analyzeFoodPhoto(input: { imageDataUrl: string }): Promise<AnalyzeResult> {
   const user = await requireUser();
 
   const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
-  if (!limited.ok) return { ok: false, error: "You've analyzed a lot of photos — try again in a bit." };
+  if (!limited.ok)
+    return { ok: false, error: "You've analyzed a lot of photos — try again in a bit." };
 
-  if (typeof input.imageDataUrl !== "string" || !input.imageDataUrl.startsWith("data:image/")) {
-    return { ok: false, error: "That doesn't look like an image." };
-  }
-  if (input.imageDataUrl.length > MAX_IMAGE_CHARS) {
-    return { ok: false, error: "That image is a bit large — try a smaller photo." };
-  }
+  const valid = validateImageDataUrl(input.imageDataUrl);
+  if (!valid.ok) return { ok: false, error: valid.error };
 
   const analysis = await analyzeFoodImage(input.imageDataUrl);
   if (!analysis) return { ok: false, error: "Couldn't read that photo — log it manually below." };

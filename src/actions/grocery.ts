@@ -15,6 +15,7 @@ import {
 } from "@/lib/grocery";
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
 import { analyzeReceipt, type ReceiptAnalysis } from "@/lib/integrations/receipt-vision";
+import { validateImageDataUrl } from "@/lib/image-upload";
 import { integrationsAvailable } from "@/env";
 import { z } from "zod";
 import type { ActionResult } from "@/actions/schedule";
@@ -34,7 +35,8 @@ export async function saveGrocerySettings(input: GrocerySettingsInput): Promise<
   if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
 
   const parsed = grocerySettingsSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings" };
   const d = parsed.data;
 
   const supabase = await createClient();
@@ -61,7 +63,8 @@ export async function saveGrocerySettings(input: GrocerySettingsInput): Promise<
 export async function addPantryItem(input: PantryItemInput): Promise<ActionResult> {
   const user = await requireUser();
   const parsed = pantryItemSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid item" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid item" };
   const d = parsed.data;
 
   const supabase = await createClient();
@@ -100,19 +103,24 @@ export async function removePantryItem(id: string): Promise<ActionResult> {
  * Pull the latest discounts from the external grocery-deals feed into the
  * shared price catalog. Global (affects everyone's optimizer); rate-limited.
  */
-export async function refreshGroceryDeals(): Promise<{ ok: true; prices: number } | { ok: false; error: string }> {
+export async function refreshGroceryDeals(): Promise<
+  { ok: true; prices: number } | { ok: false; error: string }
+> {
   const user = await requireUser();
   if (!integrationsAvailable.groceryDeals()) {
     return { ok: false, error: "The deals feed isn't connected on this deployment." };
   }
 
   const limited = await rateLimit(`sync:${user.id}`, RATE_LIMITS.sync);
-  if (!limited.ok) return { ok: false, error: "Deals were refreshed recently — they update automatically too." };
+  if (!limited.ok)
+    return { ok: false, error: "Deals were refreshed recently — they update automatically too." };
 
   try {
     const result = await importGroceryDeals();
     if (!result) return { ok: false, error: "Couldn't reach the deals feed — try again shortly." };
-    await audit(user.id, "deals.imported", { metadata: { prices: result.prices, stores: result.stores } });
+    await audit(user.id, "deals.imported", {
+      metadata: { prices: result.prices, stores: result.stores },
+    });
     revalidatePath("/grocery/prices");
     revalidatePath("/grocery");
     return { ok: true, prices: result.prices };
@@ -124,23 +132,21 @@ export async function refreshGroceryDeals(): Promise<{ ok: true; prices: number 
 
 // ── receipts + spend ─────────────────────────────────────────────────────────
 
-const MAX_IMAGE_CHARS = 9_000_000;
-
 export type ReceiptResult = { ok: true; receipt: ReceiptAnalysis } | { ok: false; error: string };
 
 /** Read a grocery receipt photo into a structured purchase (no save yet). */
 export async function analyzeReceiptPhoto(input: { imageDataUrl: string }): Promise<ReceiptResult> {
   const user = await requireUser();
   const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
-  if (!limited.ok) return { ok: false, error: "You've scanned a lot recently — try again in a bit." };
+  if (!limited.ok)
+    return { ok: false, error: "You've scanned a lot recently — try again in a bit." };
 
-  if (typeof input.imageDataUrl !== "string" || !input.imageDataUrl.startsWith("data:image/")) {
-    return { ok: false, error: "That doesn't look like an image." };
-  }
-  if (input.imageDataUrl.length > MAX_IMAGE_CHARS) return { ok: false, error: "That image is a bit large." };
+  const valid = validateImageDataUrl(input.imageDataUrl);
+  if (!valid.ok) return { ok: false, error: valid.error };
 
   const receipt = await analyzeReceipt(input.imageDataUrl);
-  if (!receipt) return { ok: false, error: "Couldn't read that receipt — enter the total manually." };
+  if (!receipt)
+    return { ok: false, error: "Couldn't read that receipt — enter the total manually." };
   await audit(user.id, "receipt.scanned");
   return { ok: true, receipt };
 }
@@ -149,7 +155,10 @@ const purchaseSchema = z.object({
   store: z.string().trim().max(120).optional(),
   purchasedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   total: z.number().min(0).max(100000),
-  items: z.array(z.object({ name: z.string().max(120), price: z.number().nullable() })).max(200).default([]),
+  items: z
+    .array(z.object({ name: z.string().max(120), price: z.number().nullable() }))
+    .max(200)
+    .default([]),
   source: z.enum(["receipt", "manual"]).default("manual"),
 });
 
@@ -186,7 +195,11 @@ export async function deletePurchase(id: string): Promise<ActionResult> {
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Unknown purchase" };
   const supabase = await createClient();
-  const { error } = await supabase.from("grocery_purchases").delete().eq("id", id).eq("user_id", user.id);
+  const { error } = await supabase
+    .from("grocery_purchases")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) return { ok: false, error: "Couldn't remove that purchase." };
   revalidatePath("/grocery/prices");
   revalidatePath("/grocery");
@@ -210,7 +223,9 @@ export async function toggleStore(storeId: string): Promise<ActionResult> {
   if (existing) {
     await supabase.from("user_stores").delete().eq("id", existing.id);
   } else {
-    const { error } = await supabase.from("user_stores").insert({ user_id: user.id, store_id: storeId });
+    const { error } = await supabase
+      .from("user_stores")
+      .insert({ user_id: user.id, store_id: storeId });
     if (error) return { ok: false, error: "Couldn't update stores." };
   }
 

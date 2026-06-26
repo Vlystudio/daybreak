@@ -6,6 +6,8 @@ import { integrationsAvailable } from "@/env";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { RemindersCard } from "@/components/settings/reminders-card";
 import { HealthImportCard } from "@/components/settings/health-import-card";
+import { DataPrivacyCard } from "@/components/settings/data-privacy-card";
+import { MfaCard } from "@/components/settings/mfa-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
@@ -20,7 +22,7 @@ export default async function SettingsPage() {
   const data = await loadDashboardData(user.id);
 
   const supabase = await createClient();
-  const [{ data: notif }, { data: reminders }] = await Promise.all([
+  const [{ data: notif }, { data: reminders }, { data: appleImport }] = await Promise.all([
     supabase
       .from("notification_settings")
       .select("morning_email_enabled")
@@ -32,6 +34,13 @@ export default async function SettingsPage() {
       .eq("user_id", user.id)
       .order("hour", { ascending: true })
       .returns<Reminder[]>(),
+    supabase
+      .from("apple_health_imports")
+      .select("metrics_days, range_end")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ metrics_days: number; range_end: string | null }>(),
   ]);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
   const pushAvailable = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
@@ -40,20 +49,22 @@ export default async function SettingsPage() {
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-muted-foreground">Make Daybreak feel like yours.</p>
+        <p className="text-muted-foreground mt-1">Make Daybreak feel like yours.</p>
       </div>
 
       <Link href="/profile" className="block">
-        <Card className="transition-colors hover:border-primary/40">
+        <Card className="hover:border-primary/40 transition-colors">
           <CardContent className="flex items-center justify-between gap-3 py-4">
             <span className="flex items-center gap-3">
-              <UserRound className="h-5 w-5 text-primary" aria-hidden />
+              <UserRound className="text-primary h-5 w-5" aria-hidden />
               <span>
                 <span className="block text-sm font-medium">Profile &amp; personalization</span>
-                <span className="block text-xs text-muted-foreground">Name, city, accent theme, account</span>
+                <span className="text-muted-foreground block text-xs">
+                  Name, city, accent theme, account
+                </span>
               </span>
             </span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <ChevronRight className="text-muted-foreground h-4 w-4" aria-hidden />
           </CardContent>
         </Card>
       </Link>
@@ -64,6 +75,10 @@ export default async function SettingsPage() {
         connections={data.connections}
         calendarSync={data.calendarSync}
         fitbitAvailable={integrationsAvailable.fitbit()}
+        appleHealth={{
+          connected: Boolean(appleImport),
+          lastRangeEnd: appleImport?.range_end ?? null,
+        }}
       />
       <HealthImportCard />
       <HouseholdCard household={data.household} householdEvents={[]} />
@@ -71,12 +86,12 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-sage" aria-hidden />
+            <ShieldCheck className="text-sage h-5 w-5" aria-hidden />
             Your data
           </CardTitle>
           <CardDescription>How Daybreak protects your health information</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground space-y-2 text-sm">
           <p>· Every record is protected by row-level security — only you can read your data.</p>
           <p>· OAuth tokens are encrypted at rest with AES-256-GCM and never leave the server.</p>
           <p>
@@ -86,6 +101,9 @@ export default async function SettingsPage() {
           <p>· Disconnecting a provider immediately deletes its tokens.</p>
         </CardContent>
       </Card>
+
+      <MfaCard />
+      <DataPrivacyCard />
     </div>
   );
 }

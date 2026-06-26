@@ -10,15 +10,18 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { setCalendarSyncEnabled, disconnectProvider, syncNow } from "@/actions/settings";
 import type { Connection, CalendarSyncSettings } from "@/lib/types";
+import { AppleHealthConnect } from "@/components/settings/apple-health-connect";
 
 export function CalendarSyncCard({
   connections,
   calendarSync,
   fitbitAvailable = false,
+  appleHealth,
 }: {
   connections: Connection[];
   calendarSync: CalendarSyncSettings | null;
   fitbitAvailable?: boolean;
+  appleHealth?: { connected: boolean; lastRangeEnd: string | null };
 }) {
   const [pending, startTransition] = useTransition();
 
@@ -39,7 +42,7 @@ export function CalendarSyncCard({
     <Card className="h-full">
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Link2 className="h-4 w-4 text-primary" aria-hidden />
+          <Link2 className="text-primary h-4 w-4" aria-hidden />
           Connections
         </CardTitle>
         <Button
@@ -56,12 +59,12 @@ export function CalendarSyncCard({
         {/* Oura */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sage-soft">
-              <Activity className="h-4 w-4 text-sage" aria-hidden />
+            <span className="bg-sage-soft flex h-9 w-9 items-center justify-center rounded-full">
+              <Activity className="text-sage h-4 w-4" aria-hidden />
             </span>
             <div>
               <p className="text-sm font-medium">Oura Ring</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {ouraConnected ? "Connected — syncs every morning" : "Sleep, readiness & HRV"}
               </p>
             </div>
@@ -89,13 +92,15 @@ export function CalendarSyncCard({
             <Separator />
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-peach-soft">
-                  <Watch className="h-4 w-4 text-peach" aria-hidden />
+                <span className="bg-peach-soft flex h-9 w-9 items-center justify-center rounded-full">
+                  <Watch className="text-peach h-4 w-4" aria-hidden />
                 </span>
                 <div>
                   <p className="text-sm font-medium">Fitbit</p>
-                  <p className="text-xs text-muted-foreground">
-                    {fitbitConnected ? "Connected — syncs every morning" : "Sleep, heart rate & activity"}
+                  <p className="text-muted-foreground text-xs">
+                    {fitbitConnected
+                      ? "Connected — syncs every morning"
+                      : "Sleep, heart rate & activity"}
                   </p>
                 </div>
               </div>
@@ -119,16 +124,22 @@ export function CalendarSyncCard({
         )}
 
         <Separator />
+        <AppleHealthConnect
+          connected={appleHealth?.connected ?? false}
+          lastRangeEnd={appleHealth?.lastRangeEnd ?? null}
+        />
+
+        <Separator />
 
         {/* Google Calendar */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-soft">
-              <CalendarCheck className="h-4 w-4 text-sky" aria-hidden />
+            <span className="bg-sky-soft flex h-9 w-9 items-center justify-center rounded-full">
+              <CalendarCheck className="text-sky h-4 w-4" aria-hidden />
             </span>
             <div>
               <p className="text-sm font-medium">Google Calendar</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {googleConnected
                   ? calendarSync?.last_synced_at
                     ? `Synced ${formatDistanceToNow(new Date(calendarSync.last_synced_at), { addSuffix: true })}`
@@ -154,7 +165,9 @@ export function CalendarSyncCard({
                 variant="ghost"
                 size="sm"
                 disabled={pending}
-                onClick={() => run(() => disconnectProvider("google"), "Google Calendar disconnected.")}
+                onClick={() =>
+                  run(() => disconnectProvider("google"), "Google Calendar disconnected.")
+                }
               >
                 <Unlink aria-hidden />
                 <span className="sr-only">Disconnect Google Calendar</span>
@@ -169,12 +182,12 @@ export function CalendarSyncCard({
 
         {googleConnected &&
           (calendarSync?.daybreak_calendar_id ? (
-            <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            <p className="bg-muted/50 text-muted-foreground rounded-lg px-3 py-2 text-xs">
               ↪ Two-way sync on — your Daybreak plan is written to a “Daybreak” calendar in Google.
             </p>
           ) : (
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-muted/50 px-3 py-2">
-              <p className="text-xs text-muted-foreground">
+            <div className="bg-muted/50 flex items-center justify-between gap-3 rounded-lg px-3 py-2">
+              <p className="text-muted-foreground text-xs">
                 Enable two-way sync — let Daybreak push your plan into Google Calendar.
               </p>
               <Button size="sm" variant="secondary" asChild>

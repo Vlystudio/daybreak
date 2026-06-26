@@ -14,15 +14,19 @@ const publicSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.url().default("http://localhost:3000"),
   // VAPID public key for Web Push (safe to expose). Empty disables push.
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().default(""),
+  // Sentry DSN for error monitoring (safe to expose). Empty disables Sentry.
+  NEXT_PUBLIC_SENTRY_DSN: z.string().default(""),
 });
 
 const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  TOKEN_ENCRYPTION_KEY: z
-    .string()
-    .refine((v) => Buffer.from(v, "base64").length === 32, {
-      message: "TOKEN_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32)",
-    }),
+  TOKEN_ENCRYPTION_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, {
+    message: "TOKEN_ENCRYPTION_KEY must be 32 bytes, base64-encoded (openssl rand -base64 32)",
+  }),
+  // Optional key rotation: JSON map of `{ keyId: base64Key }` plus the id of the
+  // key that should encrypt new data. Unset = use TOKEN_ENCRYPTION_KEY only.
+  TOKEN_ENCRYPTION_KEYS: z.string().optional(),
+  TOKEN_ENCRYPTION_ACTIVE_KEY: z.string().optional(),
   CRON_SECRET: z.string().min(16),
   OURA_CLIENT_ID: z.string().min(1).optional(),
   OURA_CLIENT_SECRET: z.string().min(1).optional(),
@@ -58,6 +62,7 @@ const publicParsed = publicSchema.safeParse({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 });
 
 if (!publicParsed.success) {
@@ -70,7 +75,9 @@ let cachedServerEnv: z.infer<typeof serverSchema> | null = null;
 
 export function serverEnv(): z.infer<typeof serverSchema> {
   if (typeof window !== "undefined") {
-    throw new Error("serverEnv() was called in the browser. Server secrets must stay on the server.");
+    throw new Error(
+      "serverEnv() was called in the browser. Server secrets must stay on the server."
+    );
   }
   if (!cachedServerEnv) {
     const parsed = serverSchema.safeParse(process.env);
@@ -90,5 +97,6 @@ export const integrationsAvailable = {
   openai: () => Boolean(serverEnv().OPENAI_API_KEY),
   resend: () => Boolean(serverEnv().RESEND_API_KEY),
   push: () => Boolean(serverEnv().VAPID_PRIVATE_KEY && publicEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
-  groceryDeals: () => Boolean(serverEnv().GROCERYTRACKER_URL && serverEnv().GROCERYTRACKER_ANON_KEY),
+  groceryDeals: () =>
+    Boolean(serverEnv().GROCERYTRACKER_URL && serverEnv().GROCERYTRACKER_ANON_KEY),
 };
