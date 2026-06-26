@@ -33,6 +33,10 @@ plist_set() {
 }
 plist_set "NSHealthShareUsageDescription string" \
   "Daybreak reads your Health data (sleep, heart, activity, and workouts) to show your morning briefing and trends."
+# Apple requires BOTH purpose strings whenever the HealthKit entitlement is
+# present, even for read-only apps (App Store validation error 90683).
+plist_set "NSHealthUpdateUsageDescription string" \
+  "Daybreak does not write to Health; this permission is only requested if you choose to log data back."
 # WKAppBoundDomains (array) for limitsNavigationsToAppBoundDomains.
 /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" "$INFO_PLIST"
