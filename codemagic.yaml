@@ -46,16 +46,19 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
-      - name: Set up code signing (App Store distribution)
+      - name: Set up code signing (manual — distribution cert + HealthKit profile)
         script: |
+          set -e
           keychain initialize
-          # Creates a distribution certificate + a provisioning profile for the
-          # bundle id. Now that HealthKit is enabled on the App ID, the freshly
-          # created profile includes the HealthKit entitlement.
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
-          # Wire the downloaded distribution profile into the project (manual
-          # signing) and generate a matching export options plist.
+          # App-Store-Connect-API-created profiles drop the HealthKit entitlement,
+          # so we use a distribution certificate + a portal-created profile (which
+          # includes HealthKit), supplied as base64 env vars.
+          echo "$CM_CERTIFICATE" | base64 --decode > /tmp/dist.p12
+          keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$CM_CERTIFICATE_PASSWORD"
+          PROFILES_HOME="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILES_HOME"
+          echo "$CM_PROVISIONING_PROFILE" | base64 --decode > "$PROFILES_HOME/daybreak.mobileprovision"
+          # Wire the profile into the project (manual signing) + generate export options.
           xcode-project use-profiles
       - name: Bump build number
         script: |
