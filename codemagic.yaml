@@ -46,9 +46,19 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
-      - name: Set up code signing (automatic, App Store Connect API key)
+      - name: Set up code signing (force-fresh profile for HealthKit)
         script: |
           keychain initialize
+          # fetch-signing-files reuses an existing provisioning profile and won't
+          # regenerate it to include a capability (HealthKit) that was enabled on
+          # the App ID after the profile was first created. Delete any existing
+          # App Store profile so --create mints a fresh one with current caps.
+          PROFILE_IDS=$(app-store-connect list-profiles --profile-type IOS_APP_STORE --json 2>/dev/null \
+            | jq -r '(if type=="array" then . else (.profiles // .data // []) end)[].id // empty' 2>/dev/null || true)
+          for id in $PROFILE_IDS; do
+            echo "Deleting stale provisioning profile $id"
+            app-store-connect delete-profile "$id" || true
+          done
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create
