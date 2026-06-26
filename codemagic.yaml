@@ -29,7 +29,11 @@ workflows:
       cocoapods: default
     scripts:
       - name: Install JS dependencies
-        script: npm ci
+        # `npm install` (not `npm ci`): the package-lock.json is generated on
+        # Windows and omits macOS-only optional deps (e.g. @emnapi/*), which makes
+        # `npm ci`'s strict lock match fail on the Mac build machine. `npm install`
+        # resolves the correct per-platform tree at build time.
+        script: npm install --no-audit --no-fund
       - name: Generate iOS platform
         script: |
           npx cap add ios || echo "ios already added"
