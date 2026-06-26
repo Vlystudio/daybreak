@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AppNav } from "@/components/app-nav";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { HealthKitAutoSync } from "@/components/healthkit-autosync";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -13,10 +14,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .maybeSingle<{ accent: string | null }>();
 
   return (
-    <div data-accent={profile?.accent ?? "sunrise"} className="bg-sunrise-soft flex min-h-screen flex-1 flex-col">
+    <div
+      data-accent={profile?.accent ?? "sunrise"}
+      className="bg-sunrise-soft flex min-h-screen flex-1 flex-col"
+    >
       <ServiceWorkerRegister />
+      <HealthKitAutoSync />
       <AppNav />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-6 sm:px-6 md:pb-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-24 sm:px-6 md:pb-10">
         {children}
       </main>
     </div>

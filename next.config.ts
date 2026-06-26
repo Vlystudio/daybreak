@@ -14,6 +14,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Apple Health imports POST parsed data in chunks; raise the 1MB default so
+    // each chunk has headroom (the client still batches well under this).
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   async headers() {
     return [
       {

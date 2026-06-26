@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   const data = await loadDashboardData(user.id);
 
   const supabase = await createClient();
-  const [{ data: notif }, { data: reminders }] = await Promise.all([
+  const [{ data: notif }, { data: reminders }, { data: appleImport }] = await Promise.all([
     supabase
       .from("notification_settings")
       .select("morning_email_enabled")
@@ -34,6 +34,13 @@ export default async function SettingsPage() {
       .eq("user_id", user.id)
       .order("hour", { ascending: true })
       .returns<Reminder[]>(),
+    supabase
+      .from("apple_health_imports")
+      .select("metrics_days, range_end")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ metrics_days: number; range_end: string | null }>(),
   ]);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
   const pushAvailable = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
@@ -68,6 +75,10 @@ export default async function SettingsPage() {
         connections={data.connections}
         calendarSync={data.calendarSync}
         fitbitAvailable={integrationsAvailable.fitbit()}
+        appleHealth={{
+          connected: Boolean(appleImport),
+          lastRangeEnd: appleImport?.range_end ?? null,
+        }}
       />
       <HealthImportCard />
       <HouseholdCard household={data.household} householdEvents={[]} />

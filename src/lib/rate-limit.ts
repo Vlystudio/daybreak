@@ -54,6 +54,9 @@ export const RATE_LIMITS = {
   mutation: { limit: 60, windowSeconds: 60 },
   oauth: { limit: 10, windowSeconds: 600 },
   sync: { limit: 12, windowSeconds: 3600 },
+  // Apple Health export imports stream in many small chunks, so this is far
+  // more generous than `sync` — one large export can be a few hundred chunks.
+  appleImport: { limit: 600, windowSeconds: 3600 },
   // The AI limits guard real OpenAI spend, so they fail CLOSED — better to make a
   // user retry than to let a forced infra error run up the bill.
   aiSummary: { limit: 5, windowSeconds: 3600, failClosed: true },
