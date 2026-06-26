@@ -46,50 +46,28 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
-      - name: Prepare keychain
+      - name: Set up code signing (App Store distribution)
         script: |
-          # xcodebuild (-allowProvisioningUpdates + the API key) creates and stores
-          # the distribution certificate and a HealthKit-capable provisioning
-          # profile itself, so we just need an initialized default keychain.
           keychain initialize
+          # Creates a distribution certificate + a provisioning profile for the
+          # bundle id. Now that HealthKit is enabled on the App ID, the freshly
+          # created profile includes the HealthKit entitlement.
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
+          # Wire the downloaded distribution profile into the project (manual
+          # signing) and generate a matching export options plist.
+          xcode-project use-profiles
       - name: Bump build number
         script: |
           cd ios/App
           # Codemagic's per-project build counter — always increasing, which
           # App Store Connect requires for each new TestFlight upload.
           agvtool new-version -all "$BUILD_NUMBER"
-      - name: Build IPA (Xcode-managed signing — syncs the HealthKit capability)
+      - name: Build IPA
         script: |
-          set -e
-          # Codemagic stores the App Store Connect API key as a "@file:<path>"
-          # reference, not the raw key — point xcodebuild at that real .p8 path.
-          KEY_PATH="${APP_STORE_CONNECT_PRIVATE_KEY#@file:}"
-          echo "auth key: $KEY_PATH ($(wc -c < "$KEY_PATH" 2>/dev/null || echo 0) bytes)"
-          # Export options for automatic App Store signing.
-          python3 -c "import plistlib,os; plistlib.dump({'method':'app-store','signingStyle':'automatic','teamID':os.environ.get('APPLE_TEAM_ID','')}, open('/tmp/export_options.plist','wb'))"
-          # Drive xcodebuild directly. codemagic-cli-tools' build-ipa force-appends
-          # CODE_SIGN_STYLE=Manual to the archive, overriding automatic signing and
-          # breaking the archive. -allowProvisioningUpdates + the API key let Xcode
-          # create/update a provisioning profile that includes HealthKit.
-          rm -rf build/ios
-          xcodebuild -workspace "$XCODE_WORKSPACE" -scheme "$XCODE_SCHEME" \
-            -configuration Release \
-            -archivePath build/ios/xcarchive/App.xcarchive \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
-            CODE_SIGN_STYLE=Automatic \
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-            archive
-          xcodebuild -exportArchive \
-            -archivePath build/ios/xcarchive/App.xcarchive \
-            -exportPath build/ios/ipa \
-            -exportOptionsPlist /tmp/export_options.plist \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID"
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
     publishing:
