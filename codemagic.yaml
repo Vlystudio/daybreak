@@ -70,8 +70,9 @@ workflows:
           AUTH="-allowProvisioningUpdates -authenticationKeyPath $HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8 -authenticationKeyID $APP_STORE_CONNECT_KEY_IDENTIFIER -authenticationKeyIssuerID $APP_STORE_CONNECT_ISSUER_ID"
           # Export options for automatic App Store signing (build-ipa won't have a
           # use-profiles-generated plist since we're letting Xcode manage signing).
-          # Single-line printf so YAML can't mangle the property list.
-          printf '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n<key>method</key><string>app-store-connect</string>\n<key>signingStyle</key><string>automatic</string>\n<key>teamID</key><string>%s</string>\n<key>destination</key><string>export</string>\n</dict>\n</plist>\n' "$APPLE_TEAM_ID" > /tmp/export_options.plist
+          # Generate it with Python's plistlib so it's guaranteed parseable by the
+          # same library codemagic-cli-tools validates with.
+          python3 -c "import plistlib,os; plistlib.dump({'method':'app-store-connect','signingStyle':'automatic','teamID':os.environ.get('APPLE_TEAM_ID','')}, open('/tmp/export_options.plist','wb'))"
           cat /tmp/export_options.plist
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
