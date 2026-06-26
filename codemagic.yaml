@@ -53,9 +53,12 @@ workflows:
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create || true
           keychain add-certificates
           # Put the App Store Connect API key on disk so xcodebuild can manage
-          # provisioning itself (see Build IPA).
+          # provisioning itself (see Build IPA). Use %b so a key stored with
+          # literal "\n" sequences is written with real newlines (valid PEM).
           mkdir -p "$HOME/private_keys"
-          printf '%s' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          KEY_PATH="$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          printf '%b' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
+          echo "vars set -> id:${APP_STORE_CONNECT_KEY_IDENTIFIER:+y} issuer:${APP_STORE_CONNECT_ISSUER_ID:+y} key:${APP_STORE_CONNECT_PRIVATE_KEY:+y}; bytes:$(wc -c < "$KEY_PATH"); head:$(head -1 "$KEY_PATH")"
       - name: Bump build number
         script: |
           cd ios/App
