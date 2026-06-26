@@ -46,19 +46,12 @@ workflows:
       - name: Install CocoaPods
         script: |
           cd ios/App && pod install
-      - name: Prepare signing certificate + API key
+      - name: Prepare keychain
         script: |
+          # xcodebuild (-allowProvisioningUpdates + the API key) creates and stores
+          # the distribution certificate and a HealthKit-capable provisioning
+          # profile itself, so we just need an initialized default keychain.
           keychain initialize
-          # Get/create the distribution certificate into the build keychain.
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create || true
-          keychain add-certificates
-          # Put the App Store Connect API key on disk so xcodebuild can manage
-          # provisioning itself (see Build IPA). Use %b so a key stored with
-          # literal "\n" sequences is written with real newlines (valid PEM).
-          mkdir -p "$HOME/private_keys"
-          KEY_PATH="$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
-          printf '%b' "$APP_STORE_CONNECT_PRIVATE_KEY" > "$KEY_PATH"
-          echo "vars set -> id:${APP_STORE_CONNECT_KEY_IDENTIFIER:+y} issuer:${APP_STORE_CONNECT_ISSUER_ID:+y} key:${APP_STORE_CONNECT_PRIVATE_KEY:+y}; bytes:$(wc -c < "$KEY_PATH"); head:$(head -1 "$KEY_PATH")"
       - name: Bump build number
         script: |
           cd ios/App
@@ -68,7 +61,10 @@ workflows:
       - name: Build IPA (Xcode-managed signing — syncs the HealthKit capability)
         script: |
           set -e
-          KEY_PATH="$HOME/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_IDENTIFIER}.p8"
+          # Codemagic stores the App Store Connect API key as a "@file:<path>"
+          # reference, not the raw key — point xcodebuild at that real .p8 path.
+          KEY_PATH="${APP_STORE_CONNECT_PRIVATE_KEY#@file:}"
+          echo "auth key: $KEY_PATH ($(wc -c < "$KEY_PATH" 2>/dev/null || echo 0) bytes)"
           # Export options for automatic App Store signing.
           python3 -c "import plistlib,os; plistlib.dump({'method':'app-store','signingStyle':'automatic','teamID':os.environ.get('APPLE_TEAM_ID','')}, open('/tmp/export_options.plist','wb'))"
           # Drive xcodebuild directly. codemagic-cli-tools' build-ipa force-appends
