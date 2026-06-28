@@ -22,11 +22,12 @@ if [ ! -d "$APP_DIR" ]; then
   exit 1
 fi
 
-echo "→ Copying native HealthKit plugin + entitlements"
+echo "→ Copying native HealthKit plugin (Swift + ObjC registration) + entitlements"
 cp native/ios/HealthKitPlugin.swift "$APP_DIR/HealthKitPlugin.swift"
+cp native/ios/HealthKitPlugin.m "$APP_DIR/HealthKitPlugin.m"
 cp native/ios/App.entitlements "$APP_DIR/App.entitlements"
 
-echo "→ Adding HealthKitPlugin.swift to the App target (so it gets compiled)"
+echo "→ Adding the plugin files to the App target (so they get compiled)"
 gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document
 ruby scripts/ios-add-plugin.rb
 
