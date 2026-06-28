@@ -98,12 +98,14 @@ function buildWorkout(w: WorkoutSample): AppleWorkout {
     activity_type: activity,
     started_at: startedAt,
     ended_at: w.endDate ? new Date(w.endDate).toISOString() : null,
-    duration_sec: w.durationSec,
-    distance_m: w.distanceM,
-    active_energy_kcal: w.activeEnergyKcal,
-    total_energy_kcal: w.totalEnergyKcal,
-    avg_hr: w.avgHr,
-    max_hr: w.maxHr,
+    // Coalesce undefined → null: the native plugin omits these when absent, and
+    // JSON.stringify drops undefined keys, which the server schema would reject.
+    duration_sec: w.durationSec ?? null,
+    distance_m: w.distanceM ?? null,
+    active_energy_kcal: w.activeEnergyKcal ?? null,
+    total_energy_kcal: w.totalEnergyKcal ?? null,
+    avg_hr: w.avgHr ?? null,
+    max_hr: w.maxHr ?? null,
     metadata: {},
   };
 }

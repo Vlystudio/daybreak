@@ -26,6 +26,7 @@
   "dependencies": {
     "@capacitor/core": "^6.2.1",
     "@capacitor/preferences": "^6.0.4",
+    "daybreak-healthkit": "file:native/healthkit",
     "@hookform/resolvers": "^5.4.0",
     "@radix-ui/react-avatar": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.16",

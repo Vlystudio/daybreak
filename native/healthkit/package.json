@@ -1,0 +1,21 @@
+{
+  "name": "daybreak-healthkit",
+  "version": "0.0.1",
+  "description": "HealthKit bridge for the Daybreak iOS app (local Capacitor plugin).",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "files": [
+    "dist/",
+    "ios/",
+    "DaybreakHealthkit.podspec"
+  ],
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=6.0.0"
+  }
+}
