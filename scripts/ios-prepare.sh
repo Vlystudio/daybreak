@@ -26,6 +26,10 @@ echo "→ Copying native HealthKit plugin + entitlements"
 cp native/ios/HealthKitPlugin.swift "$APP_DIR/HealthKitPlugin.swift"
 cp native/ios/App.entitlements "$APP_DIR/App.entitlements"
 
+echo "→ Adding HealthKitPlugin.swift to the App target (so it gets compiled)"
+gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document
+ruby scripts/ios-add-plugin.rb
+
 echo "→ Patching Info.plist"
 plist_set() {
   /usr/libexec/PlistBuddy -c "Delete :$1" "$INFO_PLIST" 2>/dev/null || true
@@ -33,6 +37,10 @@ plist_set() {
 }
 plist_set "NSHealthShareUsageDescription string" \
   "Daybreak reads your Health data (sleep, heart, activity, and workouts) to show your morning briefing and trends."
+# Apple requires BOTH purpose strings whenever the HealthKit entitlement is
+# present, even for read-only apps (App Store validation error 90683).
+plist_set "NSHealthUpdateUsageDescription string" \
+  "Daybreak does not write to Health; this permission is only requested if you choose to log data back."
 # WKAppBoundDomains (array) for limitsNavigationsToAppBoundDomains.
 /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" "$INFO_PLIST"

@@ -20,9 +20,11 @@ import type {
  * export is too big to send whole, so the client streams it in chunks; each
  * chunk upserts via the shared ingest helpers, scoped to the signed-in user.
  * `finalizeAppleHealthImport` writes the completion record.
+ *
+ * NOTE: a "use server" module may export ONLY async functions — re-exporting
+ * these types from here crashes the whole page's server-actions bundle
+ * ("AppleHealthChunk is not defined"). Import the types from ./schema instead.
  */
-
-export type { AppleHealthChunk, ChunkResult, ImportSummary };
 
 export async function importAppleHealthChunk(chunk: AppleHealthChunk): Promise<ChunkResult> {
   const user = await requireUser();

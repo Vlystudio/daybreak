@@ -13,11 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { parseAppleHealthExport } from "@/lib/integrations/apple-health/parse";
-import {
-  importAppleHealthChunk,
-  finalizeAppleHealthImport,
-  type AppleHealthChunk,
-} from "@/actions/apple-health-import";
+import { importAppleHealthChunk, finalizeAppleHealthImport } from "@/actions/apple-health-import";
+import type { AppleHealthChunk } from "@/lib/integrations/apple-health/schema";
 
 /**
  * Apple Health connect row — a peer of Oura/Fitbit in the Connections card.
