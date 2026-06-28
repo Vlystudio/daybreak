@@ -22,14 +22,11 @@ if [ ! -d "$APP_DIR" ]; then
   exit 1
 fi
 
-echo "→ Copying native HealthKit plugin (Swift + ObjC registration) + entitlements"
-cp native/ios/HealthKitPlugin.swift "$APP_DIR/HealthKitPlugin.swift"
-cp native/ios/HealthKitPlugin.m "$APP_DIR/HealthKitPlugin.m"
+# The HealthKit plugin ships as a local Capacitor plugin pod (native/healthkit),
+# auto-linked by `npx cap sync ios` — no file injection needed here. We only wire
+# the app target's entitlement + Info.plist.
+echo "→ Copying HealthKit entitlement"
 cp native/ios/App.entitlements "$APP_DIR/App.entitlements"
-
-echo "→ Adding the plugin files to the App target (so they get compiled)"
-gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document
-ruby scripts/ios-add-plugin.rb
 
 echo "→ Patching Info.plist"
 plist_set() {

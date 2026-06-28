@@ -3,23 +3,33 @@ import Capacitor
 import HealthKit
 
 /**
- * Native HealthKit plugin for the Daybreak iOS shell.
+ * Native HealthKit plugin for the Daybreak iOS shell, shipped as a local
+ * Capacitor plugin pod (native/healthkit). As a pod, the pure-Swift
+ * CAPBridgedPlugin conformance auto-registers with Capacitor — unlike an
+ * app-target class, which doesn't get discovered.
  *
- * JS name "HealthKit" — matches registerPlugin<HealthKitPlugin>("HealthKit") in
+ * JS name "HealthKit" — matches registerPlugin("HealthKit") in
  * src/lib/integrations/apple-health/healthkit.client.ts.
  *
  * Quantity data is returned as DAILY aggregates (HKStatisticsCollectionQuery) so
  * a multi-year first sync stays bounded (days × types) instead of shipping
  * millions of raw samples. Sleep and workouts come back as discrete samples.
  *
- * Registered with Capacitor via the companion HealthKitPlugin.m (CAP_PLUGIN
- * macro) — the pure-Swift CAPBridgedPlugin auto-discovery doesn't reliably find
- * app-target plugins, so we register explicitly. Both files must be in the app
- * target. Requires the HealthKit capability + Info.plist usage strings
- * (see docs/apple-health-phase-2.md).
+ * The HealthKit *entitlement* + Info.plist usage strings live on the APP target
+ * (added by scripts/ios-prepare.sh), not here.
  */
 @objc(HealthKitPlugin)
-public class HealthKitPlugin: CAPPlugin {
+public class HealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "HealthKitPlugin"
+    public let jsName = "HealthKit"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "queryDailyQuantity", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "querySleep", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "queryWorkouts", returnType: CAPPluginReturnPromise),
+    ]
+
     private let store = HKHealthStore()
 
     private lazy var dayFormatter: DateFormatter = {
@@ -63,7 +73,7 @@ public class HealthKitPlugin: CAPPlugin {
 
         let cumulative = qType.aggregationStyle == .cumulative
         let options: HKStatisticsOptions = cumulative ? .cumulativeSum : .discreteAverage
-        var anchor = Calendar.current.startOfDay(for: start)
+        let anchor = Calendar.current.startOfDay(for: start)
         let predicate = HKQuery.predicateForSamples(withStart: anchor, end: end, options: .strictStartDate)
         let interval = DateComponents(day: 1)
         let unit = canonicalUnit(for: qType)
@@ -86,7 +96,6 @@ public class HealthKitPlugin: CAPPlugin {
             }
             call.resolve(["points": points])
         }
-        _ = anchor // silence unused warning when cumulative path differs
         store.execute(q)
     }
 
