@@ -43,7 +43,14 @@ export async function POST(request: NextRequest) {
   }
 
   const parsed = bodySchema.safeParse(json);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const where = issue?.path.join(".") || "body";
+    return NextResponse.json(
+      { error: `Invalid payload: ${where} — ${issue?.message ?? "unknown"}` },
+      { status: 400 }
+    );
+  }
   const { chunk, summary } = parsed.data;
 
   let counts = { metrics: 0, workouts: 0, samples: 0 };

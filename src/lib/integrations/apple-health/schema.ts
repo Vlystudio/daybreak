@@ -16,17 +16,19 @@ const metricShape: Record<string, z.ZodTypeAny> = { date: dateStr };
 for (const field of APPLE_METRIC_FIELDS) metricShape[field] = finiteNum.optional();
 export const metricSchema = z.object(metricShape).strict();
 
+// .nullish() (null | undefined | value) on optional metrics so an omitted field
+// from the native plugin doesn't fail validation.
 export const workoutSchema = z.object({
   external_id: z.string().min(1).max(64),
   activity_type: z.string().min(1).max(64),
   started_at: z.string().min(1).max(40),
-  ended_at: z.string().max(40).nullable(),
-  duration_sec: z.number().int().nonnegative().nullable(),
-  distance_m: finiteNum.nonnegative().nullable(),
-  active_energy_kcal: finiteNum.nonnegative().nullable(),
-  total_energy_kcal: finiteNum.nonnegative().nullable(),
-  avg_hr: finiteNum.nonnegative().nullable(),
-  max_hr: finiteNum.nonnegative().nullable(),
+  ended_at: z.string().max(40).nullish(),
+  duration_sec: z.number().int().nonnegative().nullish(),
+  distance_m: finiteNum.nonnegative().nullish(),
+  active_energy_kcal: finiteNum.nonnegative().nullish(),
+  total_energy_kcal: finiteNum.nonnegative().nullish(),
+  avg_hr: finiteNum.nonnegative().nullish(),
+  max_hr: finiteNum.nonnegative().nullish(),
   metadata: z.record(z.string(), z.string()).optional(),
 });
 
