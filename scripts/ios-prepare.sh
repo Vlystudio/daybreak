@@ -26,6 +26,10 @@ echo "→ Copying native HealthKit plugin + entitlements"
 cp native/ios/HealthKitPlugin.swift "$APP_DIR/HealthKitPlugin.swift"
 cp native/ios/App.entitlements "$APP_DIR/App.entitlements"
 
+echo "→ Adding HealthKitPlugin.swift to the App target (so it gets compiled)"
+gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document
+ruby scripts/ios-add-plugin.rb
+
 echo "→ Patching Info.plist"
 plist_set() {
   /usr/libexec/PlistBuddy -c "Delete :$1" "$INFO_PLIST" 2>/dev/null || true
