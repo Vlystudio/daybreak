@@ -12,22 +12,14 @@ import HealthKit
  * a multi-year first sync stays bounded (days × types) instead of shipping
  * millions of raw samples. Sleep and workouts come back as discrete samples.
  *
- * Add this file to the iOS app target (ios/App/App/). Capacitor 6 auto-registers
- * it via CAPBridgedPlugin. Requires the HealthKit capability + the Info.plist
- * usage strings (see docs/apple-health-phase-2.md).
+ * Registered with Capacitor via the companion HealthKitPlugin.m (CAP_PLUGIN
+ * macro) — the pure-Swift CAPBridgedPlugin auto-discovery doesn't reliably find
+ * app-target plugins, so we register explicitly. Both files must be in the app
+ * target. Requires the HealthKit capability + Info.plist usage strings
+ * (see docs/apple-health-phase-2.md).
  */
 @objc(HealthKitPlugin)
-public class HealthKitPlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "HealthKitPlugin"
-    public let jsName = "HealthKit"
-    public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "queryDailyQuantity", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "querySleep", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "queryWorkouts", returnType: CAPPluginReturnPromise),
-    ]
-
+public class HealthKitPlugin: CAPPlugin {
     private let store = HKHealthStore()
 
     private lazy var dayFormatter: DateFormatter = {

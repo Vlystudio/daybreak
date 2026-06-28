@@ -72,7 +72,8 @@ export function AppNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const isActive = (href: string) => (href === "/dashboard" ? pathname === href : pathname.startsWith(href));
+  const isActive = (href: string) =>
+    href === "/dashboard" ? pathname === href : pathname.startsWith(href);
 
   // Lock body scroll while the drawer is open.
   useEffect(() => {
@@ -85,10 +86,10 @@ export function AppNav() {
   return (
     <>
       {/* Top bar */}
-      <header className="glass sticky top-0 z-40 border-b border-border/60">
+      <header className="glass border-border/60 sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <span className="bg-sunrise flex h-8 w-8 items-center justify-center rounded-full shadow-soft">
+            <span className="bg-sunrise shadow-soft flex h-8 w-8 items-center justify-center rounded-full">
               <Sunrise className="h-4.5 w-4.5 text-[#7a4a12]" aria-hidden />
             </span>
             Daybreak
@@ -125,11 +126,20 @@ export function AppNav() {
       {/* Drawer */}
       {open && (
         <div className="fixed inset-0 z-50">
-          <div className="drawer-overlay absolute inset-0 bg-black/40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="drawer-panel absolute right-0 top-0 flex h-full w-[82%] max-w-sm flex-col bg-card shadow-xl">
-            <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
+          <div
+            className="drawer-overlay absolute inset-0 bg-black/40"
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          <div className="drawer-panel bg-card absolute top-0 right-0 flex h-full w-[82%] max-w-sm flex-col shadow-xl">
+            <div className="border-border/60 flex items-center justify-between border-b px-5 py-4">
               <span className="font-semibold">Menu</span>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="text-muted-foreground hover:text-foreground">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close menu"
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
@@ -137,7 +147,7 @@ export function AppNav() {
             <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="All sections">
               {GROUPS.map((group) => (
                 <div key={group.title}>
-                  <p className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <p className="text-muted-foreground px-3 pb-1.5 text-xs font-semibold tracking-wide uppercase">
                     {group.title}
                   </p>
                   <div className="space-y-0.5">
@@ -150,11 +160,19 @@ export function AppNav() {
                           onClick={() => setOpen(false)}
                           className={cn(
                             "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                            active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
+                            active
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground hover:bg-accent"
                           )}
                           aria-current={active ? "page" : undefined}
                         >
-                          <link.icon className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")} aria-hidden />
+                          <link.icon
+                            className={cn(
+                              "h-5 w-5",
+                              active ? "text-primary" : "text-muted-foreground"
+                            )}
+                            aria-hidden
+                          />
                           {link.label}
                         </Link>
                       );
@@ -164,9 +182,13 @@ export function AppNav() {
               ))}
             </nav>
 
-            <div className="border-t border-border/60 p-3">
+            <div className="border-border/60 border-t p-3">
               <form action={signOut}>
-                <Button type="submit" variant="ghost" className="w-full justify-start gap-3 text-muted-foreground">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  className="text-muted-foreground w-full justify-start gap-3"
+                >
                   <LogOut className="h-5 w-5" aria-hidden />
                   Sign out
                 </Button>
@@ -177,7 +199,10 @@ export function AppNav() {
       )}
 
       {/* Mobile bottom bar */}
-      <nav className="glass fixed inset-x-0 bottom-0 z-40 border-t border-border/60 md:hidden" aria-label="Primary">
+      <nav
+        className="glass border-border/60 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+        aria-label="Primary"
+      >
         <div className="mx-auto flex max-w-md items-stretch justify-around py-2">
           {PRIMARY.map((link) => {
             const active = isActive(link.href);
@@ -199,7 +224,7 @@ export function AppNav() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-xs font-medium text-muted-foreground"
+            className="text-muted-foreground flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-xs font-medium"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" aria-hidden />

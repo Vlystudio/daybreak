@@ -30,6 +30,9 @@ export const viewport: Viewport = {
   themeColor: "#fdf9f0",
   width: "device-width",
   initialScale: 1,
+  // Draw under the iPhone notch/home-indicator and expose env(safe-area-inset-*)
+  // so the native (Capacitor) shell can pad the header + bottom nav correctly.
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({
@@ -56,6 +59,7 @@ export default async function RootLayout({
         {children}
         <Toaster
           position="top-center"
+          offset={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
           toastOptions={{
             style: {
               background: "var(--card)",

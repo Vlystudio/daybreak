@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <ServiceWorkerRegister />
       <HealthKitAutoSync />
       <AppNav />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-24 sm:px-6 md:pb-10">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-[calc(6rem_+_env(safe-area-inset-bottom))] sm:px-6 md:pb-10">
         {children}
       </main>
     </div>
