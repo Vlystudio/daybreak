@@ -58,6 +58,7 @@ export type AuditAction =
   | "cron.morning_sync"
   | "cron.calendar_sync"
   | "cron.data_sync"
+  | "admin.backfill_observations"
   | "data.exported"
   | "account.deleted";
 

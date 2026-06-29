@@ -133,7 +133,10 @@ export async function generateMorningBriefing(input: {
     };
   } catch (err) {
     // Log the failure class only — never the prompt or response (health data).
-    console.error("[ai] briefing generation failed:", err instanceof Error ? err.message : "unknown");
+    console.error(
+      "[ai] briefing generation failed:",
+      err instanceof Error ? err.message : "unknown"
+    );
     return null;
   }
 }
@@ -180,7 +183,10 @@ export async function analyzeHealthTrends(input: {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: HEALTH_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify({ recentMetrics: input.metrics, trendFlags: input.flags }) },
+        {
+          role: "user",
+          content: JSON.stringify({ recentMetrics: input.metrics, trendFlags: input.flags }),
+        },
       ],
     });
 
@@ -206,6 +212,76 @@ export async function analyzeHealthTrends(input: {
     };
   } catch (err) {
     console.error("[ai] health analysis failed:", err instanceof Error ? err.message : "unknown");
+    return null;
+  }
+}
+
+const FUSED_HEALTH_SYSTEM_PROMPT = `You are a careful, data-literate health analyst inside Daybreak. You are NOT a doctor and Daybreak is NOT a medical device.
+
+You are given Daybreak's DETERMINISTIC, source-aware health understanding: daily signals that have ALREADY been fused across trackers (Oura, Apple Health), tagged with a primary source and a confidence level, compared to the user's own personal baseline, plus pre-computed honest insights and any cross-tracker conflicts. Your ONLY job is to explain these findings in plain, warm language — NOT to invent new conclusions, re-derive numbers, or diagnose.
+
+STRICT RULES:
+- Use cautious framing: "suggests", "may indicate", "compared to your baseline", "tends to", and explicitly say "lower confidence" when a signal's confidence is low or medium.
+- NEVER diagnose or assert a condition. Banned: "you are sick", "you have", "diagnosis", naming illnesses. Instead: "your data shows a pattern that may be worth paying attention to."
+- Ground every statement in the provided signals/baselines — cite the actual values and the % vs baseline. Never give advice that would apply to a random stranger.
+- When a metric has a source conflict or low confidence, SAY SO in the relevant insight.
+- Calories/energy are rough estimates — never present them as exact.
+- If the data is steady and healthy, say so plainly; do not manufacture problems.
+- If overallConfidence is low or there are few days of data, lead with that caveat and keep claims tentative.
+- Respect the deterministic insights you're given — expand/clarify them; don't contradict them.
+
+Respond with JSON matching exactly:
+{
+  "summary": "2-3 sentences on how their body is trending, citing a specific value and noting confidence",
+  "insights": ["2-4 specific observations tied to real values and baselines; mention low confidence / source conflicts where relevant"],
+  "suggestions": [{"title": "short title", "body": "1-2 sentence, concrete, tied to a specific observation"}]
+}
+Keep it under 220 words. Use "may", "suggests", "compared to your baseline".`;
+
+/** Explain the deterministic, source-aware understanding (never raw source rows). */
+export async function analyzeFusedHealth(
+  input: Record<string, unknown>
+): Promise<HealthAnalysis | null> {
+  const client = openaiClient();
+  if (!client) return null;
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      temperature: 0.3,
+      max_tokens: 700,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: FUSED_HEALTH_SYSTEM_PROMPT },
+        { role: "user", content: JSON.stringify(input) },
+      ],
+    });
+
+    logUsage("health-analysis-fused", completion.usage);
+    const raw = completion.choices[0]?.message?.content;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<HealthAnalysis>;
+    if (typeof parsed.summary !== "string") return null;
+
+    return {
+      summary: parsed.summary,
+      insights: Array.isArray(parsed.insights)
+        ? parsed.insights.filter((i): i is string => typeof i === "string").slice(0, 4)
+        : [],
+      suggestions: Array.isArray(parsed.suggestions)
+        ? parsed.suggestions
+            .filter(
+              (s): s is { title: string; body: string } =>
+                typeof s?.title === "string" && typeof s?.body === "string"
+            )
+            .slice(0, 4)
+        : [],
+    };
+  } catch (err) {
+    console.error(
+      "[ai] fused health analysis failed:",
+      err instanceof Error ? err.message : "unknown"
+    );
     return null;
   }
 }
@@ -281,10 +357,13 @@ export async function healthCheckinReply(input: {
     const a = parsed.action as Record<string, unknown> | null | undefined;
     if (a && typeof a === "object") {
       const title = typeof a.title === "string" ? a.title.trim().slice(0, 80) : "";
-      const time = typeof a.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time) ? a.time : null;
+      const time =
+        typeof a.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time) ? a.time : null;
       const durationMin = Number(a.durationMin);
       const days = Array.isArray(a.daysOfWeek)
-        ? (a.daysOfWeek as unknown[]).map((n) => Number(n)).filter((n) => Number.isInteger(n) && VALID_DOW.has(n))
+        ? (a.daysOfWeek as unknown[])
+            .map((n) => Number(n))
+            .filter((n) => Number.isInteger(n) && VALID_DOW.has(n))
         : [];
       if (title && time && Number.isFinite(durationMin)) {
         action = {
@@ -412,7 +491,9 @@ export async function generateWeeklyPlan(input: {
       if (!Number.isFinite(dur)) dur = 30;
       dur = Math.min(240, Math.max(10, Math.round(dur)));
 
-      const type = (typeof b.type === "string" && validTypes.has(b.type) ? b.type : "focus") as PlanBlockType;
+      const type = (
+        typeof b.type === "string" && validTypes.has(b.type) ? b.type : "focus"
+      ) as PlanBlockType;
 
       blocks.push({
         date: b.date,
@@ -520,7 +601,9 @@ export async function generateFitnessPlan(input: {
     const guidance = Array.isArray(nutritionRaw.guidance)
       ? (nutritionRaw.guidance as unknown[]).filter((g): g is string => typeof g === "string")
       : [];
-    const sampleDayRaw = Array.isArray(nutritionRaw.sampleDay) ? (nutritionRaw.sampleDay as unknown[]) : [];
+    const sampleDayRaw = Array.isArray(nutritionRaw.sampleDay)
+      ? (nutritionRaw.sampleDay as unknown[])
+      : [];
     const sampleDay = sampleDayRaw
       .map((m) => {
         const meal = m as Record<string, unknown>;
@@ -545,7 +628,10 @@ export async function generateFitnessPlan(input: {
       },
     };
   } catch (err) {
-    console.error("[ai] fitness plan generation failed:", err instanceof Error ? err.message : "unknown");
+    console.error(
+      "[ai] fitness plan generation failed:",
+      err instanceof Error ? err.message : "unknown"
+    );
     return null;
   }
 }

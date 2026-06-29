@@ -8,6 +8,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { analyzeFoodImage, type FoodAnalysis } from "@/lib/integrations/food-vision";
 import { validateImageDataUrl } from "@/lib/image-upload";
+import { bodyMeasurementToObservations, upsertHealthObservations } from "@/lib/health/observations";
 import type { ActionResult } from "@/actions/schedule";
 
 /** YYYY-MM-DD for "now" in the user's timezone. */
@@ -171,10 +172,11 @@ export async function logBodyMeasurement(input: z.input<typeof bodySchema>): Pro
   }
 
   const supabase = await createClient();
+  const date = await localToday(user.id);
   const { error } = await supabase.from("body_measurements").upsert(
     {
       user_id: user.id,
-      date: await localToday(user.id),
+      date,
       weight_kg: parsed.data.weight_kg,
       body_fat_pct: parsed.data.body_fat_pct,
       note: parsed.data.note?.length ? parsed.data.note : null,
@@ -182,6 +184,19 @@ export async function logBodyMeasurement(input: z.input<typeof bodySchema>): Pro
     { onConflict: "user_id,date" }
   );
   if (error) return { ok: false, error: "Couldn't save that measurement." };
+
+  // Dual-write source-tagged manual observations. Best-effort.
+  try {
+    await upsertHealthObservations(
+      bodyMeasurementToObservations(user.id, {
+        date,
+        weight_kg: parsed.data.weight_kg,
+        body_fat_pct: parsed.data.body_fat_pct,
+      })
+    );
+  } catch (err) {
+    console.error("[intake] body observation dual-write failed:", err);
+  }
 
   await audit(user.id, "body.logged");
   revalidatePath("/nutrition");

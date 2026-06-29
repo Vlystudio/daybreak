@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Capacitor plugin build output — not our source to lint.
+    "native/**/dist/**",
   ]),
 ]);
 

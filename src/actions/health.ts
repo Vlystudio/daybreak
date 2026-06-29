@@ -11,12 +11,14 @@ import { uuidSchema } from "@/lib/validation";
 import { zonedToUtc, localToday } from "@/lib/tz";
 import { computeHeadsUp } from "@/lib/health-insights";
 import {
-  analyzeHealthTrends,
+  analyzeFusedHealth,
   healthCheckinReply,
   type HealthAnalysis,
   type CheckinTurn,
   type CheckinAction,
 } from "@/lib/integrations/ai";
+import { buildDailyHealthUnderstanding } from "@/lib/health/understanding";
+import { buildAiHealthInput } from "@/lib/health/ai-input";
 import type { HealthMetric } from "@/lib/types";
 import type { ActionResult } from "@/actions/schedule";
 
@@ -35,7 +37,12 @@ export type CheckinResult =
 const METRIC_COLUMNS =
   "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency, deep_sleep_min, rem_sleep_min, light_sleep_min, body_temperature_delta, steps, active_calories, activity_score, spo2_avg, respiratory_rate, stress_high_min, recovery_high_min, resilience_level";
 
-/** On-demand AI read of the last ~30 days of metrics. Tightly rate-limited. */
+/**
+ * On-demand AI read of the user's health. Builds the deterministic, source-aware
+ * understanding first (fused signals, confidence, baselines, source conflicts),
+ * then hands ONLY that cleaned summary to the AI to explain — never raw,
+ * multi-source rows. Tightly rate-limited.
+ */
 export async function analyzeHealth(): Promise<AnalyzeResult> {
   const user = await requireUser();
 
@@ -44,31 +51,27 @@ export async function analyzeHealth(): Promise<AnalyzeResult> {
     return { ok: false, error: "Analysis limit reached for now — try again a little later." };
   }
 
-  const supabase = await createClient();
-  const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-  const { data: metrics } = await supabase
-    .from("health_metrics")
-    .select(METRIC_COLUMNS)
-    .eq("user_id", user.id)
-    .gte("date", since)
-    .order("date", { ascending: true })
-    .returns<HealthMetric[]>();
+  // 90 days so personal baselines are meaningful.
+  const understanding = await buildDailyHealthUnderstanding(
+    user.id,
+    new Date(Date.now() - 90 * 86_400_000),
+    new Date()
+  );
 
-  const rows = metrics ?? [];
-  if (rows.length < 3) {
-    return { ok: false, error: "Not enough data yet — give Oura a few more nights to sync." };
+  const maxDays = Math.max(0, ...understanding.baselines.map((b) => b.sampleCount));
+  if (maxDays < 3) {
+    return { ok: false, error: "Not enough data yet — give your tracker a few more days to sync." };
   }
 
-  const flags = computeHeadsUp(rows);
-  const analysis = await analyzeHealthTrends({
-    metrics: rows as unknown as Record<string, unknown>[],
-    flags: flags.map((f) => ({ title: f.title, detail: f.detail })),
-  });
+  const aiInput = buildAiHealthInput(understanding) as unknown as Record<string, unknown>;
+  const analysis = await analyzeFusedHealth(aiInput);
   if (!analysis) {
     return { ok: false, error: "Couldn't analyze your trends right now — please try again." };
   }
 
-  await audit(user.id, "health.analyzed", { metadata: { days: rows.length } });
+  await audit(user.id, "health.analyzed", {
+    metadata: { days: maxDays, sources: understanding.dataQuality.connectedSources.length },
+  });
   return { ok: true, analysis };
 }
 
@@ -93,17 +96,24 @@ export async function startCheckin(): Promise<CheckinResult> {
 
   const supabase = await createClient();
   const { rows, flags } = await recentMetricsAndFlags(supabase, user.id);
-  if (rows.length < 3) return { ok: false, error: "Not enough data yet — give Oura a few more nights to sync." };
+  if (rows.length < 3)
+    return { ok: false, error: "Not enough data yet — give Oura a few more nights to sync." };
 
   const reply = await healthCheckinReply({
     metrics: rows as unknown as Record<string, unknown>[],
     flags,
     history: [],
   });
-  if (!reply) return { ok: false, error: "Couldn't start a check-in right now — please try again." };
+  if (!reply)
+    return { ok: false, error: "Couldn't start a check-in right now — please try again." };
 
   const messages: CheckinMessage[] = [
-    { role: "assistant", content: reply.message, at: new Date().toISOString(), action: reply.action },
+    {
+      role: "assistant",
+      content: reply.message,
+      at: new Date().toISOString(),
+      action: reply.action,
+    },
   ];
   const { data, error } = await supabase
     .from("health_checkins")
@@ -120,7 +130,9 @@ export async function startCheckin(): Promise<CheckinResult> {
 export async function replyCheckin(id: string, message: string): Promise<CheckinResult> {
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid check-in" };
-  const text = String(message ?? "").trim().slice(0, 1000);
+  const text = String(message ?? "")
+    .trim()
+    .slice(0, 1000);
   if (!text) return { ok: false, error: "Type a message first." };
 
   const limited = await rateLimit(`chat:${user.id}`, RATE_LIMITS.aiChat);
@@ -149,7 +161,12 @@ export async function replyCheckin(id: string, message: string): Promise<Checkin
 
   const messages: CheckinMessage[] = [
     ...history,
-    { role: "assistant", content: reply.message, at: new Date().toISOString(), action: reply.action },
+    {
+      role: "assistant",
+      content: reply.message,
+      at: new Date().toISOString(),
+      action: reply.action,
+    },
   ];
   const { error } = await supabase.from("health_checkins").update({ messages }).eq("id", id);
   if (error) return { ok: false, error: "Couldn't save your reply." };
@@ -163,7 +180,9 @@ export async function scheduleCheckinAction(action: CheckinAction): Promise<Acti
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
 
-  const title = String(action?.title ?? "").trim().slice(0, 120);
+  const title = String(action?.title ?? "")
+    .trim()
+    .slice(0, 120);
   const time = action?.time;
   if (!title || typeof time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
     return { ok: false, error: "That action can't be scheduled." };

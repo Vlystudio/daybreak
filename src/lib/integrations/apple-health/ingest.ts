@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { appleChunkToObservations, upsertHealthObservations } from "@/lib/health/observations";
 import { APPLE_METRIC_FIELDS } from "./types";
 import {
   chunkSchema,
@@ -110,6 +111,18 @@ export async function upsertAppleHealthChunk(
       .from("health_daily_samples")
       .upsert(payload, { onConflict: "user_id,date,type" });
     if (error) return { ok: false, error: "Couldn't save health samples." };
+  }
+
+  // Dual-write source-tagged observations for exact provenance. Apple's HRV is
+  // kept distinct from Oura's (never averaged). The daily-aggregated chunk has
+  // no per-sample device, so we attribute to "apple_health" (not apple_watch).
+  // Best-effort: a failure here must never fail the primary ingest.
+  try {
+    await upsertHealthObservations(
+      appleChunkToObservations(userId, { metrics, workouts }, "apple_health")
+    );
+  } catch (err) {
+    console.error("[apple-health] observation dual-write failed:", err);
   }
 
   return { ok: true, metrics: metricsWritten, workouts: workouts.length, samples: samples.length };

@@ -1,6 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOuraDailyMetrics } from "@/lib/integrations/oura";
+import { dailyMetricsToObservations, upsertHealthObservations } from "@/lib/health/observations";
+import type { HealthObservationSource } from "@/lib/health/types";
 import {
   fetchGoogleEvents,
   createDaybreakCalendar,
@@ -32,7 +34,7 @@ export async function syncOuraForUser(userId: string, days = 7): Promise<boolean
   const end = new Date();
   const start = new Date(end.getTime() - days * 86_400_000);
   const metrics = await fetchOuraDailyMetrics(userId, isoDate(start), isoDate(end));
-  return storeMetrics(userId, metrics);
+  return storeMetrics(userId, metrics, "oura");
 }
 
 /** Pull the last `days` days of Fitbit data into health_metrics. */
@@ -40,11 +42,15 @@ export async function syncFitbitForUser(userId: string, days = 7): Promise<boole
   const end = new Date();
   const start = new Date(end.getTime() - days * 86_400_000);
   const metrics = await fetchFitbitDailyMetrics(userId, isoDate(start), isoDate(end));
-  return storeMetrics(userId, metrics);
+  return storeMetrics(userId, metrics, "fitbit");
 }
 
 /** Sync whichever wearable a user has connected (one provider per call). */
-export async function syncWearableForUser(userId: string, provider: Provider, days = 7): Promise<boolean> {
+export async function syncWearableForUser(
+  userId: string,
+  provider: Provider,
+  days = 7
+): Promise<boolean> {
   if (provider === "fitbit") return syncFitbitForUser(userId, days);
   if (provider === "oura") return syncOuraForUser(userId, days);
   return false;
@@ -53,18 +59,25 @@ export async function syncWearableForUser(userId: string, provider: Provider, da
 /** Upsert mapped daily metrics (shared by the wearable syncers). */
 async function storeMetrics(
   userId: string,
-  metrics: Awaited<ReturnType<typeof fetchOuraDailyMetrics>>
+  metrics: Awaited<ReturnType<typeof fetchOuraDailyMetrics>>,
+  source: HealthObservationSource
 ): Promise<boolean> {
   if (!metrics) return false;
   if (metrics.length > 0) {
     const admin = createAdminClient();
-    const { error } = await admin
-      .from("health_metrics")
-      .upsert(
-        metrics.map((m) => ({ user_id: userId, ...m })),
-        { onConflict: "user_id,date" }
-      );
+    const { error } = await admin.from("health_metrics").upsert(
+      metrics.map((m) => ({ user_id: userId, ...m })),
+      { onConflict: "user_id,date" }
+    );
     if (error) throw new Error(`Failed to store health metrics: ${error.message}`);
+
+    // Dual-write source-tagged observations (exact provenance). Best-effort: a
+    // failure here must never fail the primary health_metrics sync.
+    try {
+      await upsertHealthObservations(dailyMetricsToObservations(userId, metrics, source));
+    } catch (err) {
+      console.error(`[sync] ${source} observation dual-write failed:`, err);
+    }
   }
   return true;
 }
@@ -121,7 +134,11 @@ export async function syncCalendarForUser(userId: string): Promise<boolean> {
     .gte("starts_at", windowStart.toISOString())
     .lt("starts_at", windowEnd.toISOString());
   if (keepIds.length > 0) {
-    deleteQuery = deleteQuery.not("google_event_id", "in", `(${keepIds.map((id) => `"${id}"`).join(",")})`);
+    deleteQuery = deleteQuery.not(
+      "google_event_id",
+      "in",
+      `(${keepIds.map((id) => `"${id}"`).join(",")})`
+    );
   }
   const { error: deleteError } = await deleteQuery;
   if (deleteError) throw new Error(`Calendar sync cleanup failed: ${deleteError.message}`);
@@ -220,7 +237,9 @@ export async function exportPlanToGoogle(userId: string): Promise<boolean> {
 
   const { data: events } = await admin
     .from("schedule_events")
-    .select("id, title, description, location, starts_at, ends_at, all_day, google_export_id, google_exported_at, updated_at")
+    .select(
+      "id, title, description, location, starts_at, ends_at, all_day, google_export_id, google_exported_at, updated_at"
+    )
     .eq("user_id", userId)
     .in("source", ["manual", "plan"])
     .gte("starts_at", start.toISOString())
@@ -272,44 +291,45 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
   const today = isoDate(new Date());
   const weekAgo = isoDate(new Date(Date.now() - 7 * 86_400_000));
 
-  const [{ data: profile }, { data: metrics }, { data: events }, { data: checkin }] = await Promise.all([
-    admin
-      .from("profiles")
-      .select("display_name, latitude, longitude")
-      .eq("id", userId)
-      .maybeSingle<{ display_name: string; latitude: number | null; longitude: number | null }>(),
-    admin
-      .from("health_metrics")
-      .select(
-        "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency"
-      )
-      .eq("user_id", userId)
-      .gte("date", weekAgo)
-      .order("date", { ascending: true })
-      .returns<MetricsForPrompt[]>(),
-    admin
-      .from("schedule_events")
-      .select("title, starts_at, ends_at, all_day")
-      .eq("user_id", userId)
-      .gte("starts_at", `${today}T00:00:00Z`)
-      .lt("starts_at", `${today}T23:59:59Z`)
-      .order("starts_at", { ascending: true })
-      .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
-    admin
-      .from("subjective_checkins")
-      .select("date, mood, energy, stress, soreness, note")
-      .eq("user_id", userId)
-      .order("date", { ascending: false })
-      .limit(1)
-      .maybeSingle<{
-        date: string;
-        mood: number | null;
-        energy: number | null;
-        stress: number | null;
-        soreness: number | null;
-        note: string | null;
-      }>(),
-  ]);
+  const [{ data: profile }, { data: metrics }, { data: events }, { data: checkin }] =
+    await Promise.all([
+      admin
+        .from("profiles")
+        .select("display_name, latitude, longitude")
+        .eq("id", userId)
+        .maybeSingle<{ display_name: string; latitude: number | null; longitude: number | null }>(),
+      admin
+        .from("health_metrics")
+        .select(
+          "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency"
+        )
+        .eq("user_id", userId)
+        .gte("date", weekAgo)
+        .order("date", { ascending: true })
+        .returns<MetricsForPrompt[]>(),
+      admin
+        .from("schedule_events")
+        .select("title, starts_at, ends_at, all_day")
+        .eq("user_id", userId)
+        .gte("starts_at", `${today}T00:00:00Z`)
+        .lt("starts_at", `${today}T23:59:59Z`)
+        .order("starts_at", { ascending: true })
+        .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
+      admin
+        .from("subjective_checkins")
+        .select("date, mood, energy, stress, soreness, note")
+        .eq("user_id", userId)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle<{
+          date: string;
+          mood: number | null;
+          energy: number | null;
+          stress: number | null;
+          soreness: number | null;
+          note: string | null;
+        }>(),
+    ]);
 
   const weather =
     profile?.latitude != null && profile?.longitude != null
@@ -321,15 +341,16 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
   // Only fold in a self-report from today or yesterday, so a stale one isn't
   // presented as how they feel right now.
   const yesterday = isoDate(new Date(Date.now() - 86_400_000));
-  const subjective = checkin && checkin.date >= yesterday
-    ? {
-        mood: checkin.mood,
-        energy: checkin.energy,
-        stress: checkin.stress,
-        soreness: checkin.soreness,
-        note: checkin.note,
-      }
-    : null;
+  const subjective =
+    checkin && checkin.date >= yesterday
+      ? {
+          mood: checkin.mood,
+          energy: checkin.energy,
+          stress: checkin.stress,
+          soreness: checkin.soreness,
+          note: checkin.note,
+        }
+      : null;
 
   const briefingInput = {
     displayName: profile?.display_name ?? "",
