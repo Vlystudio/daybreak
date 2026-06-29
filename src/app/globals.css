@@ -151,7 +151,12 @@ body {
 }
 
 .bg-sunrise-soft {
-  background-image: linear-gradient(160deg, var(--app-bg-from) 0%, var(--app-bg-mid) 55%, var(--app-bg-to) 100%);
+  background-image: linear-gradient(
+    160deg,
+    var(--app-bg-from) 0%,
+    var(--app-bg-mid) 55%,
+    var(--app-bg-to) 100%
+  );
 }
 
 /* Subtle glassmorphism */
@@ -215,153 +220,289 @@ body {
   }
 }
 
-/* react-big-calendar warm restyle */
-.rbc-calendar {
-  font-family: var(--font-sans);
-  color: var(--foreground);
-}
-.rbc-toolbar button {
-  border-radius: 9999px;
-  border-color: var(--border);
-  color: var(--foreground);
-}
-.rbc-toolbar button.rbc-active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-}
-.rbc-header,
-.rbc-time-header-content {
-  border-color: var(--border);
-}
-.rbc-time-view,
-.rbc-month-view,
-.rbc-agenda-view {
-  border-color: var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--card);
-}
-.rbc-day-bg + .rbc-day-bg,
-.rbc-time-content > * + * > *,
-.rbc-timeslot-group,
-.rbc-day-slot .rbc-time-slot,
-.rbc-month-row + .rbc-month-row {
-  border-color: var(--border);
-}
-.rbc-today {
-  background-color: var(--honey-soft);
-}
-.rbc-event {
-  background-color: var(--primary);
-  border: none;
-  border-radius: 0.6rem;
-  padding: 2px 8px;
-  color: #3d3229; /* dark text reads cleanly on the light pastel event colors */
-}
-.rbc-event.rbc-selected {
-  background-color: #d8813a;
-}
-.rbc-off-range-bg {
-  background: var(--muted);
-}
-
 /* ── Nest game: bird animations ───────────────────────────────────────────── */
 @keyframes bird-bob {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-4px) rotate(-1.5deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(-1.5deg);
+  }
 }
 @keyframes bird-blink {
-  0%, 92%, 100% { transform: scaleY(1); }
-  96% { transform: scaleY(0.1); }
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
 }
 @keyframes bird-wing {
-  0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-16deg); }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-16deg);
+  }
 }
 @keyframes bird-hop {
-  0% { transform: translateY(0); }
-  35% { transform: translateY(-26px); }
-  70% { transform: translateY(0); }
-  100% { transform: translateY(0); }
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-26px);
+  }
+  70% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(0);
+  }
 }
 @keyframes seed-pop {
-  0% { transform: translateY(0) scale(0.6); opacity: 0; }
-  30% { opacity: 1; }
-  100% { transform: translateY(-34px) scale(1); opacity: 0; }
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-34px) scale(1);
+    opacity: 0;
+  }
 }
-.bird-bob { animation: bird-bob 2.6s ease-in-out infinite; }
-.bird-blink { animation: bird-blink 4.5s ease-in-out infinite; }
-.bird-wing { animation: bird-wing 2.6s ease-in-out infinite; }
-.bird-hop { animation: bird-hop 0.6s ease-out; }
-.seed-pop { animation: seed-pop 0.9s ease-out forwards; }
+.bird-bob {
+  animation: bird-bob 2.6s ease-in-out infinite;
+}
+.bird-blink {
+  animation: bird-blink 4.5s ease-in-out infinite;
+}
+.bird-wing {
+  animation: bird-wing 2.6s ease-in-out infinite;
+}
+.bird-hop {
+  animation: bird-hop 0.6s ease-out;
+}
+.seed-pop {
+  animation: seed-pop 0.9s ease-out forwards;
+}
 @media (prefers-reduced-motion: reduce) {
-  .bird-bob, .bird-blink, .bird-wing, .bird-hop, .seed-pop { animation: none; }
+  .bird-bob,
+  .bird-blink,
+  .bird-wing,
+  .bird-hop,
+  .seed-pop {
+    animation: none;
+  }
 }
 
 /* ── Full themes (set via data-accent on the app shell) ───────────────────────
  * Each theme reskins the whole app: page background, surfaces, primary, the
  * sunrise gradient, and the warm "honey" accent. Sunrise is the :root default. */
 [data-accent="coral"] {
-  --background: #fff4ef; --card: #fffaf7; --popover: #fffaf7;
-  --secondary: #ffe7dd; --muted: #ffeee7; --accent: #ffe0d3;
-  --border: #f6d9cc; --input: #f0cbb9;
-  --primary: #f0683a; --ring: #f0683a; --honey: #f0834f; --honey-soft: #ffe6da;
-  --sunrise-from: #ffd9c4; --sunrise-via: #ffc3a3; --sunrise-to: #ffd8c0;
-  --app-bg-from: #ffe9df; --app-bg-mid: #fff4ef; --app-bg-to: #fdeee9;
+  --background: #fff4ef;
+  --card: #fffaf7;
+  --popover: #fffaf7;
+  --secondary: #ffe7dd;
+  --muted: #ffeee7;
+  --accent: #ffe0d3;
+  --border: #f6d9cc;
+  --input: #f0cbb9;
+  --primary: #f0683a;
+  --ring: #f0683a;
+  --honey: #f0834f;
+  --honey-soft: #ffe6da;
+  --sunrise-from: #ffd9c4;
+  --sunrise-via: #ffc3a3;
+  --sunrise-to: #ffd8c0;
+  --app-bg-from: #ffe9df;
+  --app-bg-mid: #fff4ef;
+  --app-bg-to: #fdeee9;
 }
 [data-accent="berry"] {
-  --background: #fdf3f7; --card: #fffafb; --popover: #fffafb;
-  --secondary: #fbe3ee; --muted: #fbeaf2; --accent: #f9dceb;
-  --border: #f3d3e1; --input: #ecc2d6;
-  --primary: #d6568f; --ring: #d6568f; --honey: #e07aa6; --honey-soft: #fbe4ef;
-  --sunrise-from: #ffd6e6; --sunrise-via: #ffbcd6; --sunrise-to: #ffd2e3;
-  --app-bg-from: #fce4ef; --app-bg-mid: #fdf3f7; --app-bg-to: #faecf3;
+  --background: #fdf3f7;
+  --card: #fffafb;
+  --popover: #fffafb;
+  --secondary: #fbe3ee;
+  --muted: #fbeaf2;
+  --accent: #f9dceb;
+  --border: #f3d3e1;
+  --input: #ecc2d6;
+  --primary: #d6568f;
+  --ring: #d6568f;
+  --honey: #e07aa6;
+  --honey-soft: #fbe4ef;
+  --sunrise-from: #ffd6e6;
+  --sunrise-via: #ffbcd6;
+  --sunrise-to: #ffd2e3;
+  --app-bg-from: #fce4ef;
+  --app-bg-mid: #fdf3f7;
+  --app-bg-to: #faecf3;
 }
 [data-accent="grape"] {
-  --background: #f5f2fc; --card: #fbfaff; --popover: #fbfaff;
-  --secondary: #e9e2fb; --muted: #efeafb; --accent: #e6dcfb;
-  --border: #ddd3f0; --input: #cfc2ec;
-  --primary: #8b6fd0; --ring: #8b6fd0; --honey: #a48fdc; --honey-soft: #ece4fb;
-  --sunrise-from: #ddd0f6; --sunrise-via: #c9b6f0; --sunrise-to: #dccff5;
-  --app-bg-from: #ebe4fb; --app-bg-mid: #f5f2fc; --app-bg-to: #f0ecfa;
+  --background: #f5f2fc;
+  --card: #fbfaff;
+  --popover: #fbfaff;
+  --secondary: #e9e2fb;
+  --muted: #efeafb;
+  --accent: #e6dcfb;
+  --border: #ddd3f0;
+  --input: #cfc2ec;
+  --primary: #8b6fd0;
+  --ring: #8b6fd0;
+  --honey: #a48fdc;
+  --honey-soft: #ece4fb;
+  --sunrise-from: #ddd0f6;
+  --sunrise-via: #c9b6f0;
+  --sunrise-to: #dccff5;
+  --app-bg-from: #ebe4fb;
+  --app-bg-mid: #f5f2fc;
+  --app-bg-to: #f0ecfa;
 }
 [data-accent="ocean"] {
-  --background: #eff6fc; --card: #f8fbff; --popover: #f8fbff;
-  --secondary: #dcebf8; --muted: #e6f0f9; --accent: #d6e8f8;
-  --border: #cfe1f0; --input: #bfd6ec;
-  --primary: #3f8fd6; --ring: #3f8fd6; --honey: #2bb6c4; --honey-soft: #d6f0f4;
-  --sunrise-from: #bfe3f5; --sunrise-via: #a3d3ee; --sunrise-to: #bfe9f0;
-  --app-bg-from: #e1f0fb; --app-bg-mid: #eff6fc; --app-bg-to: #e9f4f6;
+  --background: #eff6fc;
+  --card: #f8fbff;
+  --popover: #f8fbff;
+  --secondary: #dcebf8;
+  --muted: #e6f0f9;
+  --accent: #d6e8f8;
+  --border: #cfe1f0;
+  --input: #bfd6ec;
+  --primary: #3f8fd6;
+  --ring: #3f8fd6;
+  --honey: #2bb6c4;
+  --honey-soft: #d6f0f4;
+  --sunrise-from: #bfe3f5;
+  --sunrise-via: #a3d3ee;
+  --sunrise-to: #bfe9f0;
+  --app-bg-from: #e1f0fb;
+  --app-bg-mid: #eff6fc;
+  --app-bg-to: #e9f4f6;
 }
 [data-accent="forest"] {
-  --background: #f1f7f1; --card: #f9fcf8; --popover: #f9fcf8;
-  --secondary: #dfeede; --muted: #e7f1e6; --accent: #d9ecd8;
-  --border: #d2e6d0; --input: #c2dcbf;
-  --primary: #4f9d6a; --ring: #4f9d6a; --honey: #6bb585; --honey-soft: #e3f3e6;
-  --sunrise-from: #cfeccc; --sunrise-via: #b6e0b3; --sunrise-to: #cff5d2;
-  --app-bg-from: #e4f2e2; --app-bg-mid: #f1f7f1; --app-bg-to: #ecf5ec;
+  --background: #f1f7f1;
+  --card: #f9fcf8;
+  --popover: #f9fcf8;
+  --secondary: #dfeede;
+  --muted: #e7f1e6;
+  --accent: #d9ecd8;
+  --border: #d2e6d0;
+  --input: #c2dcbf;
+  --primary: #4f9d6a;
+  --ring: #4f9d6a;
+  --honey: #6bb585;
+  --honey-soft: #e3f3e6;
+  --sunrise-from: #cfeccc;
+  --sunrise-via: #b6e0b3;
+  --sunrise-to: #cff5d2;
+  --app-bg-from: #e4f2e2;
+  --app-bg-mid: #f1f7f1;
+  --app-bg-to: #ecf5ec;
 }
 
 /* Dark variants — keep dark surfaces, tint toward the theme. */
-.dark [data-accent="coral"]  { --background:#1f1410; --card:#2a1d16; --popover:#2a1d16; --primary:#f0683a; --ring:#f0683a; --honey:#f0834f; --app-bg-from:#271812; --app-bg-mid:#1f1410; --app-bg-to:#1b130f; }
-.dark [data-accent="berry"]  { --background:#1f1219; --card:#2a1a23; --popover:#2a1a23; --primary:#e070a0; --ring:#e070a0; --honey:#e07aa6; --app-bg-from:#27151f; --app-bg-mid:#1f1219; --app-bg-to:#1b1017; }
-.dark [data-accent="grape"]  { --background:#17131f; --card:#221c2e; --popover:#221c2e; --primary:#a48fdc; --ring:#a48fdc; --honey:#a48fdc; --app-bg-from:#1c1729; --app-bg-mid:#17131f; --app-bg-to:#15111c; }
-.dark [data-accent="ocean"]  { --background:#101a22; --card:#19262e; --popover:#19262e; --primary:#5ba3e0; --ring:#5ba3e0; --honey:#2bb6c4; --app-bg-from:#13212b; --app-bg-mid:#101a22; --app-bg-to:#0e171e; }
-.dark [data-accent="forest"] { --background:#121d15; --card:#1b2a1e; --popover:#1b2a1e; --primary:#6bb585; --ring:#6bb585; --honey:#6bb585; --app-bg-from:#15241a; --app-bg-mid:#121d15; --app-bg-to:#101a13; }
+.dark [data-accent="coral"] {
+  --background: #1f1410;
+  --card: #2a1d16;
+  --popover: #2a1d16;
+  --primary: #f0683a;
+  --ring: #f0683a;
+  --honey: #f0834f;
+  --app-bg-from: #271812;
+  --app-bg-mid: #1f1410;
+  --app-bg-to: #1b130f;
+}
+.dark [data-accent="berry"] {
+  --background: #1f1219;
+  --card: #2a1a23;
+  --popover: #2a1a23;
+  --primary: #e070a0;
+  --ring: #e070a0;
+  --honey: #e07aa6;
+  --app-bg-from: #27151f;
+  --app-bg-mid: #1f1219;
+  --app-bg-to: #1b1017;
+}
+.dark [data-accent="grape"] {
+  --background: #17131f;
+  --card: #221c2e;
+  --popover: #221c2e;
+  --primary: #a48fdc;
+  --ring: #a48fdc;
+  --honey: #a48fdc;
+  --app-bg-from: #1c1729;
+  --app-bg-mid: #17131f;
+  --app-bg-to: #15111c;
+}
+.dark [data-accent="ocean"] {
+  --background: #101a22;
+  --card: #19262e;
+  --popover: #19262e;
+  --primary: #5ba3e0;
+  --ring: #5ba3e0;
+  --honey: #2bb6c4;
+  --app-bg-from: #13212b;
+  --app-bg-mid: #101a22;
+  --app-bg-to: #0e171e;
+}
+.dark [data-accent="forest"] {
+  --background: #121d15;
+  --card: #1b2a1e;
+  --popover: #1b2a1e;
+  --primary: #6bb585;
+  --ring: #6bb585;
+  --honey: #6bb585;
+  --app-bg-from: #15241a;
+  --app-bg-mid: #121d15;
+  --app-bg-to: #101a13;
+}
 
 /* ── Confetti (task-completion celebration) ───────────────────────────────── */
 @keyframes confetti-fly {
-  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--r));
+    opacity: 0;
+  }
 }
-.confetti-piece { animation: confetti-fly 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+.confetti-piece {
+  animation: confetti-fly 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
 @media (prefers-reduced-motion: reduce) {
-  .confetti-piece { animation: none; opacity: 0; }
+  .confetti-piece {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* ── Nav drawer ───────────────────────────────────────────────────────────── */
-@keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
-@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
-.drawer-panel { animation: drawer-in 0.22s ease-out; }
-.drawer-overlay { animation: overlay-in 0.2s ease-out; }
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.drawer-panel {
+  animation: drawer-in 0.22s ease-out;
+}
+.drawer-overlay {
+  animation: overlay-in 0.2s ease-out;
+}
