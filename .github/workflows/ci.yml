@@ -23,6 +23,16 @@ jobs:
 
       - run: npm ci
 
+      - name: Lockfile integrity
+        # npm ci never rewrites the lockfile; if anything changed it, fail.
+        run: git diff --exit-code -- package-lock.json
+
+      - name: Audit production dependencies (high+)
+        # Gate shipped code on high/critical advisories. Dev-only tooling (e.g.
+        # @capacitor/cli -> tar) is excluded via --omit=dev and tracked in
+        # docs/security-ci.md; a full informational audit runs in security.yml.
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Typecheck
         run: npm run typecheck
 

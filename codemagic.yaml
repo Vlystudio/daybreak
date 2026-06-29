@@ -33,6 +33,9 @@ workflows:
         # Windows and omits macOS-only optional deps (e.g. @emnapi/*), which makes
         # `npm ci`'s strict lock match fail on the Mac build machine. `npm install`
         # resolves the correct per-platform tree at build time.
+        # TODO (Pass 3): regenerate package-lock.json on macOS so `npm ci` works
+        # here for a deterministic install. See docs/security-ci.md. The GitHub CI
+        # `npm ci` gate keeps the lockfile valid for the web build meanwhile.
         script: npm install --no-audit --no-fund
       - name: Generate iOS platform
         script: |

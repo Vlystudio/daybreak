@@ -1,0 +1,53 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Secret scanning via the pinned gitleaks binary (no Action license required,
+  # works on public and private repos).
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
+            | tar -xz -C /usr/local/bin gitleaks
+      - name: Scan for secrets
+        run: gitleaks detect --no-banner --redact --exit-code 1
+
+  # Informational full audit (includes dev tooling). Non-blocking — the blocking
+  # production gate lives in ci.yml. Surfaces the known dev-only advisories.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Full npm audit (informational)
+        run: npm audit --audit-level=moderate || true
+      - name: Production audit (high+) — blocking
+        run: npm audit --omit=dev --audit-level=high
+
+  # Flags newly introduced vulnerable/denied dependencies on PRs. Requires the
+  # dependency graph (public repo or GitHub Advanced Security) — see docs.
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
