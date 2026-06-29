@@ -4,56 +4,65 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import { securityRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
 import { rollSpecies, resolveSpecies, sellValueFor, type OwnedBirdBase } from "@/lib/game/birds";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
 
+/**
+ * Game economy server actions. Every balance change runs inside a Postgres RPC
+ * that locks the wallet row (SELECT ... FOR UPDATE) and validates rules in-DB, so
+ * concurrent requests can't overspend, double-credit, or lose updates. The
+ * actions stay thin: authenticate → security rate limit → call RPC → audit →
+ * revalidate. Seeds are NEVER computed in TypeScript. The RPCs are EXECUTE-locked
+ * to the service role, so only these server actions (which derive p_user_id from
+ * the session) can invoke them.
+ */
+
 export type HatchResult =
   | { ok: true; speciesKey: string; speciesName: string; rarity: string; birdId: string }
   | { ok: false; error: string };
 
-/** Spend seeds to hatch a random bird into the aviary. */
+/** YYYY-MM-DD for "now" in the given IANA timezone. */
+function localDate(timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+/** Spend seeds (or a banked free egg) to hatch a random bird — atomically. */
 export async function hatchEgg(): Promise<HatchResult> {
   const user = await requireUser();
-  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  const limited = await securityRateLimit(`hatch:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
 
-  const admin = createAdminClient();
-  const { data: game } = await admin
-    .from("user_game")
-    .select("seeds, active_bird_id, free_hatches")
-    .eq("user_id", user.id)
-    .maybeSingle<{ seeds: number; active_bird_id: string | null; free_hatches: number }>();
-
-  const seeds = game?.seeds ?? 0;
-  const freeHatches = game?.free_hatches ?? 0;
-  const useFree = freeHatches > 0;
-  if (!useFree && seeds < SEED_COST_EGG) {
-    return { ok: false, error: `You need ${SEED_COST_EGG} seeds to hatch an egg.` };
-  }
-
   const species = rollSpecies();
-  const { data: bird, error } = await admin
-    .from("user_birds")
-    .insert({ user_id: user.id, species_key: species.key })
-    .select("id")
-    .single<{ id: string }>();
-  if (error || !bird) return { ok: false, error: "The egg didn't hatch — try again." };
-
-  await admin
-    .from("user_game")
-    .update({
-      // A banked free egg costs no seeds.
-      ...(useFree ? { free_hatches: freeHatches - 1 } : { seeds: seeds - SEED_COST_EGG }),
-      // Adopt the first bird as the companion automatically.
-      ...(game?.active_bird_id ? {} : { active_bird_id: bird.id }),
-    })
-    .eq("user_id", user.id);
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("hatch_egg_for_user", {
+    p_user_id: user.id,
+    p_species_key: species.key,
+    p_rarity: species.rarity,
+    p_cost: SEED_COST_EGG,
+  });
+  if (error) {
+    if (error.message.includes("insufficient_seeds")) {
+      return { ok: false, error: `You need ${SEED_COST_EGG} seeds to hatch an egg.` };
+    }
+    return { ok: false, error: "The egg didn't hatch — try again." };
+  }
+  const row = (data as { bird_id: string; used_free: boolean }[] | null)?.[0];
+  if (!row) return { ok: false, error: "The egg didn't hatch — try again." };
 
   await audit(user.id, "game.hatched", {
-    metadata: { species: species.key, rarity: species.rarity, free: useFree },
+    metadata: { species: species.key, rarity: species.rarity, free: row.used_free },
   });
   revalidatePath("/nest");
   revalidatePath("/dashboard");
@@ -62,42 +71,34 @@ export async function hatchEgg(): Promise<HatchResult> {
     speciesKey: species.key,
     speciesName: species.name,
     rarity: species.rarity,
-    birdId: bird.id,
+    birdId: row.bird_id,
   };
 }
 
 /**
- * Starter ceremony: hatch the new user's first bird and bank one free egg (the
- * second egg they chose to keep). One-time — guarded by starter_done.
+ * Starter ceremony: hatch the new user's first bird and bank one free egg.
+ * One-time — guarded by starter_done inside the RPC.
  */
 export async function claimStarter(): Promise<HatchResult> {
   const user = await requireUser();
-  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  const limited = await securityRateLimit(`starter:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "One moment…" };
 
-  const admin = createAdminClient();
-  const { data: game } = await admin
-    .from("user_game")
-    .select("starter_done, active_bird_id")
-    .eq("user_id", user.id)
-    .maybeSingle<{ starter_done: boolean; active_bird_id: string | null }>();
-  if (game?.starter_done) return { ok: false, error: "You've already chosen your starter eggs." };
-
   const species = rollSpecies();
-  const { data: bird, error } = await admin
-    .from("user_birds")
-    .insert({ user_id: user.id, species_key: species.key })
-    .select("id")
-    .single<{ id: string }>();
-  if (error || !bird) return { ok: false, error: "The egg didn't hatch — try again." };
-
-  const update = {
-    starter_done: true,
-    free_hatches: 1,
-    active_bird_id: game?.active_bird_id ?? bird.id,
-  };
-  if (game) await admin.from("user_game").update(update).eq("user_id", user.id);
-  else await admin.from("user_game").insert({ user_id: user.id, ...update });
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("claim_starter_bird_for_user", {
+    p_user_id: user.id,
+    p_species_key: species.key,
+    p_rarity: species.rarity,
+  });
+  if (error) {
+    if (error.message.includes("already_done")) {
+      return { ok: false, error: "You've already chosen your starter eggs." };
+    }
+    return { ok: false, error: "The egg didn't hatch — try again." };
+  }
+  const row = (data as { bird_id: string }[] | null)?.[0];
+  if (!row) return { ok: false, error: "The egg didn't hatch — try again." };
 
   await audit(user.id, "game.hatched", { metadata: { species: species.key, starter: true } });
   revalidatePath("/nest");
@@ -107,7 +108,7 @@ export async function claimStarter(): Promise<HatchResult> {
     speciesKey: species.key,
     speciesName: species.name,
     rarity: species.rarity,
-    birdId: bird.id,
+    birdId: row.bird_id,
   };
 }
 
@@ -115,71 +116,62 @@ export type SellResult =
   | { ok: true; value: number; speciesName: string; seeds: number }
   | { ok: false; error: string };
 
-/** The bird columns needed to resolve a species + sell value. */
+/** The bird columns needed to resolve a species + fallback rarity. */
 type SellableBirdRow = OwnedBirdBase & { id: string };
 
 /**
- * Sell one bird for seeds based on its rarity. Guards keep the economy and the
- * active companion safe:
- *  - never sell your last remaining bird,
- *  - never sell the active companion (choose another active first),
- *  - delete-then-credit so a double-tap can't mint seeds twice.
+ * Sell one bird for seeds based on its rarity. Ownership, the active-bird and
+ * last-bird rules, the delete, and the credit all happen atomically inside the
+ * RPC under the wallet lock — so a double-tap can't mint seeds twice and
+ * concurrent sells can't lose a credit. The value is computed in-DB from a
+ * trusted rarity mapping, never from client input.
  */
 export async function sellBird(birdId: string): Promise<SellResult> {
   const user = await requireUser();
-  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  const limited = await securityRateLimit(`sell:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
   if (!uuidSchema.safeParse(birdId).success) return { ok: false, error: "Unknown bird" };
 
   const admin = createAdminClient();
-  const [{ data: bird }, { data: game }, { count }] = await Promise.all([
-    admin
-      .from("user_birds")
-      .select(
-        "id, species_key, source, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail"
-      )
-      .eq("id", birdId)
-      .eq("user_id", user.id)
-      .maybeSingle<SellableBirdRow>(),
-    admin
-      .from("user_game")
-      .select("seeds, total_earned, active_bird_id")
-      .eq("user_id", user.id)
-      .maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null }>(),
-    admin.from("user_birds").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-  ]);
-
-  if (!bird) return { ok: false, error: "That bird isn't in your aviary." };
-  if ((count ?? 0) <= 1) return { ok: false, error: "This is your last bird — keep it close." };
-  if (game?.active_bird_id === birdId)
-    return { ok: false, error: "Make another bird your companion before selling this one." };
-
-  const species = resolveSpecies(bird);
-  const value = sellValueFor(species.rarity);
-
-  // Delete first; only credit if THIS call removed the row, so a double-tap (or
-  // two devices) can't be paid twice for the same bird.
-  const { data: deleted } = await admin
+  // Resolve the species (server-trusted catalog) for the display name and a
+  // fallback rarity for pre-migration birds whose row has no stored rarity yet.
+  const { data: bird } = await admin
     .from("user_birds")
-    .delete()
+    .select(
+      "id, species_key, source, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail"
+    )
     .eq("id", birdId)
     .eq("user_id", user.id)
-    .select("id")
-    .returns<{ id: string }[]>();
-  if (!deleted || deleted.length === 0) return { ok: false, error: "That bird was already sold." };
+    .maybeSingle<SellableBirdRow>();
+  if (!bird) return { ok: false, error: "That bird isn't in your aviary." };
+  const species = resolveSpecies(bird);
 
-  const seeds = (game?.seeds ?? 0) + value;
-  await admin
-    .from("user_game")
-    .update({ seeds, total_earned: (game?.total_earned ?? 0) + value })
-    .eq("user_id", user.id);
+  const { data, error } = await admin.rpc("sell_bird_for_user", {
+    p_user_id: user.id,
+    p_bird_id: birdId,
+    p_fallback_rarity: species.rarity,
+  });
+  if (error) {
+    if (error.message.includes("last_bird")) {
+      return { ok: false, error: "This is your last bird — keep it close." };
+    }
+    if (error.message.includes("active_bird")) {
+      return { ok: false, error: "Make another bird your companion before selling this one." };
+    }
+    if (error.message.includes("not_found")) {
+      return { ok: false, error: "That bird was already sold." };
+    }
+    return { ok: false, error: "Couldn't sell that bird — try again." };
+  }
+  const row = (data as { value: number; seeds: number }[] | null)?.[0];
+  const value = row?.value ?? sellValueFor(species.rarity);
 
   await audit(user.id, "game.sold", {
     metadata: { species: species.key, rarity: species.rarity, value },
   });
   revalidatePath("/nest");
   revalidatePath("/dashboard");
-  return { ok: true, value, speciesName: species.name, seeds };
+  return { ok: true, value, speciesName: species.name, seeds: row?.seeds ?? 0 };
 }
 
 export async function setActiveBird(birdId: string): Promise<{ ok: boolean; error?: string }> {
@@ -223,60 +215,27 @@ export async function renameBird(
   return { ok: true };
 }
 
-/** Pet the companion: a tiny once-a-day affection bonus + XP. */
+/** Pet the companion: a tiny once-a-day affection bonus + XP, granted atomically. */
 export async function petBird(): Promise<{ ok: boolean; seeds?: number; error?: string }> {
   const user = await requireUser();
-  const admin = createAdminClient();
+  const limited = await securityRateLimit(`pet:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "One moment…" };
 
+  const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
     .select("timezone")
     .eq("id", user.id)
     .maybeSingle<{ timezone: string }>();
-  const tz = profile?.timezone ?? "UTC";
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  const today = localDate(profile?.timezone ?? "UTC");
 
-  const { data: inserted, error: ledgerErr } = await admin
-    .from("reward_ledger")
-    .upsert(
-      { user_id: user.id, key: `${today}|pet`, source: "pet", amount: 2, awarded_on: today },
-      { onConflict: "user_id,key", ignoreDuplicates: true }
-    )
-    .select("amount")
-    .returns<{ amount: number }[]>();
-  if (ledgerErr) return { ok: false, error: "Couldn't reach your nest just now." };
+  const { data, error } = await admin.rpc("pet_bird_for_user", {
+    p_user_id: user.id,
+    p_local_date: today,
+  });
+  if (error) return { ok: false, error: "Couldn't reach your nest just now." };
 
-  const bonus = (inserted ?? []).reduce((s, r) => s + r.amount, 0);
-  if (bonus > 0) {
-    const { data: game } = await admin
-      .from("user_game")
-      .select("seeds, total_earned, active_bird_id")
-      .eq("user_id", user.id)
-      .maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null }>();
-    if (game) {
-      await admin
-        .from("user_game")
-        .update({ seeds: game.seeds + bonus, total_earned: game.total_earned + bonus })
-        .eq("user_id", user.id);
-      if (game.active_bird_id) {
-        const { data: b } = await admin
-          .from("user_birds")
-          .select("xp")
-          .eq("id", game.active_bird_id)
-          .maybeSingle<{ xp: number }>();
-        if (b)
-          await admin
-            .from("user_birds")
-            .update({ xp: b.xp + 4 })
-            .eq("id", game.active_bird_id);
-      }
-    }
-    revalidatePath("/nest");
-  }
+  const bonus = (data as { bonus: number; seeds: number }[] | null)?.[0]?.bonus ?? 0;
+  if (bonus > 0) revalidatePath("/nest");
   return { ok: true, seeds: bonus };
 }
