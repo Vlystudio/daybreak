@@ -11,7 +11,7 @@ import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
 import { MorningSummary } from "@/components/dashboard/morning-summary";
 import { PlanConfidence } from "@/components/dashboard/plan-confidence";
-import { buildPlanHealthSnapshot } from "@/lib/health/plan-input";
+import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
 import { ReadinessCard } from "@/components/dashboard/readiness-card";
 import { SleepCard } from "@/components/dashboard/sleep-card";
 import { HrvCard } from "@/components/dashboard/hrv-card";

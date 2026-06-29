@@ -9,6 +9,8 @@ import { HealthImportCard } from "@/components/settings/health-import-card";
 import { DataPrivacyCard } from "@/components/settings/data-privacy-card";
 import { MfaCard } from "@/components/settings/mfa-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
+import { HealthSourcesCard } from "@/components/settings/health-sources-card";
+import { HEALTH_PROVIDERS, providerState } from "@/lib/health/providers";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,6 +46,31 @@ export default async function SettingsPage() {
   ]);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
   const pushAvailable = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+
+  // Provider registry → per-user state for the health-sources overview.
+  const connectedProviders = new Set<string>(data.connections.map((c) => c.provider));
+  const fitbitConfigured = integrationsAvailable.fitbit();
+  const healthSources = HEALTH_PROVIDERS.map((p) => {
+    const connected =
+      p.id === "apple_health"
+        ? Boolean(appleImport)
+        : p.id === "manual"
+          ? false
+          : connectedProviders.has(p.id);
+    const configured =
+      p.id === "fitbit"
+        ? fitbitConfigured
+        : p.id === "google_health" || p.id === "garmin"
+          ? false
+          : undefined;
+    return {
+      id: p.id,
+      label: p.label,
+      description: p.description,
+      note: p.note,
+      state: providerState(p, { connected, configured }),
+    };
+  });
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
@@ -81,6 +108,7 @@ export default async function SettingsPage() {
         }}
       />
       <HealthImportCard />
+      <HealthSourcesCard sources={healthSources} />
       <HouseholdCard household={data.household} householdEvents={[]} />
 
       <Card>

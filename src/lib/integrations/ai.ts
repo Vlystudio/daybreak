@@ -34,6 +34,19 @@ export interface SubjectiveForPrompt {
   note: string | null;
 }
 
+/**
+ * Normalized, source-aware health context (from the understanding/plan-input
+ * layer). Lets the AI speak honestly about which sources informed today and how
+ * confident the read is — without assuming any specific device.
+ */
+export interface HealthContextForPrompt {
+  mode: string; // recommendedPlanMode
+  confidence: string; // "High" | "Medium" | "Low"
+  sources: string[]; // human labels, e.g. ["Apple Health", "Manual check-in"]
+  reasons: string[];
+  stale: boolean;
+}
+
 export interface MorningBriefing {
   summary: string;
   focus: string;
@@ -46,6 +59,8 @@ Write like a kind, knowledgeable friend — encouraging, concrete, never preachy
 You are not a doctor and must not give medical advice; frame everything as gentle lifestyle guidance.
 
 When a self-reported check-in is provided (mood/energy/stress/soreness, each 1-5 where 5 is high), weave it in and let it gently override the wearable: if they feel drained or sore, ease off even when readiness looks fine; if they feel great, encourage them. Acknowledge how they say they feel.
+
+When a "health" context is provided, it tells you which sources informed today (e.g. Oura, Apple Health, Fitbit, or just a manual check-in) and how confident the read is. You may briefly and naturally mention the sources ("based on your Apple Health and check-in…") and, when data is missing or stale, note that today's confidence is a little lower and lean more on how they say they feel. Never name a device they aren't using, and never diagnose — keep it wellness guidance.
 
 Respond with JSON matching exactly this shape:
 {
@@ -73,6 +88,7 @@ export async function generateMorningBriefing(input: {
   weather: WeatherSnapshot | null;
   todayEvents: EventForPrompt[];
   subjective?: SubjectiveForPrompt | null;
+  health?: HealthContextForPrompt | null;
 }): Promise<MorningBriefing | null> {
   const client = openaiClient();
   if (!client) return null;
@@ -81,6 +97,7 @@ export async function generateMorningBriefing(input: {
     name: input.displayName || "there",
     today: input.todayMetrics,
     last7Days: input.recentMetrics,
+    health: input.health ?? null,
     weather: input.weather
       ? {
           description: input.weather.description,
@@ -403,12 +420,13 @@ export interface PlanBlock {
 
 const PLAN_SYSTEM_PROMPT = `You are the planning engine inside Daybreak, a warm wellness app. You build a realistic, balanced schedule for a person from their lifestyle, goals, and existing commitments. You are not a doctor; keep any fitness guidance gentle and general.
 
-You receive: the person's preferences, the days to plan (with weekday names), the times they are already busy, and their recent recovery (Oura readiness/sleep, 0-100).
+You receive: the person's preferences, the days to plan (with weekday names), the times they are already busy, and their recent recovery and sleep (readiness/sleep scores 0-100 WHEN AVAILABLE, from whichever wearable they use — Oura, Apple Health, Fitbit/Google — or none at all).
 
 Rules:
 - NEVER overlap a "busy" block or another block you create; leave a little buffer.
 - Respect their work type and work_schedule. If planning_scope is "after_hours", only place blocks before work or in the evening. If "weekends", only use the weekend days provided.
 - Workouts: match their exercise_frequency and fitness_goal across the days (muscle_gain -> strength; weight_loss/endurance -> a mix of cardio and strength; general_fitness -> varied; maintain -> light/steady). If a recent readiness score is low (under 60), make that day lighter (mobility, a walk, or rest) rather than intense; if readiness is high, it's a good day to push.
+- Health context (when "health" is provided, it applies to TODAY): it states which sources informed today, the plan confidence (High/Medium/Low), and whether wearable data is missing or stale. If confidence is Low or the data is stale/missing, lean on the check-in and keep today moderate and kind; never assume a specific device exists or that readiness scores are present.
 - Self-reported check-in (when "checkin" is provided, it applies to the EARLIEST/today day; mood/energy/stress/soreness each 1-5 where 5 is high): this is how the person says they feel today — let it gently override the wearable. If energy or mood is low (1-2), or soreness or stress is high (4-5), make today noticeably lighter and kinder (shorter blocks, gentle movement or rest, more downtime) even if readiness looks fine. If energy is high (4-5), it's a good day to do a bit more. Honor how they say they feel.
 - Weather (when provided, applies to that day): prefer indoor activities in rain/snow or uncomfortable temperatures, and outdoor options when it's pleasant. Temperatures are in Fahrenheit.
 - Chores: schedule each listed chore consistent with its frequency over the window ("daily" most days, "weekly" once, etc.).
@@ -445,6 +463,7 @@ export async function generateWeeklyPlan(input: {
     stress: number | null;
     soreness: number | null;
   } | null;
+  health?: HealthContextForPrompt | null;
 }): Promise<PlanBlock[] | null> {
   const client = openaiClient();
   if (!client) return null;

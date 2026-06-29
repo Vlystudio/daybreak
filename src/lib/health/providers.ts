@@ -1,11 +1,9 @@
-import "server-only";
-import { createAdminClient } from "@/lib/supabase/admin";
-
 /**
- * Health provider registry. Declarative metadata (not a class hierarchy) so the
- * Daily Plan, confidence layer, and connections UI can reason about sources
- * uniformly without each provider reimplementing fusion/confidence — that lives
- * once in the source-aware understanding layer (`./understanding`, `./fusion`).
+ * Health provider registry. Pure, declarative metadata (no class hierarchy, no
+ * DB access) so the Daily Plan, confidence layer, connections UI, and tests can
+ * all reason about sources uniformly. Source fusion/confidence lives ONCE in the
+ * understanding layer (`./understanding`, `./fusion`) — providers never
+ * reimplement it.
  *
  * Status:
  *  - active:  fully wired today (Oura, Apple Health, Fitbit, manual check-in).
@@ -19,11 +17,16 @@ export type ProviderId = "oura" | "apple_health" | "google_health" | "fitbit" | 
 export type ProviderStatus = "active" | "planned" | "gated";
 export type Platform = "ios" | "android" | "web" | "cross_platform";
 
+/** The state of a provider for a given user, shown in the connections UI. */
+export type ProviderState = "Connected" | "Available" | "Planned" | "Gated" | "Not configured";
+
 export interface HealthProviderInfo {
   id: ProviderId;
   label: string;
   platformSupport: Platform[];
   status: ProviderStatus;
+  /** Short description for the connections UI. */
+  description: string;
   /** Signals this provider can contribute once fully wired (documentation only). */
   signals: string[];
   note?: string;
@@ -35,6 +38,7 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     label: "Oura",
     platformSupport: ["cross_platform"],
     status: "active",
+    description: "Sleep, readiness & HRV",
     signals: ["sleep", "readiness", "hrv", "resting_heart_rate", "temperature", "spo2", "steps"],
   },
   {
@@ -42,6 +46,7 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     label: "Apple Health",
     platformSupport: ["ios"],
     status: "active",
+    description: "Sleep, HRV, heart rate & activity",
     signals: [
       "sleep",
       "hrv",
@@ -58,6 +63,7 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     label: "Fitbit",
     platformSupport: ["android", "ios", "web"],
     status: "active",
+    description: "Sleep, heart rate & activity",
     signals: ["sleep", "hrv", "resting_heart_rate", "steps", "active_minutes"],
     note: "Fitbit is migrating under the Google Health API; treat as the legacy entry into the google_health path.",
   },
@@ -66,6 +72,7 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     label: "Google Health",
     platformSupport: ["android"],
     status: "planned",
+    description: "Android sleep, steps & heart rate",
     signals: [
       "sleep",
       "steps",
@@ -83,6 +90,7 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     label: "Garmin",
     platformSupport: ["cross_platform"],
     status: "gated",
+    description: "Sleep, body battery & stress",
     signals: [
       "steps",
       "sleep",
@@ -100,6 +108,7 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     label: "Manual check-in",
     platformSupport: ["cross_platform"],
     status: "active",
+    description: "How you say you feel — energy, mood, stress",
     signals: ["manual_energy", "manual_mood", "manual_stress", "manual_soreness"],
   },
 ];
@@ -120,36 +129,18 @@ export function isProviderEnabled(id: string): boolean {
 }
 
 /**
- * Which providers a user actually has connected right now. Mirrors the detection
- * the understanding layer uses (OAuth connections for Oura/Fitbit, an Apple
- * Health import/sample for Apple). Manual is always available.
+ * Resolve a provider's display state from its status plus what we know about the
+ * user. Pure — the caller supplies `connected` (a real connection/import exists)
+ * and `configured` (server credentials exist for it). Never invents a working
+ * auth flow for a provider that isn't configured.
  */
-export async function getConnectedProviders(userId: string): Promise<ProviderId[]> {
-  const admin = createAdminClient();
-  const [{ data: conns }, { data: imports }, { data: samples }] = await Promise.all([
-    admin
-      .from("oauth_connections")
-      .select("provider")
-      .eq("user_id", userId)
-      .returns<{ provider: string }[]>(),
-    admin
-      .from("apple_health_imports")
-      .select("id")
-      .eq("user_id", userId)
-      .limit(1)
-      .returns<{ id: string }[]>(),
-    admin
-      .from("health_daily_samples")
-      .select("user_id")
-      .eq("user_id", userId)
-      .limit(1)
-      .returns<{ user_id: string }[]>(),
-  ]);
-  const providers = new Set((conns ?? []).map((c) => c.provider));
-  const connected: ProviderId[] = [];
-  if (providers.has("oura")) connected.push("oura");
-  if (providers.has("fitbit")) connected.push("fitbit");
-  if ((imports ?? []).length > 0 || (samples ?? []).length > 0) connected.push("apple_health");
-  connected.push("manual");
-  return connected;
+export function providerState(
+  info: HealthProviderInfo,
+  opts: { connected?: boolean; configured?: boolean } = {}
+): ProviderState {
+  if (info.status === "gated") return "Gated";
+  if (info.status === "planned") return opts.configured ? "Available" : "Planned";
+  // active:
+  if (opts.connected) return "Connected";
+  return opts.configured === false ? "Not configured" : "Available";
 }

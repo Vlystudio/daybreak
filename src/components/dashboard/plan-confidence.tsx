@@ -1,4 +1,4 @@
-import { Activity } from "lucide-react";
+import { Activity, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -51,6 +51,13 @@ export function PlanConfidence({ snapshot }: { snapshot: PlanHealthSnapshot }) {
               </Badge>
             ))}
           </div>
+        )}
+
+        {snapshot.suggestCheckin && (
+          <p className="bg-honey-soft/50 text-foreground/80 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px]">
+            <Sparkles className="text-honey h-3.5 w-3.5 shrink-0" aria-hidden />
+            Add today&apos;s check-in below to sharpen your plan.
+          </p>
         )}
       </CardContent>
     </Card>

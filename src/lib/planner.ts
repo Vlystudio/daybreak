@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyPlan, type PlanBlockType } from "@/lib/integrations/ai";
+import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateWorkoutForUser } from "@/lib/workout-engine";
 import { audit } from "@/lib/audit";
@@ -229,10 +230,22 @@ async function planDays(
 
   const lat = profile?.latitude;
   const lon = profile?.longitude;
+  const planningToday = dateList.some((d) => d.date === todayStr);
   const weatherToday =
-    dateList.some((d) => d.date === todayStr) && lat != null && lon != null
-      ? await fetchWeather(lat, lon)
-      : null;
+    planningToday && lat != null && lon != null ? await fetchWeather(lat, lon) : null;
+
+  // Normalized, source-aware health context for TODAY — so the plan adapts to
+  // whichever wearable (or just a check-in) the user has, never Oura specifically.
+  const planSnapshot = planningToday ? await buildPlanHealthSnapshot(userId) : null;
+  const todayHealth = planSnapshot
+    ? {
+        mode: planSnapshot.recommendedPlanMode,
+        confidence: planSnapshot.confidence.label,
+        sources: planSnapshot.sources.map((s) => s.label),
+        reasons: planSnapshot.confidence.reasons.slice(0, 4),
+        stale: planSnapshot.staleWearable,
+      }
+    : null;
 
   const workDays = prefs.work_days ?? [];
   const workStart = prefs.work_start_time;
@@ -305,6 +318,7 @@ async function planDays(
           : null,
         reflection: c.d.date === earliestDate ? reflection : null,
         checkin: c.d.date === todayStr ? todayCheckin : null,
+        health: c.d.date === todayStr ? todayHealth : null,
       })
     )
   );

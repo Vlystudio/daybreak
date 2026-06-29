@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOuraDailyMetrics } from "@/lib/integrations/oura";
 import { dailyMetricsToObservations, upsertHealthObservations } from "@/lib/health/observations";
+import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
 import type { HealthObservationSource } from "@/lib/health/types";
 import {
   fetchGoogleEvents,
@@ -352,6 +353,18 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
         }
       : null;
 
+  // Normalized, source-aware health context so the briefing can speak honestly
+  // about which sources informed today and how confident the read is — for any
+  // wearable or just a check-in, never assuming Oura.
+  const planSnapshot = await buildPlanHealthSnapshot(userId);
+  const health = {
+    mode: planSnapshot.recommendedPlanMode,
+    confidence: planSnapshot.confidence.label,
+    sources: planSnapshot.sources.map((s) => s.label),
+    reasons: planSnapshot.confidence.reasons.slice(0, 4),
+    stale: planSnapshot.staleWearable,
+  };
+
   const briefingInput = {
     displayName: profile?.display_name ?? "",
     todayMetrics,
@@ -364,6 +377,7 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
       allDay: e.all_day,
     })),
     subjective,
+    health,
   };
 
   // Skip-if-unchanged: if today's row was generated from byte-identical inputs

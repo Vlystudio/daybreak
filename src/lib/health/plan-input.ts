@@ -1,5 +1,3 @@
-import "server-only";
-import { buildDailyHealthUnderstanding } from "./understanding";
 import { latestSignals } from "./fusion";
 import { providerLabel } from "./providers";
 import type { Confidence, HealthMetricName, HealthUnderstandingResult } from "./types";
@@ -7,9 +5,13 @@ import type { Confidence, HealthMetricName, HealthUnderstandingResult } from "./
 /**
  * DailyPlanInputBuilder + ConfidenceScorer, built ON TOP of the existing
  * source-aware understanding layer rather than as a parallel framework. The
- * planner and the dashboard consume this normalized snapshot — they never read
- * Oura-specific (or any single-source) data directly, so a plan works the same
- * whether the user wears an Oura, an Apple Watch, a Fitbit/Pixel, or nothing.
+ * planner, morning briefing, and dashboard consume this normalized snapshot —
+ * they never read Oura-specific (or any single-source) data directly, so a plan
+ * works the same whether the user wears an Oura, an Apple Watch, a Fitbit/Pixel,
+ * or nothing.
+ *
+ * Pure (no server-only / DB imports) so it's unit-testable. The async builder
+ * that runs the understanding layer lives in `./plan-snapshot`.
  */
 
 export type PlanConfidenceLabel = "High" | "Medium" | "Low";
@@ -42,8 +44,10 @@ export interface PlanHealthSnapshot {
     reasons: string[];
   };
   recommendedPlanMode: RecommendedPlanMode;
-  /** True when the freshest wearable signal is older than ~24h. */
+  /** True when a wearable is connected but produced no signal today (≈stale/absent). */
   staleWearable: boolean;
+  /** True when a quick manual check-in would meaningfully improve confidence. */
+  suggestCheckin: boolean;
 }
 
 const KEY_METRICS: HealthMetricName[] = [
@@ -119,7 +123,8 @@ export function snapshotFromUnderstanding(
   if (!hasWearable && !hasManualCheckin) reasons.push("No wearable connected and no check-in yet.");
   for (const w of understanding.dataQuality.warnings) reasons.push(w);
 
-  const label = labelFor(understanding.dataQuality.overallConfidence);
+  const overall = understanding.dataQuality.overallConfidence;
+  const label = labelFor(overall);
   const confScores = metrics.map((m) => m.confidence);
   const score = confScores.length
     ? Math.round((confScores.reduce((a, b) => a + b, 0) / confScores.length) * 100)
@@ -131,24 +136,18 @@ export function snapshotFromUnderstanding(
 
   const sources = connected.map((id) => ({ id, label: providerLabel(id) }));
 
+  // If there's no wearable signal today at all, treat wearable data as
+  // stale/absent so the plan leans on the check-in.
+  const staleWearable = hasWearable && metrics.length === 0;
+
   return {
     date: understanding.dateRange.to,
     metrics,
     sources,
     confidence: { score, label, explanation: explanationFor(recommendedPlanMode), reasons },
     recommendedPlanMode,
-    // The conservative read: if there's no wearable signal today at all, treat
-    // wearable data as stale/absent so the plan leans on the check-in.
-    staleWearable: hasWearable && metrics.length === 0,
+    staleWearable,
+    // A check-in helps most when there's no fresh wearable signal or confidence is low.
+    suggestCheckin: !hasManualCheckin && (!hasWearable || staleWearable || overall === "low"),
   };
-}
-
-/** Build today's normalized plan snapshot for a user (≈2 weeks of context). */
-export async function buildPlanHealthSnapshot(
-  userId: string,
-  from: Date = new Date(Date.now() - 14 * 86_400_000),
-  to: Date = new Date()
-): Promise<PlanHealthSnapshot> {
-  const understanding = await buildDailyHealthUnderstanding(userId, from, to);
-  return snapshotFromUnderstanding(understanding);
 }
