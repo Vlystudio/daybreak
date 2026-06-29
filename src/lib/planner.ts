@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyPlan, type PlanBlockType } from "@/lib/integrations/ai";
 import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
+import { aiConsentFromPrefs, redactEventTitle } from "@/lib/integrations/ai-consent";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateWorkoutForUser } from "@/lib/workout-engine";
 import { audit } from "@/lib/audit";
@@ -132,6 +133,10 @@ async function planDays(
   if (!prefs || !prefs.onboarding_completed) return null;
   if (dateList.length === 0) return 0;
 
+  // Per-user AI data-use consent. When a context is off we omit it from the AI
+  // payload (calendar keeps busy time-blocks but with titles stripped).
+  const consent = aiConsentFromPrefs(prefs);
+
   const { data: profile } = await admin
     .from("profiles")
     .select("timezone, latitude, longitude")
@@ -236,7 +241,9 @@ async function planDays(
 
   // Normalized, source-aware health context for TODAY — so the plan adapts to
   // whichever wearable (or just a check-in) the user has, never Oura specifically.
-  const planSnapshot = planningToday ? await buildPlanHealthSnapshot(userId) : null;
+  // Skipped entirely when the user has opted out of AI health context.
+  const planSnapshot =
+    planningToday && consent.health ? await buildPlanHealthSnapshot(userId) : null;
   const todayHealth = planSnapshot
     ? {
         mode: planSnapshot.recommendedPlanMode,
@@ -287,7 +294,7 @@ async function planDays(
         date: d.date,
         start: localTime(e.starts_at, tz),
         end: localTime(e.ends_at, tz),
-        title: e.title,
+        title: redactEventTitle(e.title, consent.calendar),
       })),
       ...workBusy,
     ];
@@ -317,7 +324,7 @@ async function planDays(
             }
           : null,
         reflection: c.d.date === earliestDate ? reflection : null,
-        checkin: c.d.date === todayStr ? todayCheckin : null,
+        checkin: c.d.date === todayStr && consent.checkin ? todayCheckin : null,
         health: c.d.date === todayStr ? todayHealth : null,
       })
     )

@@ -10,7 +10,9 @@ import { DataPrivacyCard } from "@/components/settings/data-privacy-card";
 import { MfaCard } from "@/components/settings/mfa-card";
 import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HealthSourcesCard } from "@/components/settings/health-sources-card";
+import { AiDataUseCard } from "@/components/settings/ai-data-use-card";
 import { HEALTH_PROVIDERS, providerState } from "@/lib/health/providers";
+import { aiConsentFromPrefs } from "@/lib/integrations/ai-consent";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,26 +26,37 @@ export default async function SettingsPage() {
   const data = await loadDashboardData(user.id);
 
   const supabase = await createClient();
-  const [{ data: notif }, { data: reminders }, { data: appleImport }] = await Promise.all([
-    supabase
-      .from("notification_settings")
-      .select("morning_email_enabled")
-      .eq("user_id", user.id)
-      .maybeSingle<{ morning_email_enabled: boolean }>(),
-    supabase
-      .from("reminders")
-      .select("id, kind, hour, message, enabled")
-      .eq("user_id", user.id)
-      .order("hour", { ascending: true })
-      .returns<Reminder[]>(),
-    supabase
-      .from("apple_health_imports")
-      .select("metrics_days, range_end")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle<{ metrics_days: number; range_end: string | null }>(),
-  ]);
+  const [{ data: notif }, { data: reminders }, { data: appleImport }, { data: aiPrefs }] =
+    await Promise.all([
+      supabase
+        .from("notification_settings")
+        .select("morning_email_enabled")
+        .eq("user_id", user.id)
+        .maybeSingle<{ morning_email_enabled: boolean }>(),
+      supabase
+        .from("reminders")
+        .select("id, kind, hour, message, enabled")
+        .eq("user_id", user.id)
+        .order("hour", { ascending: true })
+        .returns<Reminder[]>(),
+      supabase
+        .from("apple_health_imports")
+        .select("metrics_days, range_end")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ metrics_days: number; range_end: string | null }>(),
+      supabase
+        .from("user_preferences")
+        .select("allow_ai_health_context, allow_ai_calendar_context, allow_ai_checkin_context")
+        .eq("user_id", user.id)
+        .maybeSingle<{
+          allow_ai_health_context: boolean | null;
+          allow_ai_calendar_context: boolean | null;
+          allow_ai_checkin_context: boolean | null;
+        }>(),
+    ]);
+  const aiConsent = aiConsentFromPrefs(aiPrefs);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
   const pushAvailable = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
 
@@ -109,6 +122,7 @@ export default async function SettingsPage() {
       />
       <HealthImportCard />
       <HealthSourcesCard sources={healthSources} />
+      <AiDataUseCard consent={aiConsent} />
       <HouseholdCard household={data.household} householdEvents={[]} />
 
       <Card>

@@ -182,6 +182,43 @@ export async function setMorningEmailEnabled(input: { enabled: boolean }): Promi
   return { ok: true };
 }
 
+const AI_CONTEXT_COLUMN = {
+  health: "allow_ai_health_context",
+  calendar: "allow_ai_calendar_context",
+  checkin: "allow_ai_checkin_context",
+} as const;
+
+const aiContextSchema = z.object({
+  context: z.enum(["health", "calendar", "checkin"]),
+  enabled: z.boolean(),
+});
+
+/** Toggle whether a given context may be sent to the AI processor. */
+export async function setAiContextPreference(input: {
+  context: string;
+  enabled: boolean;
+}): Promise<ActionResult> {
+  const user = await requireUser();
+
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
+
+  const parsed = aiContextSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid setting" };
+
+  // Server-derived user id; only the one consent column is written.
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("user_preferences")
+    .update({ [AI_CONTEXT_COLUMN[parsed.data.context]]: parsed.data.enabled })
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: "Couldn't update your AI settings." };
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 const providerActionSchema = z.enum(["oura", "google", "fitbit"]);
 
 export async function disconnectProvider(provider: string): Promise<ActionResult> {

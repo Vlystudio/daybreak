@@ -205,4 +205,8 @@ export interface UserPreferences {
   planning_scope: string | null;
   auto_plan_cadence: string | null;
   onboarding_completed: boolean;
+  // AI data-use consent (default allow). See src/lib/integrations/ai-consent.ts.
+  allow_ai_health_context: boolean | null;
+  allow_ai_calendar_context: boolean | null;
+  allow_ai_checkin_context: boolean | null;
 }

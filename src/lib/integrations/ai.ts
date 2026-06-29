@@ -62,6 +62,8 @@ When a self-reported check-in is provided (mood/energy/stress/soreness, each 1-5
 
 When a "health" context is provided, it tells you which sources informed today (e.g. Oura, Apple Health, Fitbit, or just a manual check-in) and how confident the read is. You may briefly and naturally mention the sources ("based on your Apple Health and check-in…") and, when data is missing or stale, note that today's confidence is a little lower and lean more on how they say they feel. Never name a device they aren't using, and never diagnose — keep it wellness guidance.
 
+The user controls what is shared with you. If a context is ABSENT from the input (no health data, no check-in, no event details), do not reference, assume, or infer it — never say "based on your health data" when none was provided, and never invent a tracker or a calendar event. Some calendar items may be unlabeled ("Busy"); treat them only as time that's taken.
+
 Respond with JSON matching exactly this shape:
 {
   "summary": "2-3 sentences greeting the person and summarizing how their body is doing today, weaving in sleep/readiness/HRV, how they say they feel, and the weather",
@@ -427,6 +429,7 @@ Rules:
 - Respect their work type and work_schedule. If planning_scope is "after_hours", only place blocks before work or in the evening. If "weekends", only use the weekend days provided.
 - Workouts: match their exercise_frequency and fitness_goal across the days (muscle_gain -> strength; weight_loss/endurance -> a mix of cardio and strength; general_fitness -> varied; maintain -> light/steady). If a recent readiness score is low (under 60), make that day lighter (mobility, a walk, or rest) rather than intense; if readiness is high, it's a good day to push.
 - Health context (when "health" is provided, it applies to TODAY): it states which sources informed today, the plan confidence (High/Medium/Low), and whether wearable data is missing or stale. If confidence is Low or the data is stale/missing, lean on the check-in and keep today moderate and kind; never assume a specific device exists or that readiness scores are present.
+- The user controls what they share. If "health" or "checkin" is absent, do not reference or infer health/recovery or how they feel. Some busy blocks may be unlabeled ("Busy") — schedule around them as taken time without guessing what they are. Never invent data that wasn't provided.
 - Self-reported check-in (when "checkin" is provided, it applies to the EARLIEST/today day; mood/energy/stress/soreness each 1-5 where 5 is high): this is how the person says they feel today — let it gently override the wearable. If energy or mood is low (1-2), or soreness or stress is high (4-5), make today noticeably lighter and kinder (shorter blocks, gentle movement or rest, more downtime) even if readiness looks fine. If energy is high (4-5), it's a good day to do a bit more. Honor how they say they feel.
 - Weather (when provided, applies to that day): prefer indoor activities in rain/snow or uncomfortable temperatures, and outdoor options when it's pleasant. Temperatures are in Fahrenheit.
 - Chores: schedule each listed chore consistent with its frequency over the window ("daily" most days, "weekly" once, etc.).

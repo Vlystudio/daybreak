@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOuraDailyMetrics } from "@/lib/integrations/oura";
 import { dailyMetricsToObservations, upsertHealthObservations } from "@/lib/health/observations";
 import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
+import { aiConsentFromPrefs, redactEventTitle } from "@/lib/integrations/ai-consent";
 import type { HealthObservationSource } from "@/lib/health/types";
 import {
   fetchGoogleEvents,
@@ -292,55 +293,76 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
   const today = isoDate(new Date());
   const weekAgo = isoDate(new Date(Date.now() - 7 * 86_400_000));
 
-  const [{ data: profile }, { data: metrics }, { data: events }, { data: checkin }] =
-    await Promise.all([
-      admin
-        .from("profiles")
-        .select("display_name, latitude, longitude")
-        .eq("id", userId)
-        .maybeSingle<{ display_name: string; latitude: number | null; longitude: number | null }>(),
-      admin
-        .from("health_metrics")
-        .select(
-          "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency"
-        )
-        .eq("user_id", userId)
-        .gte("date", weekAgo)
-        .order("date", { ascending: true })
-        .returns<MetricsForPrompt[]>(),
-      admin
-        .from("schedule_events")
-        .select("title, starts_at, ends_at, all_day")
-        .eq("user_id", userId)
-        .gte("starts_at", `${today}T00:00:00Z`)
-        .lt("starts_at", `${today}T23:59:59Z`)
-        .order("starts_at", { ascending: true })
-        .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
-      admin
-        .from("subjective_checkins")
-        .select("date, mood, energy, stress, soreness, note")
-        .eq("user_id", userId)
-        .order("date", { ascending: false })
-        .limit(1)
-        .maybeSingle<{
-          date: string;
-          mood: number | null;
-          energy: number | null;
-          stress: number | null;
-          soreness: number | null;
-          note: string | null;
-        }>(),
-    ]);
+  const [
+    { data: profile },
+    { data: metrics },
+    { data: events },
+    { data: checkin },
+    { data: prefs },
+  ] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("display_name, latitude, longitude")
+      .eq("id", userId)
+      .maybeSingle<{ display_name: string; latitude: number | null; longitude: number | null }>(),
+    admin
+      .from("health_metrics")
+      .select(
+        "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency"
+      )
+      .eq("user_id", userId)
+      .gte("date", weekAgo)
+      .order("date", { ascending: true })
+      .returns<MetricsForPrompt[]>(),
+    admin
+      .from("schedule_events")
+      .select("title, starts_at, ends_at, all_day")
+      .eq("user_id", userId)
+      .gte("starts_at", `${today}T00:00:00Z`)
+      .lt("starts_at", `${today}T23:59:59Z`)
+      .order("starts_at", { ascending: true })
+      .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
+    admin
+      .from("subjective_checkins")
+      .select("date, mood, energy, stress, soreness, note")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle<{
+        date: string;
+        mood: number | null;
+        energy: number | null;
+        stress: number | null;
+        soreness: number | null;
+        note: string | null;
+      }>(),
+    admin
+      .from("user_preferences")
+      .select("allow_ai_health_context, allow_ai_calendar_context, allow_ai_checkin_context")
+      .eq("user_id", userId)
+      .maybeSingle<{
+        allow_ai_health_context: boolean | null;
+        allow_ai_calendar_context: boolean | null;
+        allow_ai_checkin_context: boolean | null;
+      }>(),
+  ]);
+
+  // Per-user AI data-use consent — omit any context the user opted out of.
+  const consent = aiConsentFromPrefs(prefs);
 
   const weather =
     profile?.latitude != null && profile?.longitude != null
       ? await fetchWeather(profile.latitude, profile.longitude)
       : null;
 
-  const todayMetrics = metrics?.find((m) => m.date === today) ?? metrics?.at(-1) ?? null;
+  // Health metrics are only sent to the AI when health context is allowed.
+  const todayMetrics = consent.health
+    ? (metrics?.find((m) => m.date === today) ?? metrics?.at(-1) ?? null)
+    : null;
 
   // Only fold in a self-report from today or yesterday, so a stale one isn't
-  // presented as how they feel right now.
+  // presented as how they feel right now. The free-text note is dropped when
+  // check-in context is off (structured 1-5 ratings are kept).
   const yesterday = isoDate(new Date(Date.now() - 86_400_000));
   const subjective =
     checkin && checkin.date >= yesterday
@@ -349,29 +371,32 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
           energy: checkin.energy,
           stress: checkin.stress,
           soreness: checkin.soreness,
-          note: checkin.note,
+          note: consent.checkin ? checkin.note : null,
         }
       : null;
 
   // Normalized, source-aware health context so the briefing can speak honestly
   // about which sources informed today and how confident the read is — for any
-  // wearable or just a check-in, never assuming Oura.
-  const planSnapshot = await buildPlanHealthSnapshot(userId);
-  const health = {
-    mode: planSnapshot.recommendedPlanMode,
-    confidence: planSnapshot.confidence.label,
-    sources: planSnapshot.sources.map((s) => s.label),
-    reasons: planSnapshot.confidence.reasons.slice(0, 4),
-    stale: planSnapshot.staleWearable,
-  };
+  // wearable or just a check-in, never assuming Oura. Omitted entirely when the
+  // user has opted out of AI health context.
+  const planSnapshot = consent.health ? await buildPlanHealthSnapshot(userId) : null;
+  const health = planSnapshot
+    ? {
+        mode: planSnapshot.recommendedPlanMode,
+        confidence: planSnapshot.confidence.label,
+        sources: planSnapshot.sources.map((s) => s.label),
+        reasons: planSnapshot.confidence.reasons.slice(0, 4),
+        stale: planSnapshot.staleWearable,
+      }
+    : null;
 
   const briefingInput = {
     displayName: profile?.display_name ?? "",
     todayMetrics,
-    recentMetrics: metrics ?? [],
+    recentMetrics: consent.health ? (metrics ?? []) : [],
     weather,
     todayEvents: (events ?? []).map((e) => ({
-      title: e.title,
+      title: redactEventTitle(e.title, consent.calendar),
       startsAt: e.starts_at,
       endsAt: e.ends_at,
       allDay: e.all_day,
