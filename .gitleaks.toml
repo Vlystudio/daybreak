@@ -1,0 +1,22 @@
+# gitleaks configuration for Daybreak.
+#
+# Keep the FULL default ruleset — we do not weaken real secret detection.
+[extend]
+useDefault = true
+
+# Allowlist ONLY specific, known-fake placeholder values used by tests and CI so
+# the env layer / build can run. These are matched by their exact value (not by
+# file/path or by a broad pattern), so a real secret committed to the same files
+# would still be flagged. No `.env`, test-glob, base64, or path-wide ignores.
+[allowlist]
+description = "Known non-secret CI/test placeholders (fake fixtures only)"
+regexTarget = "secret"
+regexes = [
+  # vitest.config.ts — dummy CRON_SECRET for the test env (not a real secret).
+  '''test-cron-secret-0123456789''',
+  # .github/workflows/ci.yml — dummy CRON_SECRET for the CI build (not a real secret).
+  '''ci-dummy-cron-secret-0123456789''',
+  # Fake 32-byte TOKEN_ENCRYPTION_KEY (base64 of "0123456789abcdef0123456789abcdef")
+  # used by both vitest.config.ts and ci.yml to exercise crypto round-trips.
+  '''MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=''',
+]

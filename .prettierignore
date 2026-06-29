@@ -1,0 +1,6 @@
+# Generated / tool-managed files Prettier must not reformat.
+# package-lock.json is npm-managed — reformatting it breaks `npm ci`
+# determinism and fights npm/Dependabot.
+package-lock.json
+node_modules/
+.next/
