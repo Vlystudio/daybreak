@@ -8,6 +8,7 @@ import {
   type WorkoutPlan,
 } from "@/lib/fitness";
 import { SAFETY_SYSTEM_RULES } from "@/lib/fitness-safety";
+import { aiErrorLog } from "@/lib/integrations/ai-boundary";
 
 /**
  * OpenAI as the "coach". Uses strict structured outputs (json_schema via Zod)
@@ -58,7 +59,7 @@ export async function generateExercises(
     if (!parsed.success) return null;
     return parsed.data.exercises;
   } catch (err) {
-    console.error("[fitness-ai] exercise generation failed:", err instanceof Error ? err.message : "unknown");
+    aiErrorLog("exercise-generation", err);
     return null;
   }
 }
@@ -112,7 +113,7 @@ When an "autoregulation" directive is provided, it is derived from multi-day rec
     if (!parsed.success) return null;
     return parsed.data;
   } catch (err) {
-    console.error("[fitness-ai] workout generation failed:", err instanceof Error ? err.message : "unknown");
+    aiErrorLog("workout-plan", err);
     return null;
   }
 }

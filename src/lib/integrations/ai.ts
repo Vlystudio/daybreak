@@ -1,5 +1,20 @@
 import "server-only";
 import { openaiClient, logUsage } from "@/lib/integrations/openai";
+import {
+  AI_SAFETY_RULES,
+  UNTRUSTED_DATA_PREAMBLE,
+  sanitizeAiText,
+  clampArray,
+  safeParseAiJson,
+  aiErrorLog,
+} from "@/lib/integrations/ai-boundary";
+import {
+  morningBriefingSchema,
+  healthAnalysisSchema,
+  checkinReplySchema,
+  weeklyPlanSchema,
+  fitnessPlanSchema,
+} from "@/lib/integrations/ai-schemas";
 import type { WeatherSnapshot } from "@/lib/integrations/weather";
 import type { WorkoutProgram, NutritionGuide } from "@/lib/planning";
 
@@ -95,11 +110,24 @@ export async function generateMorningBriefing(input: {
   const client = openaiClient();
   if (!client) return null;
 
+  // Sanitize all free-text the user/providers control before it reaches the model.
   const userPayload = {
-    name: input.displayName || "there",
+    name: sanitizeAiText(input.displayName, { maxChars: 80, singleLine: true }) || "there",
     today: input.todayMetrics,
     last7Days: input.recentMetrics,
-    health: input.health ?? null,
+    health: input.health
+      ? {
+          mode: input.health.mode,
+          confidence: input.health.confidence,
+          sources: clampArray(input.health.sources, 8).map((s) =>
+            sanitizeAiText(s, { maxChars: 60, singleLine: true })
+          ),
+          reasons: clampArray(input.health.reasons, 8).map((r) =>
+            sanitizeAiText(r, { maxChars: 200 })
+          ),
+          stale: input.health.stale,
+        }
+      : null,
     weather: input.weather
       ? {
           description: input.weather.description,
@@ -112,8 +140,20 @@ export async function generateMorningBriefing(input: {
           sunset: input.weather.sunset,
         }
       : null,
-    schedule: input.todayEvents.slice(0, 12),
-    howTheyFeel: input.subjective ?? null,
+    schedule: clampArray(input.todayEvents, 12).map((e) => ({
+      title: sanitizeAiText(e.title, { maxChars: 120, singleLine: true }),
+      startsAt: e.startsAt,
+      endsAt: e.endsAt,
+      allDay: e.allDay,
+    })),
+    howTheyFeel: input.subjective
+      ? {
+          ...input.subjective,
+          note: input.subjective.note
+            ? sanitizeAiText(input.subjective.note, { maxChars: 500 })
+            : null,
+        }
+      : null,
   };
 
   try {
@@ -124,38 +164,27 @@ export async function generateMorningBriefing(input: {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify(userPayload) },
+        { role: "system", content: AI_SAFETY_RULES },
+        { role: "user", content: `${UNTRUSTED_DATA_PREAMBLE}\n\n${JSON.stringify(userPayload)}` },
       ],
     });
 
     logUsage("morning-briefing", completion.usage);
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as Partial<MorningBriefing>;
-    if (typeof parsed.summary !== "string" || typeof parsed.focus !== "string") return null;
+    const result = safeParseAiJson(
+      morningBriefingSchema,
+      completion.choices[0]?.message?.content,
+      "morning-briefing"
+    );
+    if (!result.ok) return null;
 
     return {
-      summary: parsed.summary,
-      focus: parsed.focus,
-      insights: Array.isArray(parsed.insights)
-        ? parsed.insights.filter((i): i is string => typeof i === "string").slice(0, 4)
-        : [],
-      recommendations: Array.isArray(parsed.recommendations)
-        ? parsed.recommendations
-            .filter(
-              (r): r is { title: string; body: string } =>
-                typeof r?.title === "string" && typeof r?.body === "string"
-            )
-            .slice(0, 4)
-        : [],
+      summary: result.data.summary,
+      focus: result.data.focus,
+      insights: result.data.insights.slice(0, 4),
+      recommendations: result.data.recommendations.slice(0, 4),
     };
   } catch (err) {
-    // Log the failure class only — never the prompt or response (health data).
-    console.error(
-      "[ai] briefing generation failed:",
-      err instanceof Error ? err.message : "unknown"
-    );
+    aiErrorLog("morning-briefing", err);
     return null;
   }
 }
@@ -202,35 +231,29 @@ export async function analyzeHealthTrends(input: {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: HEALTH_SYSTEM_PROMPT },
+        { role: "system", content: AI_SAFETY_RULES },
         {
           role: "user",
-          content: JSON.stringify({ recentMetrics: input.metrics, trendFlags: input.flags }),
+          content: `${UNTRUSTED_DATA_PREAMBLE}\n\n${JSON.stringify({ recentMetrics: input.metrics, trendFlags: input.flags })}`,
         },
       ],
     });
 
     logUsage("health-analysis", completion.usage);
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<HealthAnalysis>;
-    if (typeof parsed.summary !== "string") return null;
+    const result = safeParseAiJson(
+      healthAnalysisSchema,
+      completion.choices[0]?.message?.content,
+      "health-analysis"
+    );
+    if (!result.ok) return null;
 
     return {
-      summary: parsed.summary,
-      insights: Array.isArray(parsed.insights)
-        ? parsed.insights.filter((i): i is string => typeof i === "string").slice(0, 4)
-        : [],
-      suggestions: Array.isArray(parsed.suggestions)
-        ? parsed.suggestions
-            .filter(
-              (s): s is { title: string; body: string } =>
-                typeof s?.title === "string" && typeof s?.body === "string"
-            )
-            .slice(0, 4)
-        : [],
+      summary: result.data.summary,
+      insights: result.data.insights.slice(0, 4),
+      suggestions: result.data.suggestions.slice(0, 4),
     };
   } catch (err) {
-    console.error("[ai] health analysis failed:", err instanceof Error ? err.message : "unknown");
+    aiErrorLog("health-analysis", err);
     return null;
   }
 }
@@ -272,35 +295,26 @@ export async function analyzeFusedHealth(
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: FUSED_HEALTH_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify(input) },
+        { role: "system", content: AI_SAFETY_RULES },
+        { role: "user", content: `${UNTRUSTED_DATA_PREAMBLE}\n\n${JSON.stringify(input)}` },
       ],
     });
 
     logUsage("health-analysis-fused", completion.usage);
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<HealthAnalysis>;
-    if (typeof parsed.summary !== "string") return null;
+    const result = safeParseAiJson(
+      healthAnalysisSchema,
+      completion.choices[0]?.message?.content,
+      "health-analysis-fused"
+    );
+    if (!result.ok) return null;
 
     return {
-      summary: parsed.summary,
-      insights: Array.isArray(parsed.insights)
-        ? parsed.insights.filter((i): i is string => typeof i === "string").slice(0, 4)
-        : [],
-      suggestions: Array.isArray(parsed.suggestions)
-        ? parsed.suggestions
-            .filter(
-              (s): s is { title: string; body: string } =>
-                typeof s?.title === "string" && typeof s?.body === "string"
-            )
-            .slice(0, 4)
-        : [],
+      summary: result.data.summary,
+      insights: result.data.insights.slice(0, 4),
+      suggestions: result.data.suggestions.slice(0, 4),
     };
   } catch (err) {
-    console.error(
-      "[ai] fused health analysis failed:",
-      err instanceof Error ? err.message : "unknown"
-    );
+    aiErrorLog("health-analysis-fused", err);
     return null;
   }
 }
@@ -350,6 +364,14 @@ export async function healthCheckinReply(input: {
   const client = openaiClient();
   if (!client) return null;
 
+  // The conversation is direct user input — sanitize each turn and cap history.
+  const history = clampArray(input.history, 20)
+    .map((t) => ({
+      role: t.role === "assistant" ? ("assistant" as const) : ("user" as const),
+      content: sanitizeAiText(t.content, { maxChars: 2000 }),
+    }))
+    .filter((t) => t.content.length > 0);
+
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
@@ -358,31 +380,33 @@ export async function healthCheckinReply(input: {
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: CHECKIN_SYSTEM_PROMPT },
+        { role: "system", content: AI_SAFETY_RULES },
         {
           role: "system",
-          content: `Their data — recentMetrics: ${JSON.stringify(input.metrics)}; trendFlags: ${JSON.stringify(input.flags)}`,
+          content: `${UNTRUSTED_DATA_PREAMBLE}\n\nTheir data — recentMetrics: ${JSON.stringify(input.metrics)}; trendFlags: ${JSON.stringify(input.flags)}`,
         },
-        ...input.history.map((t) => ({ role: t.role, content: t.content })),
+        ...history,
       ],
     });
     logUsage("health-checkin", completion.usage);
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { message?: unknown; action?: unknown };
-    const message = typeof parsed.message === "string" ? parsed.message.trim() : "";
+    const result = safeParseAiJson(
+      checkinReplySchema,
+      completion.choices[0]?.message?.content,
+      "health-checkin"
+    );
+    if (!result.ok) return null;
+    const message = result.data.message.trim();
     if (!message) return null;
 
     let action: CheckinAction | null = null;
-    const a = parsed.action as Record<string, unknown> | null | undefined;
-    if (a && typeof a === "object") {
+    const a = result.data.action;
+    if (a) {
       const title = typeof a.title === "string" ? a.title.trim().slice(0, 80) : "";
       const time =
         typeof a.time === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(a.time) ? a.time : null;
       const durationMin = Number(a.durationMin);
       const days = Array.isArray(a.daysOfWeek)
-        ? (a.daysOfWeek as unknown[])
-            .map((n) => Number(n))
-            .filter((n) => Number.isInteger(n) && VALID_DOW.has(n))
+        ? a.daysOfWeek.map((n) => Number(n)).filter((n) => Number.isInteger(n) && VALID_DOW.has(n))
         : [];
       if (title && time && Number.isFinite(durationMin)) {
         action = {
@@ -396,7 +420,7 @@ export async function healthCheckinReply(input: {
 
     return { message, action };
   } catch (err) {
-    console.error("[ai] health check-in failed:", err instanceof Error ? err.message : "unknown");
+    aiErrorLog("health-checkin", err);
     return null;
   }
 }
@@ -482,55 +506,77 @@ export async function generateWeeklyPlan(input: {
     "focus",
   ]);
 
+  // Sanitize the free-text the user/providers control (event titles, reflection).
+  const payload = {
+    ...input,
+    busy: clampArray(input.busy, 60).map((b) => ({
+      ...b,
+      title: sanitizeAiText(b.title, { maxChars: 120, singleLine: true }),
+    })),
+    reflection: input.reflection
+      ? {
+          wentWell: input.reflection.wentWell
+            ? sanitizeAiText(input.reflection.wentWell, { maxChars: 500 })
+            : null,
+          toImprove: input.reflection.toImprove
+            ? sanitizeAiText(input.reflection.toImprove, { maxChars: 500 })
+            : null,
+          tomorrowIntention: input.reflection.tomorrowIntention
+            ? sanitizeAiText(input.reflection.tomorrowIntention, { maxChars: 500 })
+            : null,
+        }
+      : null,
+  };
+
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.2,
-      seed: seedFrom(input),
+      seed: seedFrom(payload),
       max_tokens: 2000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: PLAN_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify(input) },
+        { role: "system", content: AI_SAFETY_RULES },
+        { role: "user", content: `${UNTRUSTED_DATA_PREAMBLE}\n\n${JSON.stringify(payload)}` },
       ],
     });
 
     logUsage("weekly-plan", completion.usage);
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as { blocks?: unknown };
-    if (!Array.isArray(parsed.blocks)) return null;
+    const result = safeParseAiJson(
+      weeklyPlanSchema,
+      completion.choices[0]?.message?.content,
+      "weekly-plan"
+    );
+    if (!result.ok) return null;
 
     const blocks: PlanBlock[] = [];
-    for (const item of parsed.blocks as unknown[]) {
-      const b = item as Record<string, unknown>;
-      if (typeof b.date !== "string" || !validDates.has(b.date)) continue;
-      if (typeof b.start !== "string" || !/^\d{2}:\d{2}$/.test(b.start)) continue;
-      if (typeof b.title !== "string" || !b.title.trim()) continue;
+    for (const b of result.data.blocks) {
+      if (!validDates.has(b.date)) continue;
+      if (!/^\d{2}:\d{2}$/.test(b.start)) continue;
+      const title = b.title.trim();
+      if (!title) continue;
 
       let dur = Number(b.durationMin);
       if (!Number.isFinite(dur)) dur = 30;
       dur = Math.min(240, Math.max(10, Math.round(dur)));
 
-      const type = (
-        typeof b.type === "string" && validTypes.has(b.type) ? b.type : "focus"
-      ) as PlanBlockType;
+      const type = (b.type && validTypes.has(b.type) ? b.type : "focus") as PlanBlockType;
 
       blocks.push({
         date: b.date,
         start: b.start,
         durationMin: dur,
-        title: b.title.trim().slice(0, 120),
+        title: title.slice(0, 120),
         type,
-        note: typeof b.note === "string" && b.note.trim() ? b.note.trim().slice(0, 200) : undefined,
+        note: b.note && b.note.trim() ? b.note.trim().slice(0, 200) : undefined,
       });
       if (blocks.length >= 40) break;
     }
 
     return blocks;
   } catch (err) {
-    console.error("[ai] plan generation failed:", err instanceof Error ? err.message : "unknown");
+    aiErrorLog("weekly-plan", err);
     return null;
   }
 }
@@ -579,24 +625,38 @@ export async function generateFitnessPlan(input: {
   const client = openaiClient();
   if (!client) return null;
 
+  const payload = {
+    ...input,
+    profile: {
+      ...input.profile,
+      dietaryRestrictions: clampArray(input.profile.dietaryRestrictions, 30).map((d) =>
+        sanitizeAiText(d, { maxChars: 120, singleLine: true })
+      ),
+    },
+  };
+
   try {
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.3,
-      seed: seedFrom(input),
+      seed: seedFrom(payload),
       max_tokens: 2000,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: TRAINER_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify(input) },
+        { role: "system", content: AI_SAFETY_RULES },
+        { role: "user", content: `${UNTRUSTED_DATA_PREAMBLE}\n\n${JSON.stringify(payload)}` },
       ],
     });
 
     logUsage("fitness-plan", completion.usage);
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    if (typeof parsed.summary !== "string") return null;
+    const result = safeParseAiJson(
+      fitnessPlanSchema,
+      completion.choices[0]?.message?.content,
+      "fitness-plan"
+    );
+    if (!result.ok) return null;
+    const parsed = result.data;
 
     const workoutRaw = (parsed.workout ?? {}) as Record<string, unknown>;
     const daysRaw = Array.isArray(workoutRaw.days) ? (workoutRaw.days as unknown[]) : [];
@@ -650,10 +710,7 @@ export async function generateFitnessPlan(input: {
       },
     };
   } catch (err) {
-    console.error(
-      "[ai] fitness plan generation failed:",
-      err instanceof Error ? err.message : "unknown"
-    );
+    aiErrorLog("fitness-plan", err);
     return null;
   }
 }
