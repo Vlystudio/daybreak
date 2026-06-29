@@ -28,6 +28,7 @@ export type AuditAction =
   | "nudge.sent"
   | "game.hatched"
   | "game.bred"
+  | "game.sold"
   | "shop.buy"
   | "shop.feed"
   | "shop.equip"

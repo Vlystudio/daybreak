@@ -7,9 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
-import { rollSpecies } from "@/lib/game/birds";
-import { identifyBird, type BirdIdentification } from "@/lib/integrations/bird-identify";
-import { validateImageDataUrl } from "@/lib/image-upload";
+import { rollSpecies, resolveSpecies, sellValueFor, type OwnedBirdBase } from "@/lib/game/birds";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
 
 export type HatchResult =
@@ -113,54 +111,75 @@ export async function claimStarter(): Promise<HatchResult> {
   };
 }
 
-export type PhotoBirdResult =
-  | { ok: true; id: string; identification: BirdIdentification }
+export type SellResult =
+  | { ok: true; value: number; speciesName: string; seeds: number }
   | { ok: false; error: string };
 
-/** Identify a real bird from a photo and keep it as a collectible (free). */
-export async function addBirdFromPhoto(input: { imageDataUrl: string }): Promise<PhotoBirdResult> {
+/** The bird columns needed to resolve a species + sell value. */
+type SellableBirdRow = OwnedBirdBase & { id: string };
+
+/**
+ * Sell one bird for seeds based on its rarity. Guards keep the economy and the
+ * active companion safe:
+ *  - never sell your last remaining bird,
+ *  - never sell the active companion (choose another active first),
+ *  - delete-then-credit so a double-tap can't mint seeds twice.
+ */
+export async function sellBird(birdId: string): Promise<SellResult> {
   const user = await requireUser();
-  const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
-  if (!limited.ok) return { ok: false, error: "You've added a lot of birds — try again in a bit." };
-
-  const valid = validateImageDataUrl(input.imageDataUrl);
-  if (!valid.ok) return { ok: false, error: valid.error };
-
-  const id = await identifyBird(input.imageDataUrl);
-  if (!id) return { ok: false, error: "Couldn't read that photo — try another one." };
-  if (!id.isBird)
-    return { ok: false, error: "Hmm, that doesn't look like a bird. Try a clearer photo of one." };
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Slow down a moment." };
+  if (!uuidSchema.safeParse(birdId).success) return { ok: false, error: "Unknown bird" };
 
   const admin = createAdminClient();
-  const { data: bird, error } = await admin
+  const [{ data: bird }, { data: game }, { count }] = await Promise.all([
+    admin
+      .from("user_birds")
+      .select(
+        "id, species_key, source, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail"
+      )
+      .eq("id", birdId)
+      .eq("user_id", user.id)
+      .maybeSingle<SellableBirdRow>(),
+    admin
+      .from("user_game")
+      .select("seeds, total_earned, active_bird_id")
+      .eq("user_id", user.id)
+      .maybeSingle<{ seeds: number; total_earned: number; active_bird_id: string | null }>(),
+    admin.from("user_birds").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+  ]);
+
+  if (!bird) return { ok: false, error: "That bird isn't in your aviary." };
+  if ((count ?? 0) <= 1) return { ok: false, error: "This is your last bird — keep it close." };
+  if (game?.active_bird_id === birdId)
+    return { ok: false, error: "Make another bird your companion before selling this one." };
+
+  const species = resolveSpecies(bird);
+  const value = sellValueFor(species.rarity);
+
+  // Delete first; only credit if THIS call removed the row, so a double-tap (or
+  // two devices) can't be paid twice for the same bird.
+  const { data: deleted } = await admin
     .from("user_birds")
-    .insert({
-      user_id: user.id,
-      species_key: null,
-      source: "photo",
-      custom_name: id.name,
-      custom_blurb: id.blurb,
-      custom_palette: id.palette,
-      custom_crest: id.crest,
-      custom_long_tail: id.longTail,
-    })
-    .select("id")
-    .single<{ id: string }>();
-  if (error || !bird) return { ok: false, error: "Couldn't add that bird — try again." };
-
-  const { data: game } = await admin
-    .from("user_game")
-    .select("active_bird_id")
+    .delete()
+    .eq("id", birdId)
     .eq("user_id", user.id)
-    .maybeSingle<{ active_bird_id: string | null }>();
-  if (!game) await admin.from("user_game").insert({ user_id: user.id, active_bird_id: bird.id });
-  else if (!game.active_bird_id)
-    await admin.from("user_game").update({ active_bird_id: bird.id }).eq("user_id", user.id);
+    .select("id")
+    .returns<{ id: string }[]>();
+  if (!deleted || deleted.length === 0) return { ok: false, error: "That bird was already sold." };
 
-  await audit(user.id, "game.hatched", { metadata: { source: "photo", name: id.name } });
+  const seeds = (game?.seeds ?? 0) + value;
+  await admin
+    .from("user_game")
+    .update({ seeds, total_earned: (game?.total_earned ?? 0) + value })
+    .eq("user_id", user.id);
+
+  await audit(user.id, "game.sold", {
+    metadata: { species: species.key, rarity: species.rarity, value },
+  });
   revalidatePath("/nest");
   revalidatePath("/dashboard");
-  return { ok: true, id: bird.id, identification: id };
+  return { ok: true, value, speciesName: species.name, seeds };
 }
 
 export async function setActiveBird(birdId: string): Promise<{ ok: boolean; error?: string }> {

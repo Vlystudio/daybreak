@@ -33,15 +33,21 @@ function zonedToUtc(dateStr: string, timeStr: string, timeZone: string): Date {
 }
 
 function localDate(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
-    new Date(iso)
-  );
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
 }
 
 function localTime(iso: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(
-    new Date(iso)
-  );
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
 }
 
 function localToday(timeZone: string): string {
@@ -134,7 +140,9 @@ async function planDays(
 
   const sorted = [...dateList].sort((a, b) => a.date.localeCompare(b.date));
   const winStart = zonedToUtc(sorted[0].date, "00:00", tz);
-  const winEnd = new Date(zonedToUtc(sorted[sorted.length - 1].date, "00:00", tz).getTime() + 86_400_000);
+  const winEnd = new Date(
+    zonedToUtc(sorted[sorted.length - 1].date, "00:00", tz).getTime() + 86_400_000
+  );
 
   const { data: fixed } = await admin
     .from("schedule_events")
@@ -172,7 +180,11 @@ async function planDays(
   const earliestDate = sorted[0].date;
   const reflection =
     review && (review.went_well || review.to_improve || review.tomorrow_intention)
-      ? { wentWell: review.went_well, toImprove: review.to_improve, tomorrowIntention: review.tomorrow_intention }
+      ? {
+          wentWell: review.went_well,
+          toImprove: review.to_improve,
+          tomorrowIntention: review.tomorrow_intention,
+        }
       : null;
 
   // Day window the planner schedules within. Prefer the wearable's most recent
@@ -183,7 +195,12 @@ async function planDays(
   const dayWindow = {
     wake: actualWake ?? prefs.wake_time ?? "07:00",
     sleep: actualSleep ?? prefs.sleep_time ?? "22:30",
-    source: actualWake || actualSleep ? "wearable" : prefs.wake_time || prefs.sleep_time ? "goal" : "default",
+    source:
+      actualWake || actualSleep
+        ? "wearable"
+        : prefs.wake_time || prefs.sleep_time
+          ? "goal"
+          : "default",
   };
 
   const todayStr = localToday(tz);
@@ -195,9 +212,18 @@ async function planDays(
     .select("mood, energy, stress, soreness")
     .eq("user_id", userId)
     .eq("date", todayStr)
-    .maybeSingle<{ mood: number | null; energy: number | null; stress: number | null; soreness: number | null }>();
+    .maybeSingle<{
+      mood: number | null;
+      energy: number | null;
+      stress: number | null;
+      soreness: number | null;
+    }>();
   const todayCheckin =
-    checkinRow && (checkinRow.mood != null || checkinRow.energy != null || checkinRow.stress != null || checkinRow.soreness != null)
+    checkinRow &&
+    (checkinRow.mood != null ||
+      checkinRow.energy != null ||
+      checkinRow.stress != null ||
+      checkinRow.soreness != null)
       ? checkinRow
       : null;
 
@@ -253,7 +279,9 @@ async function planDays(
       ...workBusy,
     ];
     const dm = metricsByDate.get(d.date) ?? latestMetric;
-    const recent = dm ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }] : [];
+    const recent = dm
+      ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }]
+      : [];
     const weather = d.date === todayStr ? weatherToday : null;
     return { d, dayFixed, workBusy, busyForDay, recent, weather };
   });
@@ -342,7 +370,9 @@ async function planDays(
     if (error) throw new Error(`Plan insert failed: ${error.message}`);
   }
 
-  await audit(userId, "plan.generated", { metadata: { days: dateList.length, blocks: allRows.length } });
+  await audit(userId, "plan.generated", {
+    metadata: { days: dateList.length, blocks: allRows.length },
+  });
 
   // Wire today's workout block to a real structured session (one per day).
   if (todayWorkoutAccepted) {
@@ -377,11 +407,17 @@ async function planDays(
           if (res.ok) workoutId = res.workout.id;
         }
         if (workoutId) {
-          await admin.from("schedule_events").update({ workout_id: workoutId }).eq("id", workoutEvent.id);
+          await admin
+            .from("schedule_events")
+            .update({ workout_id: workoutId })
+            .eq("id", workoutEvent.id);
         }
       }
     } catch (err) {
-      console.error("[planner] workout link failed:", err instanceof Error ? err.message : "unknown");
+      console.error(
+        "[planner] workout link failed:",
+        err instanceof Error ? err.message : "unknown"
+      );
     }
   }
 
@@ -408,7 +444,10 @@ export async function generatePlanForUser(userId: string): Promise<number | null
   const count = await planDays(userId, planningDays(prefs.planning_scope, tz));
   if (count !== null) {
     // Mark today as planned so the hourly job doesn't clobber a manual plan.
-    await admin.from("user_preferences").update({ last_planned_date: localToday(tz) }).eq("user_id", userId);
+    await admin
+      .from("user_preferences")
+      .update({ last_planned_date: localToday(tz) })
+      .eq("user_id", userId);
   }
   return count;
 }
@@ -471,17 +510,43 @@ export async function maybeRefreshTodayPlanForUser(userId: string): Promise<numb
 
   if (prefs.last_planned_date === todayStr) return null; // already planned today
 
-  // Only plan once today's recovery has actually landed.
-  const { data: metric } = await admin
-    .from("health_metrics")
-    .select("readiness_score")
+  // Recovery gate, but provider-aware: only a recovery wearable (Oura/Fitbit)
+  // produces a readiness_score, so we must NOT block Apple Health / Google
+  // Health / manual users on a metric they'll never have (that was the old
+  // "assumes Oura" bug). If a recovery wearable is connected we still wait for
+  // this morning's score, but plan anyway after late morning so a missed or late
+  // sync never leaves anyone without a plan.
+  const { data: wearable } = await admin
+    .from("oauth_connections")
+    .select("provider")
     .eq("user_id", userId)
-    .eq("date", todayStr)
-    .maybeSingle<{ readiness_score: number | null }>();
-  if (!metric || metric.readiness_score == null) return null;
+    .in("provider", ["oura", "fitbit"])
+    .limit(1)
+    .returns<{ provider: string }[]>();
+  if (wearable && wearable.length > 0) {
+    const { data: metric } = await admin
+      .from("health_metrics")
+      .select("readiness_score")
+      .eq("user_id", userId)
+      .eq("date", todayStr)
+      .maybeSingle<{ readiness_score: number | null }>();
+    if (!metric || metric.readiness_score == null) {
+      const localHour = Number(
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "2-digit",
+          hourCycle: "h23",
+        }).format(new Date())
+      );
+      if (localHour < 11) return null; // wait for this morning's scores to land
+    }
+  }
 
   const count = await refreshTodayPlanForUser(userId);
-  await admin.from("user_preferences").update({ last_planned_date: todayStr }).eq("user_id", userId);
+  await admin
+    .from("user_preferences")
+    .update({ last_planned_date: todayStr })
+    .eq("user_id", userId);
   return count;
 }
 
@@ -523,7 +588,8 @@ export async function maybeAutoPlanForUser(userId: string): Promise<number | nul
   if (prefs.last_autoplan_date) {
     if (prefs.last_autoplan_date === todayStr) return null;
     const daysSince = Math.round(
-      (Date.parse(`${todayStr}T00:00:00Z`) - Date.parse(`${prefs.last_autoplan_date}T00:00:00Z`)) / 86_400_000
+      (Date.parse(`${todayStr}T00:00:00Z`) - Date.parse(`${prefs.last_autoplan_date}T00:00:00Z`)) /
+        86_400_000
     );
     if (daysSince < minGap) return null;
   }
@@ -548,7 +614,11 @@ export async function maybeAutoPlanForUser(userId: string): Promise<number | nul
       .maybeSingle<{ readiness_score: number | null }>();
     if (todayMetric?.readiness_score == null) {
       const localHour = Number(
-        new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "2-digit", hourCycle: "h23" }).format(new Date())
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "2-digit",
+          hourCycle: "h23",
+        }).format(new Date())
       );
       if (localHour < 11) return null; // wait for this morning's scores to land
     }
@@ -556,7 +626,10 @@ export async function maybeAutoPlanForUser(userId: string): Promise<number | nul
 
   const count = await planDays(userId, planningDays(prefs.planning_scope, tz));
   if (count !== null) {
-    await admin.from("user_preferences").update({ last_autoplan_date: todayStr }).eq("user_id", userId);
+    await admin
+      .from("user_preferences")
+      .update({ last_autoplan_date: todayStr })
+      .eq("user_id", userId);
   }
   return count;
 }

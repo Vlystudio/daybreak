@@ -10,6 +10,8 @@ import { StatsStrip } from "@/components/game/stats-strip";
 import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
 import { MorningSummary } from "@/components/dashboard/morning-summary";
+import { PlanConfidence } from "@/components/dashboard/plan-confidence";
+import { buildPlanHealthSnapshot } from "@/lib/health/plan-input";
 import { ReadinessCard } from "@/components/dashboard/readiness-card";
 import { SleepCard } from "@/components/dashboard/sleep-card";
 import { HrvCard } from "@/components/dashboard/hrv-card";
@@ -45,22 +47,26 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .maybeSingle<{
       seeds: number;
-      active_bird:
-        | {
-            species_key: string | null;
-            source: "hatched" | "photo";
-            nickname: string | null;
-            custom_name: string | null;
-            custom_blurb: string | null;
-            custom_palette: import("@/lib/game/birds").BirdPalette | null;
-            custom_crest: boolean | null;
-            custom_long_tail: boolean | null;
-          }
-        | null;
+      active_bird: {
+        species_key: string | null;
+        source: "hatched" | "photo";
+        nickname: string | null;
+        custom_name: string | null;
+        custom_blurb: string | null;
+        custom_palette: import("@/lib/game/birds").BirdPalette | null;
+        custom_crest: boolean | null;
+        custom_long_tail: boolean | null;
+      } | null;
     }>();
 
   const progress = await loadUserProgress(user.id, data.profile?.timezone ?? "UTC");
-  const companion = companionMood(data.today?.readiness_score ?? null, data.todayCheckin?.mood ?? null);
+  // Normalized, source-aware health snapshot powering the plan confidence meter
+  // (works for any wearable or a manual check-in, never Oura-specific).
+  const planHealth = await buildPlanHealthSnapshot(user.id);
+  const companion = companionMood(
+    data.today?.readiness_score ?? null,
+    data.todayCheckin?.mood ?? null
+  );
   const firstName = (data.profile?.display_name ?? "").split(" ")[0];
 
   return (
@@ -98,6 +104,10 @@ export default async function DashboardPage() {
 
       <FadeIn delay={0.05}>
         <MorningSummary summary={data.summary} />
+      </FadeIn>
+
+      <FadeIn delay={0.06}>
+        <PlanConfidence snapshot={planHealth} />
       </FadeIn>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
