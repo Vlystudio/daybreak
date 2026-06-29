@@ -52,7 +52,13 @@ export function ReceiptCard({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
-  const [draft, setDraft] = useState<{ store: string; date: string; total: string; itemCount: number; source: "receipt" | "manual" } | null>(null);
+  const [draft, setDraft] = useState<{
+    store: string;
+    date: string;
+    total: string;
+    itemCount: number;
+    source: "receipt" | "manual";
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const today = new Date().toISOString().slice(0, 10);
@@ -76,7 +82,9 @@ export function ReceiptCard({
         itemCount: r.items.length,
         source: "receipt",
       });
-      toast.success(`Read ${r.items.length} items${r.total != null ? ` · $${r.total.toFixed(2)}` : ""}. Confirm below.`);
+      toast.success(
+        `Read ${r.items.length} items${r.total != null ? ` · $${r.total.toFixed(2)}` : ""}. Confirm below.`
+      );
     } catch {
       toast.error("Couldn't read that image.");
     } finally {
@@ -120,7 +128,7 @@ export function ReceiptCard({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Wallet className="h-4 w-4 text-primary" aria-hidden />
+          <Wallet className="text-primary h-4 w-4" aria-hidden />
           Grocery spend
         </CardTitle>
       </CardHeader>
@@ -128,33 +136,50 @@ export function ReceiptCard({
         <div>
           <div className="mb-1 flex items-baseline justify-between">
             <span className="text-2xl font-semibold tabular-nums">${weeklySpend.toFixed(2)}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               this week{weeklyBudget != null ? ` of $${weeklyBudget.toFixed(0)} budget` : ""}
             </span>
           </div>
           {weeklyBudget != null && (
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div className={cn("h-full rounded-full", over ? "bg-destructive" : "bg-sage")} style={{ width: `${pct}%` }} />
+            <div className="bg-muted h-2 overflow-hidden rounded-full">
+              <div
+                className={cn("h-full rounded-full", over ? "bg-destructive" : "bg-sage")}
+                style={{ width: `${pct}%` }}
+              />
             </div>
           )}
         </div>
 
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
+        {/* No `capture` attr — see nutrition-view: forcing the live camera crashes
+            the iOS WKWebView host app; the plain picker is robust. */}
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
         {draft ? (
-          <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+          <div className="bg-muted/30 space-y-2 rounded-xl border p-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-[11px] text-muted-foreground">Store</Label>
-                <Input value={draft.store} onChange={(e) => setDraft({ ...draft, store: e.target.value })} />
+                <Label className="text-muted-foreground text-[11px]">Store</Label>
+                <Input
+                  value={draft.store}
+                  onChange={(e) => setDraft({ ...draft, store: e.target.value })}
+                />
               </div>
               <div>
-                <Label className="text-[11px] text-muted-foreground">Date</Label>
-                <Input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} />
+                <Label className="text-muted-foreground text-[11px]">Date</Label>
+                <Input
+                  type="date"
+                  value={draft.date}
+                  onChange={(e) => setDraft({ ...draft, date: e.target.value })}
+                />
               </div>
             </div>
             <div>
-              <Label className="text-[11px] text-muted-foreground">Total ($)</Label>
-              <Input inputMode="decimal" value={draft.total} onChange={(e) => setDraft({ ...draft, total: e.target.value })} className="tabular-nums" />
+              <Label className="text-muted-foreground text-[11px]">Total ($)</Label>
+              <Input
+                inputMode="decimal"
+                value={draft.total}
+                onChange={(e) => setDraft({ ...draft, total: e.target.value })}
+                className="tabular-nums"
+              />
             </div>
             <div className="flex gap-2">
               <Button onClick={save} disabled={pending} size="sm" className="flex-1">
@@ -167,7 +192,13 @@ export function ReceiptCard({
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button variant="secondary" size="sm" className="flex-1" disabled={scanning} onClick={() => fileRef.current?.click()}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="flex-1"
+              disabled={scanning}
+              onClick={() => fileRef.current?.click()}
+            >
               {scanning ? <Loader2 className="animate-spin" aria-hidden /> : <Camera aria-hidden />}
               {scanning ? "Reading…" : "Scan receipt"}
             </Button>
@@ -178,16 +209,22 @@ export function ReceiptCard({
         )}
 
         {recent.length > 0 && (
-          <ul className="divide-y divide-border/60 text-sm">
+          <ul className="divide-border/60 divide-y text-sm">
             {recent.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-2 py-1.5">
-                <span className="min-w-0 truncate text-muted-foreground">
+                <span className="text-muted-foreground min-w-0 truncate">
                   {format(parseISO(p.purchased_on), "MMM d")}
                   {p.store ? ` · ${p.store}` : ""}
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="font-medium tabular-nums">${p.total.toFixed(2)}</span>
-                  <button type="button" onClick={() => remove(p.id)} disabled={pending} aria-label="Remove" className="text-muted-foreground hover:text-destructive">
+                  <button
+                    type="button"
+                    onClick={() => remove(p.id)}
+                    disabled={pending}
+                    aria-label="Remove"
+                    className="text-muted-foreground hover:text-destructive"
+                  >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </span>

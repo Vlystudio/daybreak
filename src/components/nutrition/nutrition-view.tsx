@@ -8,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { analyzeFoodPhoto, logFood, deleteFoodLog, logWater, logBodyMeasurement } from "@/actions/intake";
+import {
+  analyzeFoodPhoto,
+  logFood,
+  deleteFoodLog,
+  logWater,
+  logBodyMeasurement,
+} from "@/actions/intake";
 import type { FoodLog, BodyMeasurement } from "@/lib/types";
 import type { FoodAnalysis } from "@/lib/integrations/food-vision";
 
@@ -40,7 +46,12 @@ function fileToDataUrl(file: File, maxDim = 1024): Promise<string> {
   });
 }
 
-function macroLine(f: { calories: number | null; protein_g: number | null; carbs_g: number | null; fat_g: number | null }) {
+function macroLine(f: {
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
+}) {
   const parts: string[] = [];
   if (f.calories != null) parts.push(`${Math.round(f.calories)} kcal`);
   if (f.protein_g != null) parts.push(`${Math.round(f.protein_g)}p`);
@@ -81,11 +92,15 @@ export function NutritionView({
   );
 }
 
-function TotalsCard({ totals }: { totals: { calories: number; protein: number; carbs: number; fat: number } }) {
+function TotalsCard({
+  totals,
+}: {
+  totals: { calories: number; protein: number; carbs: number; fat: number };
+}) {
   const stat = (label: string, value: string) => (
     <div>
       <p className="text-2xl font-semibold tabular-nums">{value}</p>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-muted-foreground text-xs">{label}</p>
     </div>
   );
   return (
@@ -111,7 +126,15 @@ function FoodLogger() {
     carbs: string;
     fat: string;
     source: "manual" | "photo";
-  }>({ meal: guessMeal(), description: "", calories: "", protein: "", carbs: "", fat: "", source: "manual" });
+  }>({
+    meal: guessMeal(),
+    description: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+    source: "manual",
+  });
   const [pending, startTransition] = useTransition();
 
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -166,7 +189,15 @@ function FoodLogger() {
       });
       if (result.ok) {
         toast.success("Logged.");
-        setDraft({ meal: draft.meal, description: "", calories: "", protein: "", carbs: "", fat: "", source: "manual" });
+        setDraft({
+          meal: draft.meal,
+          description: "",
+          calories: "",
+          protein: "",
+          carbs: "",
+          fat: "",
+          source: "manual",
+        });
       } else {
         toast.error(result.error);
       }
@@ -177,12 +208,16 @@ function FoodLogger() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Utensils className="h-4 w-4 text-primary" aria-hidden />
+          <Utensils className="text-primary h-4 w-4" aria-hidden />
           Log food
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
+        {/* No `capture` attr: forcing the live camera (capture="environment") makes
+            iOS WKWebView open an AV capture session on tap, which crashes the host
+            app. The plain picker (Photo Library / Take Photo) matches the working
+            avatar uploader and is robust. */}
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
         <Button
           type="button"
           variant="secondary"
@@ -211,8 +246,8 @@ function FoodLogger() {
             </button>
           ))}
           {draft.source === "photo" && (
-            <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-honey" aria-hidden /> from photo
+            <span className="text-muted-foreground ml-auto inline-flex items-center gap-1 text-xs">
+              <Sparkles className="text-honey h-3 w-3" aria-hidden /> from photo
             </span>
           )}
         </div>
@@ -232,7 +267,7 @@ function FoodLogger() {
             ] as const
           ).map(([key, label]) => (
             <div key={key}>
-              <Label className="text-[11px] text-muted-foreground">{label}</Label>
+              <Label className="text-muted-foreground text-[11px]">{label}</Label>
               <Input
                 inputMode="numeric"
                 value={draft[key]}
@@ -257,7 +292,7 @@ function TodayFoods({ foods }: { foods: FoodLog[] }) {
   if (foods.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground py-8 text-center text-sm">
           Nothing logged yet today. Snap a photo or add a meal above.
         </CardContent>
       </Card>
@@ -278,10 +313,13 @@ function TodayFoods({ foods }: { foods: FoodLog[] }) {
       </CardHeader>
       <CardContent className="space-y-1.5">
         {foods.map((f) => (
-          <div key={f.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 hover:bg-muted/50">
+          <div
+            key={f.id}
+            className="hover:bg-muted/50 flex items-center justify-between gap-3 rounded-lg px-2 py-1.5"
+          >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{f.description}</p>
-              <p className="text-xs capitalize text-muted-foreground">
+              <p className="text-muted-foreground text-xs capitalize">
                 {f.meal}
                 {macroLine(f) ? ` · ${macroLine(f)}` : ""}
               </p>
@@ -317,13 +355,14 @@ function WaterCard({ waterMl }: { waterMl: number }) {
     <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Droplets className="h-4 w-4 text-sky" aria-hidden />
+          <Droplets className="text-sky h-4 w-4" aria-hidden />
           Water
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-2xl font-semibold tabular-nums">
-          {(waterMl / 1000).toFixed(1)}L <span className="text-sm font-normal text-muted-foreground">· {glasses} glasses</span>
+          {(waterMl / 1000).toFixed(1)}L{" "}
+          <span className="text-muted-foreground text-sm font-normal">· {glasses} glasses</span>
         </p>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => add(250)}>
@@ -374,7 +413,7 @@ function WeightCard({ latestBody }: { latestBody: BodyMeasurement | null }) {
     <Card className="h-full">
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Scale className="h-4 w-4 text-sage" aria-hidden />
+          <Scale className="text-sage h-4 w-4" aria-hidden />
           Weight
         </CardTitle>
         <div className="flex rounded-full border p-0.5 text-xs">
@@ -383,7 +422,10 @@ function WeightCard({ latestBody }: { latestBody: BodyMeasurement | null }) {
               key={u}
               type="button"
               onClick={() => setUnit(u)}
-              className={cn("rounded-full px-2 py-0.5", unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              className={cn(
+                "rounded-full px-2 py-0.5",
+                unit === u ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+              )}
             >
               {u}
             </button>
@@ -391,7 +433,7 @@ function WeightCard({ latestBody }: { latestBody: BodyMeasurement | null }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {latestDisplay && <p className="text-xs text-muted-foreground">Last: {latestDisplay}</p>}
+        {latestDisplay && <p className="text-muted-foreground text-xs">Last: {latestDisplay}</p>}
         <div className="flex gap-2">
           <Input
             inputMode="decimal"
@@ -408,7 +450,12 @@ function WeightCard({ latestBody }: { latestBody: BodyMeasurement | null }) {
             className="tabular-nums"
           />
         </div>
-        <Button onClick={save} disabled={pending || (!weight && !bodyFat)} size="sm" className="w-full">
+        <Button
+          onClick={save}
+          disabled={pending || (!weight && !bodyFat)}
+          size="sm"
+          className="w-full"
+        >
           {pending ? "Saving…" : "Log"}
         </Button>
       </CardContent>
