@@ -5,7 +5,7 @@ import { maybeRefreshTodayPlanForUser, maybeAutoPlanForUser } from "@/lib/planne
 import { dispatchReminders } from "@/lib/reminders";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
-import { serverEnv } from "@/env";
+import { verifyCronAuth } from "@/lib/security/cron-auth";
 
 export const maxDuration = 300;
 
@@ -21,9 +21,8 @@ const USER_CONCURRENCY = 5;
  * `Authorization: Bearer ${CRON_SECRET}` automatically.
  */
 export async function GET(request: NextRequest) {
-  if (request.headers.get("authorization") !== `Bearer ${serverEnv().CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = verifyCronAuth(request, "cron.data_sync");
+  if (!auth.ok) return auth.response;
 
   const admin = createAdminClient();
   const { data: connections, error } = await admin
@@ -41,18 +40,22 @@ export async function GET(request: NextRequest) {
     byUser.get(c.user_id)!.add(c.provider);
   }
 
-  const syncResults = await mapWithConcurrency([...byUser], USER_CONCURRENCY, async ([userId, providers]) => {
-    // Pull the last 2 days for intraday refresh (the morning job backfills 7).
-    if (providers.has("oura")) await syncOuraForUser(userId, 2);
-    if (providers.has("fitbit")) await syncFitbitForUser(userId, 2);
-    if (providers.has("google")) await syncCalendarForUser(userId);
-    // Rebuild today's plan once that day's recovery is in (gated internally).
-    try {
-      await maybeRefreshTodayPlanForUser(userId);
-    } catch (err) {
-      console.error("[cron] plan refresh failed for a user:", err);
+  const syncResults = await mapWithConcurrency(
+    [...byUser],
+    USER_CONCURRENCY,
+    async ([userId, providers]) => {
+      // Pull the last 2 days for intraday refresh (the morning job backfills 7).
+      if (providers.has("oura")) await syncOuraForUser(userId, 2);
+      if (providers.has("fitbit")) await syncFitbitForUser(userId, 2);
+      if (providers.has("google")) await syncCalendarForUser(userId);
+      // Rebuild today's plan once that day's recovery is in (gated internally).
+      try {
+        await maybeRefreshTodayPlanForUser(userId);
+      } catch (err) {
+        console.error("[cron] plan refresh failed for a user:", err);
+      }
     }
-  });
+  );
 
   let synced = 0;
   let failed = 0;

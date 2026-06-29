@@ -2,6 +2,7 @@ import "server-only";
 import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { serverEnv, publicEnv, integrationsAvailable } from "@/env";
+import { sanitizeNotificationUrl } from "@/lib/security/safe-url";
 
 /**
  * Web Push delivery. Sends to every subscription a user has registered and
@@ -49,7 +50,9 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
 
   if (!subs || subs.length === 0) return 0;
 
-  const body = JSON.stringify(payload);
+  // Force the click target to a safe same-origin path before it ever reaches a
+  // device (defense in depth — the service worker sanitizes again on click).
+  const body = JSON.stringify({ ...payload, url: sanitizeNotificationUrl(payload.url) });
   let delivered = 0;
   const dead: string[] = [];
 

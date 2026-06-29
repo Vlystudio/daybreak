@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { serverEnv } from "@/env";
+import { z } from "zod";
 import { audit } from "@/lib/audit";
+import { verifyCronAuth } from "@/lib/security/cron-auth";
 import {
   backfillObservationsForAllUsers,
   backfillObservationsForUser,
@@ -11,64 +12,95 @@ export const dynamic = "force-dynamic";
 
 /**
  * Admin-only, one-time backfill of health_observations from the legacy tables.
- * Gated by the same CRON_SECRET bearer token as the cron jobs. Insert-only and
- * idempotent, so it's safe to re-run.
+ * POST-only and gated by the shared cron/admin bearer auth (constant-time,
+ * rotation-aware). Insert-only + idempotent, so re-running is safe.
  *
- *   POST /api/admin/backfill-observations                  → all users
- *   POST /api/admin/backfill-observations?dryRun=1         → report counts, no writes
- *   POST /api/admin/backfill-observations?userId=…          → a single user
- *   POST /api/admin/backfill-observations?limit=100&offset=0 → batch all-users
+ * SAFE BY DEFAULT: a bare request is a DRY RUN. To actually write, pass an
+ * explicit `?dryRun=false` (or `?write=1`).
+ *
+ *   POST /api/admin/backfill-observations                 → dry run, all users
+ *   POST /api/admin/backfill-observations?dryRun=false     → write, all users
+ *   POST /api/admin/backfill-observations?userId=…&write=1 → write, one user
+ *   POST /api/admin/backfill-observations?limit=100&offset=0 → batch
  */
+const ymd = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+
+const paramsSchema = z
+  .object({
+    userId: z.string().uuid().optional(),
+    from: ymd.optional(),
+    to: ymd.optional(),
+    limit: z.coerce.number().int().min(1).max(500).optional(),
+    offset: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    dryRun: z.enum(["0", "1", "true", "false"]).optional(),
+    write: z.enum(["1", "true"]).optional(),
+  })
+  .refine((v) => !(v.from && v.to) || v.from <= v.to, {
+    message: "`from` must be on or before `to`",
+    path: ["from"],
+  });
+
 export async function POST(request: NextRequest) {
-  // Reject when the secret is unset (so "Bearer undefined"/"Bearer " can't match)
-  // or when the bearer token doesn't match exactly.
-  const secret = serverEnv().CRON_SECRET;
-  const authorized = Boolean(secret) && request.headers.get("authorization") === `Bearer ${secret}`;
-  if (!authorized) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = verifyCronAuth(request, "admin.backfill_observations");
+  if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
-  const dryRun =
-    url.searchParams.get("dryRun") === "1" || url.searchParams.get("dryRun") === "true";
-  const userId = url.searchParams.get("userId");
-  const from = url.searchParams.get("from") ?? undefined;
-  const to = url.searchParams.get("to") ?? undefined;
+  const parsed = paramsSchema.safeParse(Object.fromEntries(url.searchParams));
+  if (!parsed.success) {
+    // Surface field-level issues only — never echo raw input back.
+    return NextResponse.json(
+      {
+        error: "Invalid parameters",
+        issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+      },
+      { status: 400 }
+    );
+  }
+  const { userId, from, to, limit, offset, dryRun, write } = parsed.data;
 
-  const limitParam = url.searchParams.get("limit");
-  const offsetParam = url.searchParams.get("offset");
-  const limit = limitParam != null && /^\d+$/.test(limitParam) ? Number(limitParam) : undefined;
-  const offset = offsetParam != null && /^\d+$/.test(offsetParam) ? Number(offsetParam) : undefined;
+  // Dry run is the default; a real write must be explicit.
+  let isDryRun = true;
+  if (dryRun != null) isDryRun = dryRun === "1" || dryRun === "true";
+  if (write === "1" || write === "true") isDryRun = false;
 
   try {
     if (userId) {
-      const result = await backfillObservationsForUser(userId, { from, to, dryRun });
+      const result = await backfillObservationsForUser(userId, { from, to, dryRun: isDryRun });
       await audit(null, "admin.backfill_observations", {
         metadata: {
           scope: "user",
           userId,
-          dryRun,
+          dryRun: isDryRun,
           planned: result.planned,
           inserted: result.inserted,
         },
       });
-      return NextResponse.json({ ok: true, dryRun, result });
+      return NextResponse.json({ ok: true, dryRun: isDryRun, result });
     }
 
-    const summary = await backfillObservationsForAllUsers({ from, to, dryRun, limit, offset });
+    const summary = await backfillObservationsForAllUsers({
+      from,
+      to,
+      dryRun: isDryRun,
+      limit,
+      offset,
+    });
     await audit(null, "admin.backfill_observations", {
       metadata: {
         scope: "all",
-        dryRun,
+        dryRun: isDryRun,
         usersScanned: summary.usersScanned,
         planned: summary.totals.planned,
         inserted: summary.totals.inserted,
         errors: summary.totals.errors,
       },
     });
-    return NextResponse.json({ ok: true, dryRun, ...summary });
+    return NextResponse.json({ ok: true, dryRun: isDryRun, ...summary });
   } catch (err) {
-    console.error("[admin] backfill-observations failed:", err);
+    console.error(
+      "[admin] backfill-observations failed:",
+      err instanceof Error ? err.message : "unknown"
+    );
     return NextResponse.json({ error: "Backfill failed" }, { status: 500 });
   }
 }

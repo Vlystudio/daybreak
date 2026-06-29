@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWeeklyDigestForUser } from "@/lib/weekly-digest";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
-import { integrationsAvailable, serverEnv } from "@/env";
+import { verifyCronAuth } from "@/lib/security/cron-auth";
+import { integrationsAvailable } from "@/env";
 
 export const maxDuration = 300;
 
@@ -14,9 +15,8 @@ const USER_CONCURRENCY = 8;
  * data and the morning-email preference on. No-ops if email isn't configured.
  */
 export async function GET(request: NextRequest) {
-  if (request.headers.get("authorization") !== `Bearer ${serverEnv().CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = verifyCronAuth(request, "cron.weekly_digest");
+  if (!auth.ok) return auth.response;
   if (!integrationsAvailable.resend()) {
     return NextResponse.json({ skipped: "email not configured" });
   }

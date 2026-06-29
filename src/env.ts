@@ -27,7 +27,11 @@ const serverSchema = z.object({
   // key that should encrypt new data. Unset = use TOKEN_ENCRYPTION_KEY only.
   TOKEN_ENCRYPTION_KEYS: z.string().optional(),
   TOKEN_ENCRYPTION_ACTIVE_KEY: z.string().optional(),
+  // Use a high-entropy value (>= 32 random bytes recommended). CRON_SECRET_PREVIOUS
+  // lets you rotate without downtime: set PREVIOUS to the old value while clients
+  // (Vercel Cron) pick up the new CRON_SECRET, then clear PREVIOUS.
   CRON_SECRET: z.string().min(16),
+  CRON_SECRET_PREVIOUS: z.string().min(16).optional(),
   OURA_CLIENT_ID: z.string().min(1).optional(),
   OURA_CLIENT_SECRET: z.string().min(1).optional(),
   FITBIT_CLIENT_ID: z.string().min(1).optional(),

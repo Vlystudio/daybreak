@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { securityRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 
 /**
@@ -33,6 +34,11 @@ const EXPORT_TABLES: { table: string; column: string }[] = [
   { table: "meal_plans", column: "user_id" },
   { table: "user_birds", column: "user_id" },
   { table: "user_game", column: "user_id" },
+  // Health provenance + imported wearable data (the user's own, no secrets).
+  { table: "health_observations", column: "user_id" },
+  { table: "health_daily_samples", column: "user_id" },
+  { table: "health_workouts", column: "user_id" },
+  { table: "apple_health_imports", column: "user_id" },
 ];
 
 export interface DataExport {
@@ -46,6 +52,11 @@ export async function exportMyData(): Promise<
   { ok: true; export: DataExport } | { ok: false; error: string }
 > {
   const user = await requireUser();
+
+  const limited = await securityRateLimit(`data-export:${user.id}`, RATE_LIMITS.dataExport);
+  if (!limited.ok)
+    return { ok: false, error: "You've exported recently — please wait a bit and try again." };
+
   const supabase = await createClient();
 
   const data: Record<string, unknown[]> = {};
@@ -72,6 +83,11 @@ export async function exportMyData(): Promise<
 
 export async function deleteMyAccount(): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
+
+  const limited = await securityRateLimit(`account-delete:${user.id}`, RATE_LIMITS.accountDelete);
+  if (!limited.ok)
+    return { ok: false, error: "Too many attempts — please wait a moment and try again." };
+
   const admin = createAdminClient();
 
   // Every user-owned table cascades from auth.users (ON DELETE CASCADE), so

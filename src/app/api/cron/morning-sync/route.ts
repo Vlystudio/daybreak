@@ -1,12 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { syncOuraForUser, syncFitbitForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
+import {
+  syncOuraForUser,
+  syncFitbitForUser,
+  syncCalendarForUser,
+  generateSummaryForUser,
+} from "@/lib/sync";
 import { sendMorningEmailForUser, sendMorningPushForUser } from "@/lib/notifications";
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
 import { notifyFavoriteDeals } from "@/lib/grocery/deal-alerts";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
-import { integrationsAvailable, serverEnv } from "@/env";
+import { verifyCronAuth } from "@/lib/security/cron-auth";
+import { integrationsAvailable } from "@/env";
 
 export const maxDuration = 300;
 
@@ -20,9 +26,8 @@ const USER_CONCURRENCY = 8;
  * `Authorization: Bearer ${CRON_SECRET}` automatically.
  */
 export async function GET(request: NextRequest) {
-  if (request.headers.get("authorization") !== `Bearer ${serverEnv().CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const auth = verifyCronAuth(request, "cron.morning_sync");
+  if (!auth.ok) return auth.response;
 
   const admin = createAdminClient();
   const { data: connections, error } = await admin
@@ -50,16 +55,20 @@ export async function GET(request: NextRequest) {
     byUser.get(c.user_id)!.add(c.provider);
   }
 
-  const results = await mapWithConcurrency([...byUser], USER_CONCURRENCY, async ([userId, providers]) => {
-    if (providers.has("oura")) await syncOuraForUser(userId, 7);
-    if (providers.has("fitbit")) await syncFitbitForUser(userId, 7);
-    if (providers.has("google")) await syncCalendarForUser(userId);
-    const briefed = await generateSummaryForUser(userId);
-    if (briefed) {
-      await sendMorningEmailForUser(userId);
-      await sendMorningPushForUser(userId);
+  const results = await mapWithConcurrency(
+    [...byUser],
+    USER_CONCURRENCY,
+    async ([userId, providers]) => {
+      if (providers.has("oura")) await syncOuraForUser(userId, 7);
+      if (providers.has("fitbit")) await syncFitbitForUser(userId, 7);
+      if (providers.has("google")) await syncCalendarForUser(userId);
+      const briefed = await generateSummaryForUser(userId);
+      if (briefed) {
+        await sendMorningEmailForUser(userId);
+        await sendMorningPushForUser(userId);
+      }
     }
-  });
+  );
 
   let synced = 0;
   let failed = 0;

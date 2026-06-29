@@ -64,4 +64,21 @@ export const RATE_LIMITS = {
   aiMeals: { limit: 15, windowSeconds: 86400, failClosed: true }, // daily cap on AI meal-plan generations
   aiChat: { limit: 40, windowSeconds: 3600, failClosed: true }, // health check-in conversation turns
   aiVision: { limit: 30, windowSeconds: 3600, failClosed: true }, // food-photo nutrition analyses
+  // High-risk account/security mutations fail CLOSED — an attacker who can induce
+  // an infra error must not be able to bypass these.
+  accountDelete: { limit: 3, windowSeconds: 3600, failClosed: true },
+  dataExport: { limit: 6, windowSeconds: 3600, failClosed: true },
+  disconnect: { limit: 12, windowSeconds: 600, failClosed: true },
 } as const;
+
+/**
+ * Fail-CLOSED rate limit for sensitive/high-risk paths. Identical to
+ * {@link rateLimit} but defaults `failClosed: true`, so a limiter-backend outage
+ * blocks rather than waves the request through.
+ */
+export function securityRateLimit(
+  key: string,
+  opts: { limit: number; windowSeconds: number }
+): Promise<RateLimitResult> {
+  return rateLimit(key, { ...opts, failClosed: true });
+}
