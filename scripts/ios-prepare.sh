@@ -39,6 +39,16 @@ plist_set "NSHealthShareUsageDescription string" \
 # present, even for read-only apps (App Store validation error 90683).
 plist_set "NSHealthUpdateUsageDescription string" \
   "Daybreak does not write to Health; this permission is only requested if you choose to log data back."
+# Camera + photo library purpose strings. The web app opens the system camera /
+# photo picker via <input type="file" accept="image/*" capture> (meal photos for
+# calorie estimates, grocery receipts, profile picture). iOS HARD-CRASHES the
+# WKWebView host app (SIGABRT) the moment that picker touches the camera or
+# library if these keys are absent — so they are required even though the app
+# uses no native camera plugin.
+plist_set "NSCameraUsageDescription string" \
+  "Daybreak uses the camera to take photos of meals and grocery receipts so it can estimate calories and log items, and to set your profile photo."
+plist_set "NSPhotoLibraryUsageDescription string" \
+  "Daybreak accesses your photos so you can upload a meal or receipt photo, or choose a profile picture."
 # WKAppBoundDomains (array) for limitsNavigationsToAppBoundDomains.
 /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" "$INFO_PLIST"
