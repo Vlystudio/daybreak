@@ -1,11 +1,8 @@
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
-import { createClient } from "@/lib/supabase/server";
 import { integrationsAvailable } from "@/env";
 import { loadUserProgress } from "@/lib/game/progress";
-import { companionMood } from "@/lib/game/mood";
-import { NestCard } from "@/components/dashboard/nest-card";
 import { StatsStrip } from "@/components/game/stats-strip";
 import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
@@ -37,36 +34,10 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const data = await loadDashboardData(user.id);
 
-  // Lightweight game read for the Nest card (seeds + active companion).
-  const supabase = await createClient();
-  const { data: gameRow } = await supabase
-    .from("user_game")
-    .select(
-      "seeds, active_bird:user_birds!user_game_active_bird_id_fkey(species_key, source, nickname, custom_name, custom_blurb, custom_palette, custom_crest, custom_long_tail)"
-    )
-    .eq("user_id", user.id)
-    .maybeSingle<{
-      seeds: number;
-      active_bird: {
-        species_key: string | null;
-        source: "hatched" | "photo";
-        nickname: string | null;
-        custom_name: string | null;
-        custom_blurb: string | null;
-        custom_palette: import("@/lib/game/birds").BirdPalette | null;
-        custom_crest: boolean | null;
-        custom_long_tail: boolean | null;
-      } | null;
-    }>();
-
   const progress = await loadUserProgress(user.id, data.profile?.timezone ?? "UTC");
   // Normalized, source-aware health snapshot powering the plan confidence meter
   // (works for any wearable or a manual check-in, never Oura-specific).
   const planHealth = await buildPlanHealthSnapshot(user.id);
-  const companion = companionMood(
-    data.today?.readiness_score ?? null,
-    data.todayCheckin?.mood ?? null
-  );
   const firstName = (data.profile?.display_name ?? "").split(" ")[0];
 
   return (
@@ -147,13 +118,6 @@ export default async function DashboardPage() {
       {/* Everything else tiles in a masonry grid so heights pack tightly */}
       <div className="gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
         <HabitsCard habits={data.habits} />
-        <NestCard
-          seeds={gameRow?.seeds ?? 0}
-          activeBird={gameRow?.active_bird ?? null}
-          nickname={gameRow?.active_bird?.nickname ?? null}
-          mood={companion.mood}
-          moodLabel={companion.label}
-        />
         <NutritionCard nutrition={data.todayNutrition} />
         <CalendarSyncCard
           connections={data.connections}

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { cn } from "@/lib/utils";
+import { NEST_ENABLED } from "@/lib/features";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -31,7 +32,7 @@ const PRIMARY: Item[] = [
   { href: "/dashboard", label: "Today", icon: Sun },
   { href: "/health", label: "Health", icon: HeartPulse },
   { href: "/onboarding", label: "Plan", icon: ClipboardList },
-  { href: "/nest", label: "Nest", icon: Bird },
+  ...(NEST_ENABLED ? [{ href: "/nest", label: "Nest", icon: Bird }] : []),
 ];
 
 const GROUPS: { title: string; items: Item[] }[] = [
@@ -55,7 +56,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: "Play & friends",
     items: [
-      { href: "/nest", label: "Nest", icon: Bird },
+      ...(NEST_ENABLED ? [{ href: "/nest", label: "Nest", icon: Bird }] : []),
       { href: "/friends", label: "Friends", icon: Users },
     ],
   },
