@@ -24,7 +24,7 @@
     ]
   },
   "dependencies": {
-    "@capacitor/core": "^6.2.1",
+    "@capacitor/core": "^8.4.1",
     "@capacitor/preferences": "^6.0.4",
     "daybreak-healthkit": "file:native/healthkit",
     "@hookform/resolvers": "^5.4.0",
