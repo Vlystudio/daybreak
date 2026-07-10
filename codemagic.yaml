@@ -15,6 +15,18 @@ workflows:
     name: Daybreak iOS (HealthKit) → TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
+    # Auto-build every push to main. Without this block, pushing to main builds
+    # NOTHING (the comment at the top of this file long claimed it did, but the
+    # trigger was never wired), so fixes merged to main never reached TestFlight
+    # until a build was started by hand. Requires the Codemagic webhook to be
+    # installed on the repo (automatic once the app is connected in Codemagic).
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
     integrations:
       app_store_connect: Daybreak ASC Key # name of the API key added in Codemagic
     environment:

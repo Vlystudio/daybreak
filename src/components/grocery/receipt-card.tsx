@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { Camera, Loader2, Trash2, Plus, Wallet } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Trash2, Plus, Wallet } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,6 @@ export function ReceiptCard({
   weeklyBudget: number | null;
   recent: PurchaseRow[];
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<{
     store: string;
@@ -65,10 +65,7 @@ export function ReceiptCard({
   const pct = weeklyBudget ? Math.min(100, Math.round((weeklySpend / weeklyBudget) * 100)) : 0;
   const over = weeklyBudget != null && weeklySpend > weeklyBudget;
 
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function scanPhoto(file: File) {
     setScanning(true);
     try {
       const dataUrl = await fileToDataUrl(file);
@@ -150,9 +147,6 @@ export function ReceiptCard({
           )}
         </div>
 
-        {/* No `capture` attr — see nutrition-view: forcing the live camera crashes
-            the iOS WKWebView host app; the plain picker is robust. */}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
         {draft ? (
           <div className="bg-muted/30 space-y-2 rounded-xl border p-3">
             <div className="grid grid-cols-2 gap-2">
@@ -192,16 +186,17 @@ export function ReceiptCard({
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button
+            <PhotoCaptureField
+              onFile={scanPhoto}
+              busy={scanning}
+              label="Scan receipt"
+              busyLabel="Reading…"
               variant="secondary"
               size="sm"
               className="flex-1"
-              disabled={scanning}
-              onClick={() => fileRef.current?.click()}
-            >
-              {scanning ? <Loader2 className="animate-spin" aria-hidden /> : <Camera aria-hidden />}
-              {scanning ? "Reading…" : "Scan receipt"}
-            </Button>
+              fileName="receipt.jpg"
+              maxDim={1400}
+            />
             <Button variant="ghost" size="sm" onClick={startManual}>
               <Plus aria-hidden /> Manual
             </Button>

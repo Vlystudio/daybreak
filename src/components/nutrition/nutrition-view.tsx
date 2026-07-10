@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { Camera, Plus, Trash2, Droplets, Scale, Utensils, Sparkles, Loader2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Plus, Trash2, Droplets, Scale, Utensils, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { cn } from "@/lib/utils";
 import {
   analyzeFoodPhoto,
@@ -116,7 +117,6 @@ function TotalsCard({
 }
 
 function FoodLogger() {
-  const fileRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [draft, setDraft] = useState<{
     meal: Meal;
@@ -137,10 +137,7 @@ function FoodLogger() {
   });
   const [pending, startTransition] = useTransition();
 
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file
-    if (!file) return;
+  async function analyzePhoto(file: File) {
     setAnalyzing(true);
     try {
       const dataUrl = await fileToDataUrl(file);
@@ -213,21 +210,19 @@ function FoodLogger() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* No `capture` attr: forcing the live camera (capture="environment") makes
-            iOS WKWebView open an AV capture session on tap, which crashes the host
-            app. The plain picker (Photo Library / Take Photo) matches the working
-            avatar uploader and is robust. */}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
-        <Button
-          type="button"
+        {/* On web (desktop/Android/iOS Safari/PWA) this opens an in-app live
+            camera; inside the native iOS shell it opens the OS picker (Photo
+            Library / Take Photo). Never uses capture="environment" — forcing the
+            camera on tap crashes stale iOS builds. */}
+        <PhotoCaptureField
+          onFile={analyzePhoto}
+          busy={analyzing}
+          label="Snap or upload a photo"
+          busyLabel="Analyzing photo…"
           variant="secondary"
           className="w-full"
-          disabled={analyzing}
-          onClick={() => fileRef.current?.click()}
-        >
-          {analyzing ? <Loader2 className="animate-spin" aria-hidden /> : <Camera aria-hidden />}
-          {analyzing ? "Analyzing photo…" : "Snap or upload a photo"}
-        </Button>
+          fileName="meal.jpg"
+        />
 
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Meal">
           {MEALS.map((m) => (

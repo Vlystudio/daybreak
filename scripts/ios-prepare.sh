@@ -40,14 +40,19 @@ plist_set "NSHealthShareUsageDescription string" \
 plist_set "NSHealthUpdateUsageDescription string" \
   "Daybreak does not write to Health; this permission is only requested if you choose to log data back."
 # Camera + microphone + photo library purpose strings. The web app opens the
-# system camera / photo picker via <input type="file" accept="image/*" capture>
-# (meal photos for calorie estimates, grocery receipts, profile picture). iOS
-# HARD-CRASHES the WKWebView host app (SIGABRT) the moment that picker touches a
-# privacy device if the matching key is absent — so all three are required even
-# though the app uses no native camera plugin. The MICROPHONE one is the
-# non-obvious crasher: WKWebView's camera-capture UI spins up an AVCaptureSession
-# that initializes the mic even for photo-only capture, so its purpose string is
-# mandatory or the app aborts as the camera opens.
+# system camera / photo picker via <input type="file" accept="image/*"> (meal
+# photos for calorie estimates, grocery receipts, profile picture). The picker's
+# "Take Photo" option presents an IN-PROCESS UIImagePickerController(.camera), so
+# iOS TCC HARD-CRASHES the WKWebView host app (SIGABRT, drops to home screen, no
+# JS-catchable error) the moment it touches the camera device if the matching key
+# is absent — so these are required even though the app uses no native camera
+# plugin, and even after capture="environment" was dropped (that only stopped the
+# camera being FORCED open on tap; choosing "Take Photo" still opens it). The
+# MICROPHONE one is the non-obvious crasher: WKWebView's "Take Photo or Video" UI
+# provisions an AVCaptureSession that initializes the mic even for photo-only
+# capture, so its purpose string is mandatory or the app aborts as the camera
+# opens. THESE ONLY PROTECT THE DEVICE ONCE A BUILD CARRYING THEM SHIPS TO
+# TestFlight — TCC reads the plist baked into the installed .app, not the source.
 plist_set "NSCameraUsageDescription string" \
   "Daybreak uses the camera to take photos of meals and grocery receipts so it can estimate calories and log items, and to set your profile photo."
 plist_set "NSMicrophoneUsageDescription string" \

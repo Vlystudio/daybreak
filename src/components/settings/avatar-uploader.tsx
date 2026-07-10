@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import { useState, useTransition, type ReactNode } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { uploadAvatar, removeAvatar } from "@/actions/settings";
 
 /** Center-crop a file to a square JPEG data URL. */
@@ -32,15 +33,17 @@ function toSquareDataUrl(file: File, size = 256): Promise<string> {
   });
 }
 
-export function AvatarUploader({ avatarUrl, fallback }: { avatarUrl: string | null; fallback: ReactNode }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+export function AvatarUploader({
+  avatarUrl,
+  fallback,
+}: {
+  avatarUrl: string | null;
+  fallback: ReactNode;
+}) {
   const [busy, setBusy] = useState(false);
   const [, startTransition] = useTransition();
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function handleFile(file: File) {
     setBusy(true);
     try {
       const dataUrl = await toSquareDataUrl(file);
@@ -77,13 +80,22 @@ export function AvatarUploader({ avatarUrl, fallback }: { avatarUrl: string | nu
         )}
       </span>
       <div className="flex flex-col gap-1.5">
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
-        <Button size="sm" variant="secondary" disabled={busy} onClick={() => fileRef.current?.click()}>
-          <Camera aria-hidden />
-          {avatarUrl ? "Change photo" : "Upload photo"}
-        </Button>
+        <PhotoCaptureField
+          onFile={handleFile}
+          busy={busy}
+          label={avatarUrl ? "Change photo" : "Upload photo"}
+          variant="secondary"
+          size="sm"
+          fileName="avatar.jpg"
+        />
         {avatarUrl && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={remove} className="text-muted-foreground">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={remove}
+            className="text-muted-foreground"
+          >
             <Trash2 aria-hidden />
             Remove
           </Button>
