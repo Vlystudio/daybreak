@@ -2,7 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type AdminClient = SupabaseClient & {
+export type AdminClient = SupabaseClient & {
   auth: SupabaseClient["auth"] & {
     admin: { deleteUser(userId: string): Promise<{ error: Error | null }> };
   };
@@ -78,8 +78,8 @@ async function expectNoError(promise: PromiseLike<{ error: unknown }>): Promise<
   if (error) throw error;
 }
 
-export async function deleteUserAccount(admin: AdminClient, userId: string): Promise<void> {
-  await runAccountDeletionSteps([
+export function buildAccountDeletionSteps(admin: AdminClient, userId: string): DeletionStep[] {
+  return [
     { name: "storage", run: () => removeUserStorage(admin, userId) },
     {
       name: "provider credentials and notifications",
@@ -111,6 +111,12 @@ export async function deleteUserAccount(admin: AdminClient, userId: string): Pro
       run: async () => {
         await Promise.all([
           expectNoError(admin.from("audit_logs").delete().eq("user_id", userId)),
+          expectNoError(admin.from("analytics_events").delete().eq("user_id", userId)),
+          expectNoError(admin.from("rate_limits").delete().like("key", `%${userId}%`)),
+          // This legacy service-only cache has no user identifier, so individual
+          // payloads cannot be attributed safely. It is unused by current code;
+          // purge it rather than retain a possibly personal prompt after deletion.
+          expectNoError(admin.from("ai_generation_cache").delete().not("cache_key", "is", null)),
           expectNoError(admin.from("recipes").delete().eq("created_by", userId)),
           expectNoError(admin.from("product_prices").delete().eq("recorded_by", userId)),
           expectNoError(
@@ -126,5 +132,9 @@ export async function deleteUserAccount(admin: AdminClient, userId: string): Pro
         if (error) throw error;
       },
     },
-  ]);
+  ];
+}
+
+export async function deleteUserAccount(admin: AdminClient, userId: string): Promise<void> {
+  await runAccountDeletionSteps(buildAccountDeletionSteps(admin, userId));
 }

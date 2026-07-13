@@ -6,32 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { uploadAvatar, removeAvatar } from "@/actions/settings";
-
-/** Center-crop a file to a square JPEG data URL. */
-function toSquareDataUrl(file: File, size = 256): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("bad image"));
-    };
-    img.src = url;
-  });
-}
+import { reencodeImageFile } from "@/lib/image-reencode";
 
 export function AvatarUploader({
   avatarUrl,
@@ -46,7 +21,7 @@ export function AvatarUploader({
   async function handleFile(file: File) {
     setBusy(true);
     try {
-      const dataUrl = await toSquareDataUrl(file);
+      const dataUrl = await reencodeImageFile(file, { squareSize: 256, quality: 0.82 });
       const result = await uploadAvatar({ imageDataUrl: dataUrl });
       if (result.ok) toast.success("Picture updated.");
       else toast.error(result.error);

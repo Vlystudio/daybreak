@@ -63,18 +63,34 @@ workflows:
           bash scripts/ios-release-validate.sh
       - name: Set up code signing (manual — distribution cert + HealthKit profile)
         script: |
-          set -e
+          set -euo pipefail
+          : "${APPLE_TEAM_ID:?Missing APPLE_TEAM_ID in appstore environment group}"
+          : "${CM_CERTIFICATE:?Missing base64 distribution certificate}"
+          : "${CM_CERTIFICATE_PASSWORD:?Missing distribution certificate password}"
+          : "${CM_PROVISIONING_PROFILE:?Missing base64 provisioning profile}"
+          : "${BUILD_NUMBER:?Codemagic BUILD_NUMBER is unavailable}"
+
           keychain initialize
           # App-Store-Connect-API-created profiles drop the HealthKit entitlement,
           # so we use a distribution certificate + a portal-created profile (which
           # includes HealthKit), supplied as base64 env vars.
           echo "$CM_CERTIFICATE" | base64 --decode > /tmp/dist.p12
+          openssl pkcs12 -in /tmp/dist.p12 -passin env:CM_CERTIFICATE_PASSWORD -noout
           keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$CM_CERTIFICATE_PASSWORD"
           PROFILES_HOME="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_HOME"
           echo "$CM_PROVISIONING_PROFILE" | base64 --decode > "$PROFILES_HOME/daybreak.mobileprovision"
+          # Validate the profile without printing its UUID, certificate, or raw
+          # entitlements into the build log.
+          security cms -D -i "$PROFILES_HOME/daybreak.mobileprovision" > /tmp/daybreak-profile.plist
+          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" /tmp/daybreak-profile.plist)
+          PROFILE_APP_ID=$(/usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/daybreak-profile.plist)
+          [ "$PROFILE_TEAM" = "$APPLE_TEAM_ID" ] || { echo "error: provisioning profile team mismatch" >&2; exit 1; }
+          [ "$PROFILE_APP_ID" = "$APPLE_TEAM_ID.$BUNDLE_ID" ] || { echo "error: provisioning profile bundle mismatch" >&2; exit 1; }
+          /usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.healthkit" /tmp/daybreak-profile.plist >/dev/null
           # Wire the profile into the project (manual signing) + generate export options.
           xcode-project use-profiles
+          rm -f /tmp/dist.p12 /tmp/daybreak-profile.plist
       - name: Bump build number
         script: |
           cd ios/App

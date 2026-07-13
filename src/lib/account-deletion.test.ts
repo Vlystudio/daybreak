@@ -1,7 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
-import { AccountDeletionError, runAccountDeletionSteps } from "@/lib/account-deletion";
+import {
+  AccountDeletionError,
+  buildAccountDeletionSteps,
+  runAccountDeletionSteps,
+  type AdminClient,
+} from "@/lib/account-deletion";
 
 describe("account deletion orchestration", () => {
+  it("defines the real Auth deletion step last", () => {
+    const steps = buildAccountDeletionSteps(
+      {} as AdminClient,
+      "00000000-0000-0000-0000-000000000001"
+    );
+    expect(steps.map((step) => step.name)).toEqual([
+      "storage",
+      "provider credentials and notifications",
+      "social relationships",
+      "retained-reference cleanup",
+      "authentication account",
+    ]);
+    expect(steps.at(-1)?.name).toBe("authentication account");
+  });
+
   it("runs Auth deletion last", async () => {
     const order: string[] = [];
     await runAccountDeletionSteps([

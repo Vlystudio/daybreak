@@ -18,34 +18,11 @@ import {
 } from "@/actions/intake";
 import type { FoodLog, BodyMeasurement } from "@/lib/types";
 import type { FoodAnalysis } from "@/lib/integrations/food-vision";
+import { reencodeImageFile } from "@/lib/image-reencode";
 
 type Meal = "breakfast" | "lunch" | "dinner" | "snack";
 const MEALS: Meal[] = ["breakfast", "lunch", "dinner", "snack"];
 const KG_PER_LB = 0.45359237;
-
-/** Downscale an image file to a compact JPEG data URL for analysis. */
-function fileToDataUrl(file: File, maxDim = 1024): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("bad image"));
-    };
-    img.src = url;
-  });
-}
 
 function macroLine(f: {
   calories: number | null;
@@ -140,7 +117,7 @@ function FoodLogger() {
   async function analyzePhoto(file: File) {
     setAnalyzing(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await reencodeImageFile(file, { maxDim: 1024, quality: 0.7 });
       const result = await analyzeFoodPhoto({ imageDataUrl: dataUrl });
       if (!result.ok) {
         toast.error(result.error);

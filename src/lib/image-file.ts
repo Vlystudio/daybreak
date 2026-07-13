@@ -10,6 +10,22 @@ export const ACCEPTED_SOURCE_IMAGE_TYPES = new Set([
 
 export type ImageFileMetadata = Pick<File, "type" | "size">;
 
+export interface ImageFileInput {
+  files: ArrayLike<File> | null;
+  value: string;
+}
+
+/**
+ * Consume one picker selection and reset immediately. Resetting even for cancel
+ * or an empty FileList lets the browser emit `change` when the same image is
+ * selected again, while ordinary file/library/camera selections share one path.
+ */
+export function consumeSelectedImageFile(input: ImageFileInput): File | null {
+  const file = input.files?.[0] ?? null;
+  input.value = "";
+  return file;
+}
+
 export function validateImageFileMetadata(
   file: ImageFileMetadata
 ): { ok: true } | { ok: false; error: string } {
