@@ -17,6 +17,7 @@ import {
 } from "@/lib/integrations/ai-schemas";
 import type { WeatherSnapshot } from "@/lib/integrations/weather";
 import type { WorkoutProgram, NutritionGuide } from "@/lib/planning";
+import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 /**
  * AI morning briefing via the OpenAI API. Health data is sent to OpenAI to
@@ -98,16 +99,19 @@ function seedFrom(payload: unknown): number {
   return Math.abs(h);
 }
 
-export async function generateMorningBriefing(input: {
-  displayName: string;
-  todayMetrics: MetricsForPrompt | null;
-  recentMetrics: MetricsForPrompt[];
-  weather: WeatherSnapshot | null;
-  todayEvents: EventForPrompt[];
-  subjective?: SubjectiveForPrompt | null;
-  health?: HealthContextForPrompt | null;
-}): Promise<MorningBriefing | null> {
-  const client = openaiClient();
+export async function generateMorningBriefing(
+  permit: AiProcessingPermit,
+  input: {
+    displayName: string;
+    todayMetrics: MetricsForPrompt | null;
+    recentMetrics: MetricsForPrompt[];
+    weather: WeatherSnapshot | null;
+    todayEvents: EventForPrompt[];
+    subjective?: SubjectiveForPrompt | null;
+    health?: HealthContextForPrompt | null;
+  }
+): Promise<MorningBriefing | null> {
+  const client = openaiClient(permit);
   if (!client) return null;
 
   // Sanitize all free-text the user/providers control before it reaches the model.
@@ -216,11 +220,14 @@ Respond with JSON matching exactly:
 }
 Keep it under 220 words.`;
 
-export async function analyzeHealthTrends(input: {
-  metrics: Record<string, unknown>[];
-  flags: { title: string; detail: string }[];
-}): Promise<HealthAnalysis | null> {
-  const client = openaiClient();
+export async function analyzeHealthTrends(
+  permit: AiProcessingPermit,
+  input: {
+    metrics: Record<string, unknown>[];
+    flags: { title: string; detail: string }[];
+  }
+): Promise<HealthAnalysis | null> {
+  const client = openaiClient(permit);
   if (!client) return null;
 
   try {
@@ -282,9 +289,10 @@ Keep it under 220 words. Use "may", "suggests", "compared to your baseline".`;
 
 /** Explain the deterministic, source-aware understanding (never raw source rows). */
 export async function analyzeFusedHealth(
+  permit: AiProcessingPermit,
   input: Record<string, unknown>
 ): Promise<HealthAnalysis | null> {
-  const client = openaiClient();
+  const client = openaiClient(permit);
   if (!client) return null;
 
   try {
@@ -356,12 +364,15 @@ Respond with JSON exactly: { "message": "your next message", "action": null OR {
 const VALID_DOW = new Set([0, 1, 2, 3, 4, 5, 6]);
 
 /** One coach turn: returns the assistant's next message + an optional schedulable action. */
-export async function healthCheckinReply(input: {
-  metrics: Record<string, unknown>[];
-  flags: { title: string; detail: string }[];
-  history: CheckinTurn[];
-}): Promise<CheckinReply | null> {
-  const client = openaiClient();
+export async function healthCheckinReply(
+  permit: AiProcessingPermit,
+  input: {
+    metrics: Record<string, unknown>[];
+    flags: { title: string; detail: string }[];
+    history: CheckinTurn[];
+  }
+): Promise<CheckinReply | null> {
+  const client = openaiClient(permit);
   if (!client) return null;
 
   // The conversation is direct user input — sanitize each turn and cap history.
@@ -466,33 +477,36 @@ Respond with JSON exactly:
 { "blocks": [ { "date": "YYYY-MM-DD", "start": "HH:MM", "durationMin": <integer 10-240>, "title": "short title", "type": "workout|chore|errand|hobby|social|meal|wind_down|focus", "note": "optional one-line tip" } ] }
 Only use dates from the provided list. Keep under 40 blocks total.`;
 
-export async function generateWeeklyPlan(input: {
-  preferences: Record<string, unknown>;
-  days: { date: string; weekday: string }[];
-  busy: { date: string; start: string; end: string; title: string }[];
-  dayWindow?: { wake: string; sleep: string; source: string };
-  recent: { date: string; readiness: number | null; sleep: number | null }[];
-  weather?: {
-    description: string;
-    temperature: number;
-    high: number;
-    low: number;
-    precipitationChance: number | null;
-  } | null;
-  reflection?: {
-    wentWell: string | null;
-    toImprove: string | null;
-    tomorrowIntention: string | null;
-  } | null;
-  checkin?: {
-    mood: number | null;
-    energy: number | null;
-    stress: number | null;
-    soreness: number | null;
-  } | null;
-  health?: HealthContextForPrompt | null;
-}): Promise<PlanBlock[] | null> {
-  const client = openaiClient();
+export async function generateWeeklyPlan(
+  permit: AiProcessingPermit,
+  input: {
+    preferences: Record<string, unknown>;
+    days: { date: string; weekday: string }[];
+    busy: { date: string; start: string; end: string; title: string }[];
+    dayWindow?: { wake: string; sleep: string; source: string };
+    recent: { date: string; readiness: number | null; sleep: number | null }[];
+    weather?: {
+      description: string;
+      temperature: number;
+      high: number;
+      low: number;
+      precipitationChance: number | null;
+    } | null;
+    reflection?: {
+      wentWell: string | null;
+      toImprove: string | null;
+      tomorrowIntention: string | null;
+    } | null;
+    checkin?: {
+      mood: number | null;
+      energy: number | null;
+      stress: number | null;
+      soreness: number | null;
+    } | null;
+    health?: HealthContextForPrompt | null;
+  }
+): Promise<PlanBlock[] | null> {
+  const client = openaiClient(permit);
   if (!client) return null;
   const validDates = new Set(input.days.map((d) => d.date));
   const validTypes = new Set<string>([
@@ -609,20 +623,23 @@ Respond with JSON exactly:
 }
 Never suggest foods that violate the listed restrictions. Keep it under ~600 words.`;
 
-export async function generateFitnessPlan(input: {
-  profile: {
-    age: number | null;
-    sex: string | null;
-    heightIn: number;
-    weightLb: number;
-    activityLevel: string | null;
-    goal: string | null;
-    exerciseFrequency: string | null;
-    dietaryRestrictions: string[];
-  };
-  targets: { calories: number; protein: number; carbs: number; fat: number };
-}): Promise<FitnessPlanContent | null> {
-  const client = openaiClient();
+export async function generateFitnessPlan(
+  permit: AiProcessingPermit,
+  input: {
+    profile: {
+      age: number | null;
+      sex: string | null;
+      heightIn: number;
+      weightLb: number;
+      activityLevel: string | null;
+      goal: string | null;
+      exerciseFrequency: string | null;
+      dietaryRestrictions: string[];
+    };
+    targets: { calories: number; protein: number; carbs: number; fat: number };
+  }
+): Promise<FitnessPlanContent | null> {
+  const client = openaiClient(permit);
   if (!client) return null;
 
   const payload = {

@@ -9,6 +9,7 @@ import {
 } from "@/lib/fitness";
 import { SAFETY_SYSTEM_RULES } from "@/lib/fitness-safety";
 import { aiErrorLog } from "@/lib/integrations/ai-boundary";
+import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 /**
  * OpenAI as the "coach". Uses strict structured outputs (json_schema via Zod)
@@ -31,10 +32,11 @@ export interface ExerciseFilters {
 }
 
 export async function generateExercises(
+  permit: AiProcessingPermit,
   filters: ExerciseFilters,
   count = 8
 ): Promise<GeneratedExercise[] | null> {
-  const ai = openaiClient();
+  const ai = openaiClient(permit);
   if (!ai) return null;
 
   const system = `You are an expert exercise physiologist building a structured exercise library for a personal fitness app. Generate accurate, real exercises with correct muscle targeting and safe technique. ${SAFETY_SYSTEM_RULES}`;
@@ -88,8 +90,11 @@ export interface WorkoutContext {
   } | null;
 }
 
-export async function generateWorkoutPlan(ctx: WorkoutContext): Promise<WorkoutPlan | null> {
-  const ai = openaiClient();
+export async function generateWorkoutPlan(
+  permit: AiProcessingPermit,
+  ctx: WorkoutContext
+): Promise<WorkoutPlan | null> {
+  const ai = openaiClient(permit);
   if (!ai) return null;
 
   const system = `You are an intelligent strength & conditioning coach generating a single session for a personal fitness app. Use the person's recovery data to set intensity: low sleep / low HRV / low readiness means a lighter, recovery-oriented session (mobility, light cardio) rather than heavy lifting; good recovery means you can push appropriately. Apply progressive overload using recent workouts: increase reps before load, avoid spiking volume, alternate emphasis, and deload when recovery is poor. Only use the available equipment.

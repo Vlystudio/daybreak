@@ -21,6 +21,7 @@ import { buildDailyHealthUnderstanding } from "@/lib/health/understanding";
 import { buildAiHealthInput } from "@/lib/health/ai-input";
 import type { HealthMetric } from "@/lib/types";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 export type AnalyzeResult = { ok: true; analysis: HealthAnalysis } | { ok: false; error: string };
 
@@ -45,6 +46,14 @@ const METRIC_COLUMNS =
  */
 export async function analyzeHealth(): Promise<AnalyzeResult> {
   const user = await requireUser();
+  const permit = await getAiProcessingPermit(user.id);
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  if (!permit.consent.health) {
+    return {
+      ok: false,
+      error: "Enable Health and wearable summaries under Settings → AI data use first.",
+    };
+  }
 
   const limited = await rateLimit(`ai:${user.id}`, RATE_LIMITS.aiSummary);
   if (!limited.ok) {
@@ -64,7 +73,7 @@ export async function analyzeHealth(): Promise<AnalyzeResult> {
   }
 
   const aiInput = buildAiHealthInput(understanding) as unknown as Record<string, unknown>;
-  const analysis = await analyzeFusedHealth(aiInput);
+  const analysis = await analyzeFusedHealth(permit, aiInput);
   if (!analysis) {
     return { ok: false, error: "Couldn't analyze your trends right now — please try again." };
   }
@@ -91,6 +100,14 @@ async function recentMetricsAndFlags(supabase: SupabaseClient, userId: string) {
 /** Start a check-in: the coach opens with a pointed question from your data. */
 export async function startCheckin(): Promise<CheckinResult> {
   const user = await requireUser();
+  const permit = await getAiProcessingPermit(user.id);
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  if (!permit.consent.health) {
+    return {
+      ok: false,
+      error: "Enable Health and wearable summaries under Settings → AI data use first.",
+    };
+  }
   const limited = await rateLimit(`chat:${user.id}`, RATE_LIMITS.aiChat);
   if (!limited.ok) return { ok: false, error: "Check-in limit reached for now — try again later." };
 
@@ -99,7 +116,7 @@ export async function startCheckin(): Promise<CheckinResult> {
   if (rows.length < 3)
     return { ok: false, error: "Not enough data yet — give Oura a few more nights to sync." };
 
-  const reply = await healthCheckinReply({
+  const reply = await healthCheckinReply(permit, {
     metrics: rows as unknown as Record<string, unknown>[],
     flags,
     history: [],
@@ -129,6 +146,14 @@ export async function startCheckin(): Promise<CheckinResult> {
 /** Continue a check-in: append the user's message and get the coach's reply. */
 export async function replyCheckin(id: string, message: string): Promise<CheckinResult> {
   const user = await requireUser();
+  const permit = await getAiProcessingPermit(user.id);
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  if (!permit.consent.checkin) {
+    return {
+      ok: false,
+      error: "Enable Daily check-in ratings and notes under Settings → AI data use first.",
+    };
+  }
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid check-in" };
   const text = String(message ?? "")
     .trim()
@@ -152,9 +177,9 @@ export async function replyCheckin(id: string, message: string): Promise<Checkin
   ];
 
   const { rows, flags } = await recentMetricsAndFlags(supabase, user.id);
-  const reply = await healthCheckinReply({
-    metrics: rows as unknown as Record<string, unknown>[],
-    flags,
+  const reply = await healthCheckinReply(permit, {
+    metrics: permit.consent.health ? (rows as unknown as Record<string, unknown>[]) : [],
+    flags: permit.consent.health ? flags : [],
     history: history.map((m): CheckinTurn => ({ role: m.role, content: m.content })),
   });
   if (!reply) return { ok: false, error: "Couldn't get a reply right now — please try again." };

@@ -17,6 +17,8 @@ import {
 import { generateMealPlanContent } from "@/lib/grocery/meal-ai";
 import { getOnSaleItems } from "@/lib/grocery/on-sale";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 type IdResult = { ok: true; id: string } | { ok: false; error: string };
 
@@ -26,6 +28,7 @@ function clampInt(n: number, min: number, max: number): number {
 }
 
 async function householdId(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  if (!SOCIAL_FEATURES_ENABLED) return null;
   const { data } = await supabase
     .from("household_members")
     .select("household_id")
@@ -44,11 +47,15 @@ interface SettingsRow {
 
 export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> {
   const user = await requireUser();
+  const permit = await getAiProcessingPermit(user.id);
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   const limited = await rateLimit(`meals:${user.id}`, RATE_LIMITS.aiMeals);
-  if (!limited.ok) return { ok: false, error: "Daily meal-plan limit reached — try again tomorrow." };
+  if (!limited.ok)
+    return { ok: false, error: "Daily meal-plan limit reached — try again tomorrow." };
 
   const parsed = mealPlanInputSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid plan" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid plan" };
   const d = parsed.data;
 
   const supabase = await createClient();
@@ -69,7 +76,7 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
 
   const onSale = await getOnSaleItems();
 
-  const content = await generateMealPlanContent({
+  const content = await generateMealPlanContent(permit, {
     durationDays: d.durationDays,
     householdSize: settings?.household_size ?? 1,
     weeklyBudget: settings?.weekly_budget ?? null,
@@ -79,7 +86,8 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
     onSale,
     nutrition: goals ? { calories: goals.calories, protein_g: goals.protein_g } : null,
   });
-  if (!content) return { ok: false, error: "Couldn't generate a plan right now — please try again." };
+  if (!content)
+    return { ok: false, error: "Couldn't generate a plan right now — please try again." };
 
   const { data: plan, error: planErr } = await supabase
     .from("meal_plans")
@@ -155,7 +163,8 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
   // Build the day-by-day schedule referencing the stored recipes.
   const dayRows: { meal_plan_id: string; date: string; meals: MealPlanDayMeal[] }[] = [];
   for (const day of content.days) {
-    if (!Number.isInteger(day.day_index) || day.day_index < 0 || day.day_index >= d.durationDays) continue;
+    if (!Number.isInteger(day.day_index) || day.day_index < 0 || day.day_index >= d.durationDays)
+      continue;
     const date = format(addDays(parseISO(d.startDate), day.day_index), "yyyy-MM-dd");
     const slots: { slot: MealPlanDayMeal["slot"]; aiId: number | null }[] = [
       { slot: "breakfast", aiId: day.breakfast_id },
@@ -168,7 +177,12 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
       const recipeUuid = recipeIdMap.get(aiId);
       const meta = recipeMeta.get(aiId);
       if (!recipeUuid || !meta) continue;
-      meals.push({ slot, recipe_id: recipeUuid, title: meta.title.slice(0, 200), servings: clampInt(meta.servings, 1, 50) });
+      meals.push({
+        slot,
+        recipe_id: recipeUuid,
+        title: meta.title.slice(0, 200),
+        servings: clampInt(meta.servings, 1, 50),
+      });
     }
     dayRows.push({ meal_plan_id: plan.id, date, meals });
   }

@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import OpenAI from "openai";
 import { serverEnv } from "@/env";
+import { assertAiProcessingPermit, type AiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 /**
  * Shared OpenAI client + lightweight cost telemetry.
@@ -21,7 +22,8 @@ import { serverEnv } from "@/env";
 let cached: OpenAI | null = null;
 let cachedKey: string | null = null;
 
-export function openaiClient(): OpenAI | null {
+export function openaiClient(permit: AiProcessingPermit): OpenAI | null {
+  assertAiProcessingPermit(permit);
   const apiKey = serverEnv().OPENAI_API_KEY;
   if (!apiKey) return null;
   if (!cached || cachedKey !== apiKey) {

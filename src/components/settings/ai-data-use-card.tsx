@@ -32,7 +32,13 @@ const ROWS: { key: keyof AiConsent; label: string; desc: string }[] = [
   },
 ];
 
-export function AiDataUseCard({ consent }: { consent: AiConsent }) {
+export function AiDataUseCard({
+  consent,
+  updatedAt,
+}: {
+  consent: AiConsent;
+  updatedAt: string | null;
+}) {
   const [state, setState] = useState<AiConsent>(consent);
   const [pending, startTransition] = useTransition();
 
@@ -78,6 +84,11 @@ export function AiDataUseCard({ consent }: { consent: AiConsent }) {
             />
           </div>
         ))}
+        <p className="text-muted-foreground pt-1 text-xs">
+          {updatedAt
+            ? `Last changed ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(updatedAt))}. Revocation applies to the next AI request.`
+            : "No AI data-sharing consent has been recorded. Every category remains off."}
+        </p>
       </CardContent>
     </Card>
   );

@@ -16,7 +16,8 @@ import { aiConsentFromPrefs } from "@/lib/integrations/ai-consent";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck, UserRound, ChevronRight } from "lucide-react";
+import { ShieldCheck, UserRound, ChevronRight, FileText, LifeBuoy } from "lucide-react";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -48,12 +49,16 @@ export default async function SettingsPage() {
         .maybeSingle<{ metrics_days: number; range_end: string | null }>(),
       supabase
         .from("user_preferences")
-        .select("allow_ai_health_context, allow_ai_calendar_context, allow_ai_checkin_context")
+        .select(
+          "allow_ai_health_context, allow_ai_calendar_context, allow_ai_checkin_context, ai_consent_version, ai_consent_updated_at"
+        )
         .eq("user_id", user.id)
         .maybeSingle<{
           allow_ai_health_context: boolean | null;
           allow_ai_calendar_context: boolean | null;
           allow_ai_checkin_context: boolean | null;
+          ai_consent_version: string | null;
+          ai_consent_updated_at: string | null;
         }>(),
     ]);
   const aiConsent = aiConsentFromPrefs(aiPrefs);
@@ -122,8 +127,8 @@ export default async function SettingsPage() {
       />
       <HealthImportCard />
       <HealthSourcesCard sources={healthSources} />
-      <AiDataUseCard consent={aiConsent} />
-      <HouseholdCard household={data.household} householdEvents={[]} />
+      <AiDataUseCard consent={aiConsent} updatedAt={aiPrefs?.ai_consent_updated_at ?? null} />
+      {SOCIAL_FEATURES_ENABLED && <HouseholdCard household={data.household} householdEvents={[]} />}
 
       <Card>
         <CardHeader>
@@ -146,6 +151,32 @@ export default async function SettingsPage() {
 
       <MfaCard />
       <DataPrivacyCard />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="text-primary h-5 w-5" aria-hidden /> Legal &amp; support
+          </CardTitle>
+          <CardDescription>Policies, help, export, and account controls.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <Link className="text-primary block underline" href="/privacy">
+            Privacy Policy
+          </Link>
+          <Link className="text-primary block underline" href="/terms">
+            Terms of Service
+          </Link>
+          <a
+            className="text-primary flex items-center gap-2 underline"
+            href="mailto:valeyardvisuals@vlystudios.com"
+          >
+            <LifeBuoy className="h-4 w-4" aria-hidden /> Contact support
+          </a>
+          <a className="text-primary block underline" href="#data-privacy">
+            Export or delete my data
+          </a>
+        </CardContent>
+      </Card>
     </div>
   );
 }

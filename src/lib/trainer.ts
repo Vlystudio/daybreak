@@ -4,6 +4,7 @@ import { generateFitnessPlan } from "@/lib/integrations/ai";
 import { inputHash } from "@/lib/integrations/openai";
 import { audit } from "@/lib/audit";
 import type { UserPreferences } from "@/lib/planning";
+import { getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 const ACTIVITY_MULTIPLIER: Record<string, number> = {
   sedentary: 1.2,
@@ -50,9 +51,11 @@ export function computeTargets(prefs: UserPreferences): MacroTargets | null {
   return { calories, protein, carbs, fat };
 }
 
-export type TrainerResult = "ok" | "missing_metrics" | "failed";
+export type TrainerResult = "ok" | "missing_metrics" | "consent_required" | "failed";
 
 export async function generateFitnessPlanForUser(userId: string): Promise<TrainerResult> {
+  const permit = await getAiProcessingPermit(userId);
+  if (!permit || !permit.consent.health) return "consent_required";
   const admin = createAdminClient();
 
   const { data: prefs } = await admin
@@ -90,7 +93,7 @@ export async function generateFitnessPlanForUser(userId: string): Promise<Traine
     .maybeSingle<{ input_hash: string | null }>();
   if (existingPlan?.input_hash === hash) return "ok";
 
-  const content = await generateFitnessPlan(planInput);
+  const content = await generateFitnessPlan(permit, planInput);
   if (!content) return "failed";
 
   const { error } = await admin.from("fitness_plans").upsert(

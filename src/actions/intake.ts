@@ -10,6 +10,7 @@ import { analyzeFoodImage, type FoodAnalysis } from "@/lib/integrations/food-vis
 import { validateImageDataUrl } from "@/lib/image-upload";
 import { bodyMeasurementToObservations, upsertHealthObservations } from "@/lib/health/observations";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 /** YYYY-MM-DD for "now" in the user's timezone. */
 async function localToday(userId: string): Promise<string> {
@@ -46,7 +47,9 @@ export async function analyzeFoodPhoto(input: { imageDataUrl: string }): Promise
   const valid = validateImageDataUrl(input.imageDataUrl);
   if (!valid.ok) return { ok: false, error: valid.error };
 
-  const analysis = await analyzeFoodImage(input.imageDataUrl);
+  const permit = await getAiProcessingPermit(user.id);
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  const analysis = await analyzeFoodImage(permit, input.imageDataUrl);
   if (!analysis) return { ok: false, error: "Couldn't read that photo — log it manually below." };
 
   await audit(user.id, "food.analyzed", { metadata: { provider: analysis.provider } });

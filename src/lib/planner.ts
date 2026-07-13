@@ -2,7 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyPlan, type PlanBlockType } from "@/lib/integrations/ai";
 import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
-import { aiConsentFromPrefs, redactEventTitle } from "@/lib/integrations/ai-consent";
+import { redactEventTitle } from "@/lib/integrations/ai-consent";
+import { getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateWorkoutForUser } from "@/lib/workout-engine";
 import { audit } from "@/lib/audit";
@@ -124,6 +125,8 @@ async function planDays(
   dateList: { date: string; weekday: string }[]
 ): Promise<number | null> {
   const admin = createAdminClient();
+  const permit = await getAiProcessingPermit(userId);
+  if (!permit) return null;
 
   const { data: prefs } = await admin
     .from("user_preferences")
@@ -135,7 +138,7 @@ async function planDays(
 
   // Per-user AI data-use consent. When a context is off we omit it from the AI
   // payload (calendar keeps busy time-blocks but with titles stripped).
-  const consent = aiConsentFromPrefs(prefs);
+  const consent = permit.consent;
 
   const { data: profile } = await admin
     .from("profiles")
@@ -196,8 +199,10 @@ async function planDays(
   // Day window the planner schedules within. Prefer the wearable's most recent
   // actual sleep/wake; fall back to the user's goal times; then sane defaults.
   const latestSleep = (metrics ?? []).find((m) => m.bedtime_end || m.bedtime_start) ?? null;
-  const actualWake = latestSleep?.bedtime_end ? localTime(latestSleep.bedtime_end, tz) : null;
-  const actualSleep = latestSleep?.bedtime_start ? localTime(latestSleep.bedtime_start, tz) : null;
+  const actualWake =
+    consent.health && latestSleep?.bedtime_end ? localTime(latestSleep.bedtime_end, tz) : null;
+  const actualSleep =
+    consent.health && latestSleep?.bedtime_start ? localTime(latestSleep.bedtime_start, tz) : null;
   const dayWindow = {
     wake: actualWake ?? prefs.wake_time ?? "07:00",
     sleep: actualSleep ?? prefs.sleep_time ?? "22:30",
@@ -299,16 +304,17 @@ async function planDays(
       ...workBusy,
     ];
     const dm = metricsByDate.get(d.date) ?? latestMetric;
-    const recent = dm
-      ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }]
-      : [];
+    const recent =
+      consent.health && dm
+        ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }]
+        : [];
     const weather = d.date === todayStr ? weatherToday : null;
     return { d, dayFixed, workBusy, busyForDay, recent, weather };
   });
 
   const dayPlans = await Promise.all(
     dayCtx.map((c) =>
-      generateWeeklyPlan({
+      generateWeeklyPlan(permit, {
         preferences,
         days: [c.d],
         busy: c.busyForDay,
@@ -323,7 +329,7 @@ async function planDays(
               precipitationChance: c.weather.precipitationChance,
             }
           : null,
-        reflection: c.d.date === earliestDate ? reflection : null,
+        reflection: c.d.date === earliestDate && consent.checkin ? reflection : null,
         checkin: c.d.date === todayStr && consent.checkin ? todayCheckin : null,
         health: c.d.date === todayStr ? todayHealth : null,
       })

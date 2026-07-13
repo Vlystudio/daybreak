@@ -3,7 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchOuraDailyMetrics } from "@/lib/integrations/oura";
 import { dailyMetricsToObservations, upsertHealthObservations } from "@/lib/health/observations";
 import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
-import { aiConsentFromPrefs, redactEventTitle } from "@/lib/integrations/ai-consent";
+import { redactEventTitle } from "@/lib/integrations/ai-consent";
+import { getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 import type { HealthObservationSource } from "@/lib/health/types";
 import {
   fetchGoogleEvents,
@@ -289,6 +290,8 @@ export async function exportPlanToGoogle(userId: string): Promise<boolean> {
 
 /** Generate (or regenerate) today's AI briefing for a user. */
 export async function generateSummaryForUser(userId: string): Promise<boolean> {
+  const permit = await getAiProcessingPermit(userId);
+  if (!permit) return false;
   const admin = createAdminClient();
   const today = isoDate(new Date());
   const weekAgo = isoDate(new Date(Date.now() - 7 * 86_400_000));
@@ -348,7 +351,10 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
   ]);
 
   // Per-user AI data-use consent — omit any context the user opted out of.
-  const consent = aiConsentFromPrefs(prefs);
+  // The opaque server-issued permit is the authoritative consent source.
+  // Keep the selected row in this batch for backward-compatible schema checks.
+  void prefs;
+  const consent = permit.consent;
 
   const weather =
     profile?.latitude != null && profile?.longitude != null
@@ -360,18 +366,17 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
     ? (metrics?.find((m) => m.date === today) ?? metrics?.at(-1) ?? null)
     : null;
 
-  // Only fold in a self-report from today or yesterday, so a stale one isn't
-  // presented as how they feel right now. The free-text note is dropped when
-  // check-in context is off (structured 1-5 ratings are kept).
+  // Only fold in a self-report from today or yesterday, and omit the entire
+  // record when check-in context is off (including structured ratings).
   const yesterday = isoDate(new Date(Date.now() - 86_400_000));
   const subjective =
-    checkin && checkin.date >= yesterday
+    consent.checkin && checkin && checkin.date >= yesterday
       ? {
           mood: checkin.mood,
           energy: checkin.energy,
           stress: checkin.stress,
           soreness: checkin.soreness,
-          note: consent.checkin ? checkin.note : null,
+          note: checkin.note,
         }
       : null;
 
@@ -419,7 +424,7 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
     .maybeSingle<{ input_hash: string | null }>();
   if (existingSummary?.input_hash === hash) return true;
 
-  const briefing = await generateMorningBriefing(briefingInput);
+  const briefing = await generateMorningBriefing(permit, briefingInput);
 
   if (!briefing) return false;
 

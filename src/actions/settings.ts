@@ -12,6 +12,7 @@ import { geocodeCity } from "@/lib/integrations/weather";
 import { deleteConnection, type Provider } from "@/lib/integrations/tokens";
 import { syncOuraForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_VERSION, type AiConsent } from "@/lib/integrations/ai-consent";
 
 export async function updateProfile(input: ProfileInput): Promise<ActionResult> {
   const user = await requireUser();
@@ -208,12 +209,55 @@ export async function setAiContextPreference(input: {
 
   // Server-derived user id; only the one consent column is written.
   const admin = createAdminClient();
-  const { error } = await admin
-    .from("user_preferences")
-    .update({ [AI_CONTEXT_COLUMN[parsed.data.context]]: parsed.data.enabled })
-    .eq("user_id", user.id);
+  const { error } = await admin.from("user_preferences").upsert(
+    {
+      user_id: user.id,
+      [AI_CONTEXT_COLUMN[parsed.data.context]]: parsed.data.enabled,
+      ai_consent_version: AI_CONSENT_VERSION,
+      ai_consent_updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
   if (error) return { ok: false, error: "Couldn't update your AI settings." };
 
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+const aiConsentSchema = z.object({
+  health: z.boolean(),
+  calendar: z.boolean(),
+  checkin: z.boolean(),
+});
+
+/** Record the complete disclosure decision atomically before first AI use. */
+export async function setAiConsentPreferences(input: AiConsent): Promise<ActionResult> {
+  const user = await requireUser();
+  const parsed = aiConsentSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid AI consent choice." };
+
+  const limited = await securityRateLimit(`ai-consent:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("user_preferences").upsert(
+    {
+      user_id: user.id,
+      allow_ai_health_context: parsed.data.health,
+      allow_ai_calendar_context: parsed.data.calendar,
+      allow_ai_checkin_context: parsed.data.checkin,
+      ai_consent_version: AI_CONSENT_VERSION,
+      ai_consent_updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id" }
+  );
+  if (error) return { ok: false, error: "Couldn't save your AI consent choice." };
+
+  await audit(user.id, "ai.consent_updated", {
+    metadata: { version: AI_CONSENT_VERSION },
+  });
+  revalidatePath("/onboarding");
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   return { ok: true };

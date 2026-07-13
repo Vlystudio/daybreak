@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { generateFitnessPlanForUser } from "@/lib/trainer";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_REQUIRED_ERROR } from "@/lib/integrations/ai-permit";
 
 /** Generate the user's workout + nutrition regimen. */
 export async function generateFitnessPlan(): Promise<ActionResult> {
@@ -19,6 +20,9 @@ export async function generateFitnessPlan(): Promise<ActionResult> {
     const result = await generateFitnessPlanForUser(user.id);
     if (result === "missing_metrics") {
       return { ok: false, error: "Add your height and weight on the Plan tab first." };
+    }
+    if (result === "consent_required") {
+      return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
     }
     if (result === "failed") {
       return { ok: false, error: "Couldn't build your regimen — please try again in a minute." };

@@ -38,6 +38,7 @@ export type AuditAction =
   | "household.left"
   | "profile.updated"
   | "preferences.updated"
+  | "ai.consent_updated"
   | "plan.generated"
   | "fitness_plan.generated"
   | "exercises.generated"
