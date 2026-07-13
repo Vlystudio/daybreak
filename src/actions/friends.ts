@@ -9,10 +9,12 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_DISABLED_ERROR, SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 const emailSchema = z.email();
 
 export async function sendFriendRequest(email: string): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
@@ -57,6 +59,7 @@ export async function sendFriendRequest(email: string): Promise<ActionResult> {
 }
 
 export async function respondToRequest(id: string, accept: boolean): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid request" };
 
@@ -73,7 +76,11 @@ export async function respondToRequest(id: string, accept: boolean): Promise<Act
     if (error || !data) return { ok: false, error: "Couldn't accept the request." };
     await audit(user.id, "friend.accepted");
   } else {
-    const { error } = await supabase.from("friendships").delete().eq("id", id).eq("addressee_id", user.id);
+    const { error } = await supabase
+      .from("friendships")
+      .delete()
+      .eq("id", id)
+      .eq("addressee_id", user.id);
     if (error) return { ok: false, error: "Couldn't decline the request." };
   }
 
@@ -82,6 +89,7 @@ export async function respondToRequest(id: string, accept: boolean): Promise<Act
 }
 
 export async function removeFriend(id: string): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid" };
 
@@ -99,6 +107,7 @@ export async function saveFriendSettings(input: {
   shareCalendar: boolean;
   shareGoals: boolean;
 }): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
   const supabase = await createClient();
   const { error } = await supabase.from("friend_settings").upsert(

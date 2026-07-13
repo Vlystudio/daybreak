@@ -2,133 +2,93 @@ import Link from "next/link";
 import { Sunrise } from "lucide-react";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Terms of Service · Daybreak",
-  description: "The terms governing your use of Daybreak.",
-};
-
-const UPDATED = "June 18, 2026";
+export const metadata: Metadata = { title: "Terms of Service · Daybreak" };
 const CONTACT = "valeyardvisuals@vlystudios.com";
 
 export default function TermsPage() {
   return (
     <main className="bg-sunrise-soft min-h-screen">
       <div className="mx-auto w-full max-w-3xl px-6 py-12">
-        <header className="mb-10 flex items-center justify-between">
+        <header className="mb-10 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <span className="bg-sunrise flex h-9 w-9 items-center justify-center rounded-full shadow-soft">
+            <span className="bg-sunrise shadow-soft flex h-9 w-9 items-center justify-center rounded-full">
               <Sunrise className="h-5 w-5 text-[#7a4a12]" aria-hidden />
             </span>
             Daybreak
           </Link>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Back home
+          <Link href="/" className="text-muted-foreground text-sm">
+            Back home
           </Link>
         </header>
-
-        <article className="space-y-6 text-sm leading-relaxed text-foreground/90">
+        <article className="text-foreground/90 space-y-6 text-sm leading-relaxed">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Terms of Service</h1>
-            <p className="mt-2 text-muted-foreground">Last updated: {UPDATED}</p>
+            <h1 className="text-foreground text-3xl font-semibold tracking-tight">
+              Terms of Service
+            </h1>
+            <p className="text-muted-foreground mt-2">Last updated: July 13, 2026</p>
           </div>
-
           <p>
-            These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Daybreak (the
-            &ldquo;Service&rdquo;). By creating an account or using the Service, you agree to these
-            Terms. If you do not agree, please do not use the Service.
+            These terms govern your use of Daybreak. If you do not agree, do not use the service.
           </p>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">1. The Service</h2>
-            <p>
-              Daybreak is a personal wellness dashboard that aggregates your sleep and readiness data,
-              calendar, local weather, and an AI-generated morning briefing. Features that rely on
-              third-party integrations (such as Oura and Google Calendar) require you to connect those
-              accounts.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">2. Eligibility &amp; accounts</h2>
-            <p>
-              You must be at least 16 years old to use the Service. You are responsible for the
-              activity under your account and for keeping your login credentials secure. Notify us
-              promptly of any unauthorized use.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">3. Not medical advice</h2>
-            <p>
-              Daybreak presents wellness information and AI-generated suggestions for general,
-              informational purposes only. It is <strong>not</strong> a medical device and does not
-              provide medical advice, diagnosis, or treatment. Always consult a qualified healthcare
-              professional regarding your health. Do not disregard professional medical advice because
-              of something you read in Daybreak.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">4. Acceptable use</h2>
-            <p>
-              You agree not to misuse the Service, including attempting to access other users&rsquo;
-              data, disrupting the Service, reverse-engineering it, or using it to violate any
-              applicable law or the terms of connected providers (e.g., Oura, Google).
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">5. Third-party services</h2>
-            <p>
-              The Service integrates with third parties including Oura, Google, OpenAI, Open-Meteo,
-              Supabase, and Vercel. Your use of those integrations is also subject to their respective
-              terms and privacy policies. We are not responsible for third-party services.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">6. Your content &amp; data</h2>
-            <p>
-              You retain ownership of the data you provide and connect. You grant us a limited license
-              to process it solely to operate the Service as described in our{" "}
-              <Link href="/privacy" className="text-primary underline">Privacy Policy</Link>.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">7. Disclaimers &amp; limitation of liability</h2>
-            <p>
-              The Service is provided &ldquo;as is&rdquo; without warranties of any kind. To the
-              maximum extent permitted by law, we are not liable for any indirect, incidental, or
-              consequential damages arising from your use of the Service.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">8. Termination</h2>
-            <p>
-              You may stop using the Service and delete your account at any time. We may suspend or
-              terminate access if you violate these Terms or to protect the Service.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">9. Changes to these Terms</h2>
-            <p>
-              We may update these Terms from time to time. Continued use after changes take effect
-              constitutes acceptance of the revised Terms.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
-            <p>
-              Questions about these Terms? Email{" "}
-              <a className="text-primary underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
-            </p>
-          </section>
+          <TermsSection title="1. Wellness and planning service">
+            Daybreak organizes schedules, nutrition, workouts, habits, connected wellness data, and
+            optional AI-generated suggestions. The first public release is free. No subscription or
+            paid digital feature is offered in this release.
+          </TermsSection>
+          <TermsSection title="2. Not medical advice">
+            Daybreak is not a medical device and does not provide diagnosis, treatment, or emergency
+            services. AI and wellness suggestions are general information. Seek qualified
+            professional care for medical concerns and emergency services when appropriate.
+          </TermsSection>
+          <TermsSection title="3. Accounts and eligibility">
+            You must be at least 16, provide accurate account information, protect your credentials,
+            and promptly report unauthorized access. You are responsible for activity under your
+            account.
+          </TermsSection>
+          <TermsSection title="4. Connected and AI services">
+            Features may depend on Apple Health, Oura, Fitbit, Google, OpenAI, LogMeal, Supabase,
+            Vercel, Sentry, Resend, and weather or notification services. You choose whether to
+            connect optional providers and whether specified personal categories may be sent for AI
+            processing. Third-party availability and terms also apply.
+          </TermsSection>
+          <TermsSection title="5. Your content and acceptable use">
+            You retain ownership of content you provide and grant Daybreak a limited license to
+            process it only to operate the service as described in the{" "}
+            <Link href="/privacy" className="text-primary underline">
+              Privacy Policy
+            </Link>
+            . Do not access another person’s data, interfere with the service, upload unlawful
+            content, evade security controls, or violate connected-provider terms.
+          </TermsSection>
+          <TermsSection title="6. Availability and disclaimers">
+            The service is provided “as is” and may occasionally be unavailable or produce
+            incomplete information. Verify important schedule, nutrition, workout, and wellness
+            decisions yourself. To the extent permitted by law, Daybreak is not liable for indirect
+            or consequential losses.
+          </TermsSection>
+          <TermsSection title="7. Termination and deletion">
+            You may stop using Daybreak and delete your account in Settings at any time. We may
+            suspend access to protect users or the service or address a violation. Provisions that
+            by nature survive termination remain effective.
+          </TermsSection>
+          <TermsSection title="8. Changes and contact">
+            We may update these terms and will revise the date above. Questions may be sent to{" "}
+            <a className="text-primary underline" href={`mailto:${CONTACT}`}>
+              {CONTACT}
+            </a>
+            .
+          </TermsSection>
         </article>
       </div>
     </main>
+  );
+}
+
+function TermsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-foreground text-lg font-semibold">{title}</h2>
+      <p>{children}</p>
+    </section>
   );
 }

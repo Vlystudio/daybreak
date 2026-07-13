@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { cn } from "@/lib/utils";
-import { NEST_ENABLED } from "@/lib/features";
+import { NEST_ENABLED, SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -53,13 +53,19 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/grocery", label: "Grocery", icon: ShoppingBasket },
     ],
   },
-  {
-    title: "Play & friends",
-    items: [
-      ...(NEST_ENABLED ? [{ href: "/nest", label: "Nest", icon: Bird }] : []),
-      { href: "/friends", label: "Friends", icon: Users },
-    ],
-  },
+  ...(NEST_ENABLED || SOCIAL_FEATURES_ENABLED
+    ? [
+        {
+          title: "Play & friends",
+          items: [
+            ...(NEST_ENABLED ? [{ href: "/nest", label: "Nest", icon: Bird }] : []),
+            ...(SOCIAL_FEATURES_ENABLED
+              ? [{ href: "/friends", label: "Friends", icon: Users }]
+              : []),
+          ],
+        },
+      ]
+    : []),
   {
     title: "You",
     items: [

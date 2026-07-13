@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { securityRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
+import { AccountDeletionError, deleteUserAccount } from "@/lib/account-deletion";
 
 /**
  * Self-service data rights (GDPR/CCPA): a user can export everything Daybreak
@@ -81,23 +82,29 @@ export async function exportMyData(): Promise<
   };
 }
 
-export async function deleteMyAccount(): Promise<{ ok: boolean; error?: string }> {
+export async function deleteMyAccount(input: {
+  confirmation: string;
+}): Promise<{ ok: boolean; error?: string }> {
   const user = await requireUser();
+
+  if (input?.confirmation !== "DELETE") {
+    return { ok: false, error: "Type DELETE to confirm permanent account deletion." };
+  }
 
   const limited = await securityRateLimit(`account-delete:${user.id}`, RATE_LIMITS.accountDelete);
   if (!limited.ok)
     return { ok: false, error: "Too many attempts — please wait a moment and try again." };
 
   const admin = createAdminClient();
-
-  // Every user-owned table cascades from auth.users (ON DELETE CASCADE), so
-  // removing the auth user erases every trace. Requires the service role.
-  const { error } = await admin.auth.admin.deleteUser(user.id);
-  if (error) return { ok: false, error: "Couldn't delete your account — please try again." };
-
-  // Logged with a null actor + the id in metadata, so the audit row survives the
-  // cascade that just removed everything keyed to this user.
-  await audit(null, "account.deleted", { metadata: { user: user.id } });
+  try {
+    await deleteUserAccount(admin, user.id);
+  } catch (error) {
+    const step = error instanceof AccountDeletionError ? error.step : "cleanup";
+    return {
+      ok: false,
+      error: `Account deletion stopped during ${step}. Your sign-in was kept when possible; retry or contact support.`,
+    };
+  }
 
   try {
     const supabase = await createClient();

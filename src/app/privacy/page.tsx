@@ -4,137 +4,153 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Privacy Policy · Daybreak",
-  description: "How Daybreak collects, uses, and protects your data.",
+  description: "How Daybreak collects, uses, shares, and deletes personal information.",
 };
 
-const UPDATED = "June 18, 2026";
 const CONTACT = "valeyardvisuals@vlystudios.com";
 
 export default function PrivacyPage() {
   return (
     <main className="bg-sunrise-soft min-h-screen">
       <div className="mx-auto w-full max-w-3xl px-6 py-12">
-        <header className="mb-10 flex items-center justify-between">
+        <header className="mb-10 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <span className="bg-sunrise flex h-9 w-9 items-center justify-center rounded-full shadow-soft">
+            <span className="bg-sunrise shadow-soft flex h-9 w-9 items-center justify-center rounded-full">
               <Sunrise className="h-5 w-5 text-[#7a4a12]" aria-hidden />
             </span>
             Daybreak
           </Link>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Back home
+          <Link href="/" className="text-muted-foreground hover:text-foreground text-sm">
+            Back home
           </Link>
         </header>
 
-        <article className="space-y-6 text-sm leading-relaxed text-foreground/90">
+        <article className="text-foreground/90 space-y-7 text-sm leading-relaxed">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Privacy Policy</h1>
-            <p className="mt-2 text-muted-foreground">Last updated: {UPDATED}</p>
+            <h1 className="text-foreground text-3xl font-semibold tracking-tight">
+              Privacy Policy
+            </h1>
+            <p className="text-muted-foreground mt-2">Last updated: July 13, 2026</p>
           </div>
-
           <p>
-            Daybreak (&ldquo;Daybreak,&rdquo; &ldquo;we,&rdquo; &ldquo;us&rdquo;) is a personal
-            morning-wellness dashboard that brings together your sleep and readiness data, calendar,
-            local weather, and an AI morning briefing. This policy explains what we collect, how we
-            use it, and the choices you have. We collect the minimum needed to provide the service
-            and we never sell your data.
+            Daybreak is a wellness and planning service, not a medical device. This policy explains
+            what we collect, why we use it, which providers process it, and how you control it. We
+            do not sell personal information. We do not use health information for advertising.
           </p>
 
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Information we collect</h2>
+          <PolicySection title="Information you provide and connect">
             <ul className="list-disc space-y-1 pl-5">
               <li>
-                <strong>Account information</strong> — your email address and an optional display
-                name, used to create and secure your account.
+                Account email, display name, profile details, city, and optional profile photo.
               </li>
               <li>
-                <strong>Health &amp; activity data</strong> — when you connect Oura, we retrieve
-                sleep, readiness, heart-rate variability (HRV), and related metrics, with your
-                explicit authorization, to display your daily wellness picture.
+                Wellness data you authorize from Apple Health/HealthKit, Oura, and Fitbit, including
+                sleep, activity, workouts, heart and recovery signals, weight, and body composition.
+              </li>
+              <li>Google Calendar events and schedules you create in Daybreak.</li>
+              <li>City or coordinates you provide for local weather.</li>
+              <li>
+                Nutrition, body measurements, meals, grocery purchases, and dietary preferences.
               </li>
               <li>
-                <strong>Calendar data</strong> — when you connect Google Calendar, we read your
-                events to show them alongside your schedule.
+                Daily check-in ratings and notes, goals, habits, workout data, and planning
+                preferences.
               </li>
               <li>
-                <strong>Location</strong> — an approximate location (city or coordinates) you provide,
-                used only to fetch local weather.
+                Meal, receipt, and profile photographs you choose. Meal and receipt images are
+                transformed to remove EXIF/location metadata, processed transiently, and are not
+                retained after analysis. Profile photos are stored until replaced, removed, or the
+                account is deleted.
               </li>
               <li>
-                <strong>Schedule you create</strong> — events and notes you enter manually in the app.
+                Device push subscriptions, security events, and limited diagnostic/crash
+                information.
               </li>
             </ul>
-          </section>
+          </PolicySection>
 
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">How we use your information</h2>
-            <ul className="list-disc space-y-1 pl-5">
-              <li>To display your dashboard: sleep, readiness, HRV, weather, and schedule.</li>
-              <li>
-                To generate your AI morning briefing. Relevant metrics are sent to OpenAI solely to
-                produce that briefing; they are not used to train models.
-              </li>
-              <li>To operate, secure, and improve the service.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">How your data is protected</h2>
-            <ul className="list-disc space-y-1 pl-5">
-              <li>
-                Every record is protected by row-level security; you can only access your own data
-                (and household-shared events you are a member of).
-              </li>
-              <li>
-                Connection tokens for Oura and Google are encrypted at rest (AES-256-GCM) and are
-                never exposed to the browser.
-              </li>
-              <li>Health values are never written to application logs.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Third-party services</h2>
-            <p>We share data with these providers only as needed to run Daybreak:</p>
-            <ul className="list-disc space-y-1 pl-5">
-              <li><strong>Supabase</strong> — database, authentication, and hosting of your data.</li>
-              <li><strong>OpenAI</strong> — generates your morning briefing from the metrics you provide.</li>
-              <li><strong>Oura</strong> — source of sleep, readiness, and heart-rate data you authorize.</li>
-              <li><strong>Google Calendar</strong> — source of calendar events you authorize.</li>
-              <li><strong>Open-Meteo</strong> — weather data for your location.</li>
-              <li><strong>Vercel</strong> — application hosting.</li>
-            </ul>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Your choices &amp; data deletion</h2>
+          <PolicySection title="How we use information">
             <p>
-              You can disconnect Oura or Google at any time in Settings, which removes the stored
-              connection and its tokens. You may request deletion of your account and associated data
-              by contacting us at{" "}
-              <a className="text-primary underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>. We
-              retain your data only for as long as your account is active or as needed to provide the
-              service.
+              We use information to authenticate you; display wellness trends, schedules, nutrition,
+              and plans; synchronize connected providers; deliver notifications and email; secure
+              and troubleshoot the service; and respond to support requests. Daybreak reads
+              HealthKit data only after your action, uploads imported summaries to its backend, and
+              never writes to Apple Health.
             </p>
-          </section>
+          </PolicySection>
 
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Changes to this policy</h2>
+          <PolicySection title="AI processing and your consent">
             <p>
-              We may update this policy from time to time. Material changes will be reflected by the
-              &ldquo;Last updated&rdquo; date above.
+              Daybreak uses OpenAI as an external processor for optional briefings, plans, coaching,
+              photo analysis, and receipt analysis. LogMeal may process a meal photo when
+              configured. Before any AI feature is used, Daybreak records the current disclosure
+              version and your choices. Health summaries, calendar titles, and daily check-ins
+              default to off and are sent only when the matching stored choice is explicitly on.
+              Calendar titles become “Busy time” when title sharing is off. You may decline and
+              receive a more general plan, or revoke any category immediately in Settings. HealthKit
+              authorization is separate from AI consent. AI output is not used for diagnosis or
+              treatment.
             </p>
-          </section>
+          </PolicySection>
 
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Contact</h2>
+          <PolicySection title="Service providers and disclosures">
+            <p>We disclose only what is needed for the service to:</p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>Supabase for authentication, database, and file storage.</li>
+              <li>Vercel for application hosting and delivery.</li>
+              <li>OpenAI and, when configured, LogMeal for user-initiated AI processing.</li>
+              <li>
+                Oura, Fitbit, Google Calendar, Apple Health, and weather providers for connected
+                features.
+              </li>
+              <li>Sentry for redacted crash/diagnostic information.</li>
+              <li>Resend for transactional email and web-push infrastructure for notifications.</li>
+            </ul>
             <p>
-              Questions about this policy? Email{" "}
-              <a className="text-primary underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
+              Friends and household sharing are disabled in the first public release. If enabled in
+              a later release, this policy and in-app controls will be updated before information is
+              shared.
             </p>
-          </section>
+          </PolicySection>
+
+          <PolicySection title="Retention, security, and your controls">
+            <p>
+              Account data is retained while your account is active and as needed to operate and
+              secure Daybreak. Provider tokens are encrypted at rest. User rows are protected by
+              row-level security. Diagnostic records are minimized and must not contain raw health
+              values, prompts, photos, or provider tokens.
+            </p>
+            <p>
+              In Settings you can export your data, delete your account in-app, disconnect
+              providers, revoke AI categories, remove a profile photo, and disconnect Apple Health
+              with an option to delete imported Apple data. HealthKit permission can also be revoked
+              in iOS Settings. Account deletion removes user storage, provider credentials, push
+              subscriptions, sharing relationships, personal rows, and then the authentication
+              account. Non-identifying shared catalog entries may remain after the creator link is
+              removed so other users’ records are not damaged.
+            </p>
+          </PolicySection>
+
+          <PolicySection title="Contact and changes">
+            <p>
+              Questions or privacy requests can be sent to{" "}
+              <a className="text-primary underline" href={`mailto:${CONTACT}`}>
+                {CONTACT}
+              </a>
+              . We may update this policy and will change the date above when we do.
+            </p>
+          </PolicySection>
         </article>
       </div>
     </main>
+  );
+}
+
+function PolicySection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-foreground text-lg font-semibold">{title}</h2>
+      {children}
+    </section>
   );
 }

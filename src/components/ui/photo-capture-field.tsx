@@ -6,6 +6,8 @@ import { Camera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CameraCaptureDialog } from "@/components/ui/camera-capture-dialog";
 import { getBrowserStreamGetter } from "@/lib/camera";
+import { validateImageFileMetadata } from "@/lib/image-file";
+import { toast } from "sonner";
 
 interface PhotoCaptureFieldProps {
   /** Receives the chosen image, whether captured live or picked from the device. */
@@ -74,7 +76,13 @@ export function PhotoCaptureField({
   function onInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-picking the same file
-    if (file) onFile(file);
+    if (!file) return;
+    const validation = validateImageFileMetadata(file);
+    if (!validation.ok) {
+      toast.error(validation.error);
+      return;
+    }
+    onFile(file);
   }
 
   return (

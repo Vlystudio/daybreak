@@ -34,13 +34,13 @@ export function DataPrivacyCard() {
   function onDelete() {
     startTransition(async () => {
       // On success the action redirects away; only an error returns here.
-      const res = await deleteMyAccount();
+      const res = await deleteMyAccount({ confirmation: confirmText });
       if (res && !res.ok) toast.error(res.error ?? "Couldn't delete your account.");
     });
   }
 
   return (
-    <Card>
+    <Card id="data-privacy">
       <CardHeader>
         <CardTitle>Data &amp; privacy</CardTitle>
         <CardDescription>

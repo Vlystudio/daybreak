@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { scheduleEventSchema, uuidSchema, type ScheduleEventInput } from "@/lib/validation";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -37,7 +38,8 @@ export async function createScheduleEvent(input: ScheduleEventInput): Promise<Ac
   }
   const v = parsed.data;
 
-  const householdId = v.shareWithHousehold ? await userHouseholdId(user.id) : null;
+  const householdId =
+    SOCIAL_FEATURES_ENABLED && v.shareWithHousehold ? await userHouseholdId(user.id) : null;
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -65,7 +67,10 @@ export async function createScheduleEvent(input: ScheduleEventInput): Promise<Ac
   return { ok: true };
 }
 
-export async function toggleEventCompleted(eventId: string, completed: boolean): Promise<ActionResult> {
+export async function toggleEventCompleted(
+  eventId: string,
+  completed: boolean
+): Promise<ActionResult> {
   const user = await requireUser();
   if (!uuidSchema.safeParse(eventId).success) return { ok: false, error: "Invalid event" };
 
@@ -95,11 +100,17 @@ export async function updateScheduleEvent(
   const idParsed = uuidSchema.safeParse(eventId);
   const parsed = scheduleEventSchema.safeParse(input);
   if (!idParsed.success || !parsed.success) {
-    return { ok: false, error: parsed.success ? "Invalid event id" : parsed.error.issues[0]?.message ?? "Invalid event" };
+    return {
+      ok: false,
+      error: parsed.success
+        ? "Invalid event id"
+        : (parsed.error.issues[0]?.message ?? "Invalid event"),
+    };
   }
   const v = parsed.data;
 
-  const householdId = v.shareWithHousehold ? await userHouseholdId(user.id) : null;
+  const householdId =
+    SOCIAL_FEATURES_ENABLED && v.shareWithHousehold ? await userHouseholdId(user.id) : null;
 
   const supabase = await createClient();
   const { data, error } = await supabase

@@ -12,3 +12,18 @@
  * now-conditional imports (e.g. the `Bird` icon) as unused.
  */
 export const NEST_ENABLED: boolean = false;
+
+export function enabledOnlyWhenExplicitlyTrue(value: string | undefined): boolean {
+  return value === "true";
+}
+
+/** Public V1 social/household sharing flag. Missing or malformed is always off. */
+export const SOCIAL_FEATURES_ENABLED: boolean = enabledOnlyWhenExplicitlyTrue(
+  process.env.NEXT_PUBLIC_SOCIAL_FEATURES_ENABLED
+);
+
+/** V1 is free. This reserves a safe gate for a future StoreKit implementation. */
+export const SUBSCRIPTIONS_ENABLED: boolean = false;
+
+export const SOCIAL_DISABLED_ERROR =
+  "Friends and household sharing are not available in this release.";

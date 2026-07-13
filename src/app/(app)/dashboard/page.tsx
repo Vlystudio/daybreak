@@ -26,6 +26,7 @@ import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
 import { FadeIn } from "@/components/motion";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 export const metadata = { title: "Today" };
 export const dynamic = "force-dynamic";
@@ -71,7 +72,7 @@ export default async function DashboardPage() {
         hasGoogle={data.connections.some((c) => c.provider === "google")}
       />
 
-      <NudgesCard nudges={data.nudges} />
+      {SOCIAL_FEATURES_ENABLED && <NudgesCard nudges={data.nudges} />}
 
       <FadeIn delay={0.05}>
         <MorningSummary summary={data.summary} />
@@ -99,7 +100,10 @@ export default async function DashboardPage() {
       {/* Today focus: schedule beside the two most time-sensitive cards */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.3} className="h-full lg:col-span-2">
-          <ScheduleTimeline events={data.todayEvents} hasHousehold={data.household !== null} />
+          <ScheduleTimeline
+            events={data.todayEvents}
+            hasHousehold={SOCIAL_FEATURES_ENABLED && data.household !== null}
+          />
         </FadeIn>
         <div className="space-y-4">
           <FadeIn delay={0.33}>
@@ -124,7 +128,9 @@ export default async function DashboardPage() {
           calendarSync={data.calendarSync}
           fitbitAvailable={integrationsAvailable.fitbit()}
         />
-        <HouseholdCard household={data.household} householdEvents={data.householdEvents} />
+        {SOCIAL_FEATURES_ENABLED && (
+          <HouseholdCard household={data.household} householdEvents={data.householdEvents} />
+        )}
       </div>
 
       <FadeIn delay={0.45}>

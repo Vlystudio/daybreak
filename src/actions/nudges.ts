@@ -10,6 +10,7 @@ import { sendPushToUser } from "@/lib/push";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_DISABLED_ERROR, SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 const PRESETS: Record<"cheer" | "reminder", string> = {
   cheer: "is cheering you on today 💪",
@@ -24,6 +25,7 @@ const sendSchema = z.object({
 
 /** Send a cheer/reminder to an accepted friend, delivered via push. */
 export async function sendNudge(input: z.input<typeof sendSchema>): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -72,6 +74,7 @@ export async function sendNudge(input: z.input<typeof sendSchema>): Promise<Acti
 
 /** Mark all of the current user's unread nudges as read. */
 export async function markNudgesRead(): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
   const supabase = await createClient();
   const { error } = await supabase
