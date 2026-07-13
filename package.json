@@ -11,6 +11,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:db": "supabase test db",
+    "ios:assets": "node scripts/generate-ios-assets.mjs",
+    "ios:validate": "bash scripts/ios-release-validate.sh",
     "gen:types": "supabase gen types typescript --project-id cybpuscssilbguypptxi --schema public > src/lib/supabase/database.types.ts",
     "prepare": "husky"
   },

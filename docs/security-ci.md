@@ -29,21 +29,16 @@ the blocking gate via `--omit=dev`.
 
 The only fix is a **breaking major upgrade of `@capacitor/cli` (8.x)**. That is
 deferred because it requires re-testing the native iOS build + a Codemagic /
-TestFlight rebuild, which belongs in the native-shell pass (Pass 3), not a CI
-change. **Do not run `npm audit fix --force`** — it would force the breaking
+TestFlight rebuild as a separate Capacitor compatibility upgrade. **Do not run
+`npm audit fix --force`** — it would force the breaking
 upgrade unreviewed. (`next` → `postcss` is moderate-only and resolves on the next
 Next.js patch.)
 
 ## Codemagic (`codemagic.yaml`)
 
-The iOS build currently uses `npm install` (not `npm ci`) because the
-`package-lock.json` is generated on Windows and omits macOS-only optional
-dependencies, which makes `npm ci` fail on the macOS runner.
-
-**TODO (Pass 3 / native):** regenerate `package-lock.json` on macOS (or with all
-platforms resolved) so Codemagic can use `npm ci` for a deterministic install,
-and pin the Xcode version (currently `latest`). Until then the GitHub CI
-`npm ci` gate guarantees the lockfile is valid for the Linux/web build.
+The iOS build uses the committed cross-platform lockfile with `npm ci`, Node 22,
+and pinned Xcode 26.0. Any lockfile drift or native release-validation failure
+stops the release build.
 
 ## Recommended branch protection (main)
 

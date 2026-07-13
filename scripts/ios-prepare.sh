@@ -28,6 +28,26 @@ fi
 echo "→ Copying HealthKit entitlement"
 cp native/ios/App.entitlements "$APP_DIR/App.entitlements"
 
+echo "Copying app privacy manifest and native assets"
+[ -f native/ios/PrivacyInfo.xcprivacy ] || { echo "error: native/ios/PrivacyInfo.xcprivacy missing" >&2; exit 1; }
+cp native/ios/PrivacyInfo.xcprivacy "$APP_DIR/PrivacyInfo.xcprivacy"
+[ -d native/ios/AppIcon.appiconset ] || { echo "error: native iOS app icons missing" >&2; exit 1; }
+[ -d native/ios/Splash.imageset ] || { echo "error: native iOS launch assets missing" >&2; exit 1; }
+rm -rf "$APP_DIR/Assets.xcassets/AppIcon.appiconset" "$APP_DIR/Assets.xcassets/Splash.imageset"
+cp -R native/ios/AppIcon.appiconset "$APP_DIR/Assets.xcassets/AppIcon.appiconset"
+cp -R native/ios/Splash.imageset "$APP_DIR/Assets.xcassets/Splash.imageset"
+
+echo "Adding PrivacyInfo.xcprivacy to the app target"
+ruby <<'RUBY'
+require 'xcodeproj'
+project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+target = project.targets.find { |candidate| candidate.name == 'App' } or abort('App target missing')
+group = project.main_group.find_subpath('App', true)
+ref = group.files.find { |file| file.path == 'PrivacyInfo.xcprivacy' } || group.new_file('PrivacyInfo.xcprivacy')
+target.resources_build_phase.add_file_reference(ref, true) unless target.resources_build_phase.files_references.include?(ref)
+project.save
+RUBY
+
 echo "→ Patching Info.plist"
 plist_set() {
   /usr/libexec/PlistBuddy -c "Delete :$1" "$INFO_PLIST" 2>/dev/null || true
@@ -38,7 +58,7 @@ plist_set "NSHealthShareUsageDescription string" \
 # Apple requires BOTH purpose strings whenever the HealthKit entitlement is
 # present, even for read-only apps (App Store validation error 90683).
 plist_set "NSHealthUpdateUsageDescription string" \
-  "Daybreak does not write to Health; this permission is only requested if you choose to log data back."
+  "Daybreak does not write data to Apple Health."
 # Camera + microphone + photo library purpose strings. The web app opens the
 # system camera / photo picker via <input type="file" accept="image/*"> (meal
 # photos for calorie estimates, grocery receipts, profile picture). The picker's
@@ -63,6 +83,13 @@ plist_set "NSPhotoLibraryUsageDescription string" \
 /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" "$INFO_PLIST"
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains:0 string $HEALTH_DOMAIN" "$INFO_PLIST"
+plist_set "CFBundleDisplayName string" "Daybreak"
+/usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" "$INFO_PLIST" 2>/dev/null || true
+/usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$INFO_PLIST"
+/usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$INFO_PLIST"
+
+# V1 is iPhone-only; the device test matrix therefore does not claim iPad support.
+perl -0pi -e 's/TARGETED_DEVICE_FAMILY = "?1,2"?;/TARGETED_DEVICE_FAMILY = 1;/g' "$PBXPROJ"
 
 echo "→ Wiring CODE_SIGN_ENTITLEMENTS in project.pbxproj"
 # Add the entitlements path to every build config that doesn't already set it.

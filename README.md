@@ -14,6 +14,8 @@ dashboard — with a manual schedule editor and a shared household view.
 
 ## Getting started
 
+Use Node.js 22 (the same major used by GitHub Actions and Codemagic).
+
 ### 1. Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
@@ -27,15 +29,15 @@ dashboard — with a manual schedule editor and a shared household view.
 Copy `.env.example` to `.env.local` and fill it in (a `.env.local` with generated
 `TOKEN_ENCRYPTION_KEY`/`CRON_SECRET` already exists — replace the Supabase placeholders):
 
-| Variable | Where to get it |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API (**server-only secret**) |
-| `TOKEN_ENCRYPTION_KEY` | `openssl rand -base64 32` — encrypts OAuth tokens at rest |
-| `CRON_SECRET` | any long random string — protects the cron endpoints |
-| `OURA_CLIENT_ID/SECRET` | [Oura developer portal](https://cloud.ouraring.com/oauth/applications) — redirect URI: `<APP_URL>/api/oauth/oura/callback` |
-| `GOOGLE_CLIENT_ID/SECRET` | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) — enable the Calendar API, redirect URI: `<APP_URL>/api/oauth/google/callback` |
-| `OPENAI_API_KEY` | [OpenAI platform](https://platform.openai.com/api-keys) |
+| Variable                                                    | Where to get it                                                                                                                                          |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API                                                                                                                                |
+| `SUPABASE_SERVICE_ROLE_KEY`                                 | Supabase → Settings → API (**server-only secret**)                                                                                                       |
+| `TOKEN_ENCRYPTION_KEY`                                      | `openssl rand -base64 32` — encrypts OAuth tokens at rest                                                                                                |
+| `CRON_SECRET`                                               | any long random string — protects the cron endpoints                                                                                                     |
+| `OURA_CLIENT_ID/SECRET`                                     | [Oura developer portal](https://cloud.ouraring.com/oauth/applications) — redirect URI: `<APP_URL>/api/oauth/oura/callback`                               |
+| `GOOGLE_CLIENT_ID/SECRET`                                   | [Google Cloud Console](https://console.cloud.google.com/apis/credentials) — enable the Calendar API, redirect URI: `<APP_URL>/api/oauth/google/callback` |
+| `OPENAI_API_KEY`                                            | [OpenAI platform](https://platform.openai.com/api-keys)                                                                                                  |
 
 The Oura/Google/OpenAI keys are optional — the app degrades gracefully (cards show
 "connect" states) — but you need them for the full experience. Weather uses
@@ -44,7 +46,7 @@ The Oura/Google/OpenAI keys are optional — the app degrades gracefully (cards 
 ### 3. Run
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -83,11 +85,11 @@ supabase/migrations/      Schema + RLS policies
 
 - **RLS everywhere** — every user table has row-level security; users can only read their own
   rows (plus household-shared events through a membership check).
-- **Tokens are unreachable from the client** — `oauth_connections` has RLS enabled with *zero*
+- **Tokens are unreachable from the client** — `oauth_connections` has RLS enabled with _zero_
   policies; only the service role can touch it, and tokens are AES-256-GCM encrypted at rest.
   The client can only see provider + connect date via a security-definer function.
 - **Identity is never client-supplied** — every Server Action derives the user from the session
-  cookie (`requireUser()`); mutations are scoped by `user_id` *and* re-checked by RLS.
+  cookie (`requireUser()`); mutations are scoped by `user_id` _and_ re-checked by RLS.
 - **OAuth CSRF protection** — HMAC-signed `state` bound to the user id plus an httpOnly nonce
   cookie, verified on callback.
 - **Validation & limits** — Zod on every action input, Postgres-backed rate limiting on
