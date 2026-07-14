@@ -100,9 +100,11 @@ export async function deleteMyAccount(input: {
     await deleteUserAccount(admin, user.id);
   } catch (error) {
     const step = error instanceof AccountDeletionError ? error.step : "cleanup";
+    console.error("[account-deletion] cleanup stopped", { step });
     return {
       ok: false,
-      error: `Account deletion stopped during ${step}. Your sign-in was kept when possible; retry or contact support.`,
+      error:
+        "Account deletion could not complete. Your sign-in was kept when possible; retry or contact support.",
     };
   }
 
