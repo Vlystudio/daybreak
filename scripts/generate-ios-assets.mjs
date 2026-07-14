@@ -59,6 +59,8 @@ await writeFile(
   JSON.stringify({ images, info: { author: "daybreak", version: 1 } }, null, 2) + "\n"
 );
 
+// Keep the splash vector-only. System-font text rasterizes differently across
+// Windows and Codemagic macOS, which would make the tracked PNG nondeterministic.
 const splashSvg = Buffer.from(`
 <svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
   <rect width="2732" height="2732" fill="#fdf9f0"/>
@@ -68,7 +70,6 @@ const splashSvg = Buffer.from(`
   </g>
   <path d="M1215 1450a151 151 0 0 1 302 0z" fill="#fff7e6"/>
   <rect x="1130" y="1470" width="472" height="42" rx="21" fill="#fff7e6"/>
-  <text x="1366" y="1860" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="108" font-weight="600" fill="#5a3d1a">Daybreak</text>
 </svg>`);
 await sharp(splashSvg)
   .flatten({ background: "#fdf9f0" })
