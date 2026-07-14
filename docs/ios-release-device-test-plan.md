@@ -1,6 +1,14 @@
 # iOS release device test plan
 
-Record device, iOS build, TestFlight build number, tester, date, result, and evidence for every row. Use the exact release-candidate IPA; do not substitute Safari for native-shell tests.
+Record full device model, screen class, iOS version/build, TestFlight version/build, install type, tester, UTC timestamp, result, and evidence for every row. Use the exact release-candidate IPA; do not substitute Safari or browser emulation for native-shell tests.
+
+## TestFlight and install state
+
+- [ ] App Store Connect upload completed and processing finished without warnings that affect the candidate.
+- [ ] Fresh install on a current full-size supported iPhone running the current supported iOS version.
+- [ ] Fresh install on the smallest supported iPhone screen class.
+- [ ] Upgrade from the known stale pre-camera-fix TestFlight build; confirm version/build changed and permissions behave correctly.
+- [ ] Terminate and relaunch after fresh install and after upgrade; no launch crash or lost authenticated state.
 
 ## Accounts and lifecycle
 
@@ -33,9 +41,13 @@ Record device, iOS build, TestFlight build number, tester, date, result, and evi
 
 ## Photos and permissions
 
-- [ ] Meal: Photo Library, Take Photo, cancellation, permission denial, same photo twice.
-- [ ] Receipt: Photo Library, Take Photo, cancellation, permission denial, same photo twice.
-- [ ] Profile: Photo Library, Take Photo, replacement, removal.
+- [ ] Meal: Photo Library, Files picker, Take Photo, cancellation, permission denial, same photo twice.
+- [ ] Receipt: Photo Library, Files picker, Take Photo, cancellation, permission denial, same photo twice.
+- [ ] Profile: Photo Library, Files picker, Take Photo, replacement, removal.
+- [ ] Reset camera permission, test Allow and Don't Allow on first prompt, then verify recovery through iOS Settings.
+- [ ] Repeat Take Photo/cancel/retake/close/reopen at least ten times without leaked camera state or termination.
+- [ ] Background and resume while the OS picker/camera is open, then capture successfully or recover cleanly.
+- [ ] Terminate the app while the picker is open, relaunch, and confirm no corrupt pending image state.
 - [ ] Invalid type, zero-byte, >12 MB, extreme dimensions, corrupt image.
 - [ ] Confirm EXIF/location metadata is absent after transformation and raw image is not retained for meal/receipt analysis.
 - [ ] Confirm camera capture does not record microphone audio.
@@ -47,6 +59,8 @@ Record device, iOS build, TestFlight build number, tester, date, result, and evi
 - [ ] Large Dynamic Type through accessibility sizes; no clipped consent/legal/delete controls.
 - [ ] VoiceOver order, headings, control names, switch values, dialogs, focus return, and error announcements.
 - [ ] Portrait orientation and safe-area behavior around notch/home indicator.
+- [ ] Attempt rotation and confirm the declared portrait-only behavior is stable; do not claim landscape support.
+- [ ] Reduced Motion enabled; essential state changes remain understandable without motion.
 - [ ] iPad is not declared; verify App Store device support matches the generated project.
 
 ## Resilience
@@ -56,3 +70,4 @@ Record device, iOS build, TestFlight build number, tester, date, result, and evi
 - [ ] HealthKit unavailable/denied and connected providers absent; seeded/manual demo remains usable.
 - [ ] Push denied and email integration unavailable; core app remains usable.
 - [ ] Force quit during upload/synchronization; no corrupt or orphaned state after relaunch.
+- [ ] Return from background after a network transition; retries are bounded and the UI does not claim success prematurely.

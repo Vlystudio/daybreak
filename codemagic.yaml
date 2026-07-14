@@ -43,6 +43,11 @@ workflows:
     scripts:
       - name: Install JS dependencies
         script: npm ci --no-audit --no-fund
+      - name: Generate and verify deterministic iOS assets
+        script: |
+          set -euo pipefail
+          npm run ios:assets
+          git diff --exit-code -- native/ios
       - name: Generate iOS platform
         script: |
           if [ ! -d ios ]; then
@@ -68,18 +73,24 @@ workflows:
           : "${CM_CERTIFICATE:?Missing base64 distribution certificate}"
           : "${CM_CERTIFICATE_PASSWORD:?Missing distribution certificate password}"
           : "${CM_PROVISIONING_PROFILE:?Missing base64 provisioning profile}"
-          : "${BUILD_NUMBER:?Codemagic BUILD_NUMBER is unavailable}"
+          : "${APP_STORE_APPLE_ID:?Missing numeric APP_STORE_APPLE_ID in appstore environment group}"
+          [[ "$APP_STORE_APPLE_ID" =~ ^[0-9]+$ ]] || { echo "error: APP_STORE_APPLE_ID must be numeric" >&2; exit 1; }
+
+          cleanup_signing_files() {
+            rm -f /tmp/dist.p12 /tmp/daybreak-profile.plist
+          }
+          trap cleanup_signing_files EXIT
 
           keychain initialize
           # App-Store-Connect-API-created profiles drop the HealthKit entitlement,
           # so we use a distribution certificate + a portal-created profile (which
           # includes HealthKit), supplied as base64 env vars.
-          echo "$CM_CERTIFICATE" | base64 --decode > /tmp/dist.p12
+          printf '%s' "$CM_CERTIFICATE" | base64 --decode > /tmp/dist.p12
           openssl pkcs12 -in /tmp/dist.p12 -passin env:CM_CERTIFICATE_PASSWORD -noout
           keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$CM_CERTIFICATE_PASSWORD"
           PROFILES_HOME="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_HOME"
-          echo "$CM_PROVISIONING_PROFILE" | base64 --decode > "$PROFILES_HOME/daybreak.mobileprovision"
+          printf '%s' "$CM_PROVISIONING_PROFILE" | base64 --decode > "$PROFILES_HOME/daybreak.mobileprovision"
           # Validate the profile without printing its UUID, certificate, or raw
           # entitlements into the build log.
           security cms -D -i "$PROFILES_HOME/daybreak.mobileprovision" > /tmp/daybreak-profile.plist
@@ -90,14 +101,23 @@ workflows:
           /usr/libexec/PlistBuddy -c "Print :Entitlements:com.apple.developer.healthkit" /tmp/daybreak-profile.plist >/dev/null
           # Wire the profile into the project (manual signing) + generate export options.
           xcode-project use-profiles
-          rm -f /tmp/dist.p12 /tmp/daybreak-profile.plist
+          cleanup_signing_files
+          trap - EXIT
       - name: Bump build number
         script: |
+          set -euo pipefail
+          : "${APP_STORE_APPLE_ID:?Missing numeric APP_STORE_APPLE_ID in appstore environment group}"
+          : "${CM_ENV:?Codemagic CM_ENV file is unavailable}"
+          [[ "$APP_STORE_APPLE_ID" =~ ^[0-9]+$ ]] || { echo "error: APP_STORE_APPLE_ID must be numeric" >&2; exit 1; }
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")"
+          [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo "error: App Store Connect did not return a numeric build number" >&2; exit 1; }
+          CANDIDATE_BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          printf 'CANDIDATE_BUILD_NUMBER=%s\n' "$CANDIDATE_BUILD_NUMBER" >> "$CM_ENV"
           cd ios/App
           agvtool new-marketing-version "$APP_VERSION"
-          # Codemagic's per-project build counter — always increasing, which
-          # App Store Connect requires for each new TestFlight upload.
-          agvtool new-version -all "$BUILD_NUMBER"
+          # Select the next value from the existing App Store record so it stays
+          # monotonic even if Codemagic's project counter is reset.
+          agvtool new-version -all "$CANDIDATE_BUILD_NUMBER"
       - name: Build IPA
         script: |
           xcode-project build-ipa \
@@ -105,10 +125,23 @@ workflows:
             --scheme "$XCODE_SCHEME"
       - name: Validate release archive
         script: |
-          IPA_PATH="$(find build/ios/ipa -name '*.ipa' -type f | head -1)" bash scripts/ios-release-validate.sh
+          set -euo pipefail
+          IPA_PATH="$(find build/ios/ipa -name '*.ipa' -type f | head -1)"
+          ARCHIVE_PATH="$(find build/ios/archive -name '*.xcarchive' -type d | head -1)"
+          DSYM_PATH="$(find "$ARCHIVE_PATH/dSYMs" -name '*.dSYM' -type d | head -1)"
+          IPA_PATH="$IPA_PATH" \
+          ARCHIVE_PATH="$ARCHIVE_PATH" \
+          DSYM_PATH="$DSYM_PATH" \
+          EXPECTED_APP_VERSION="$APP_VERSION" \
+          EXPECTED_BUILD_NUMBER="$CANDIDATE_BUILD_NUMBER" \
+          EXPECTED_TEAM_ID="$APPLE_TEAM_ID" \
+          EVIDENCE_OUTPUT="build/release-evidence/ios-archive.json" \
+            bash scripts/ios-release-validate.sh
     artifacts:
       - build/ios/ipa/*.ipa
+      - build/ios/archive/*.xcarchive
       - build/ios/archive/*.xcarchive/dSYMs/**/*.dSYM
+      - build/release-evidence/*.json
     publishing:
       app_store_connect:
         auth: integration

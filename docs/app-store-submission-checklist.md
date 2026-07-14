@@ -8,8 +8,10 @@
 - [ ] Codemagic release uses Node 22, Xcode 26.0, `npm ci`, and the committed lockfile.
 - [ ] `npm run ios:assets` produces no diff.
 - [ ] Generated-project and archive release validation pass.
+- [ ] Sanitized `ios-archive.json` matches the candidate commit and is copied into the private release evidence record.
 - [ ] Release IPA and dSYMs are retained; upload dSYMs if Sentry native symbolication is enabled.
 - [ ] TestFlight release-candidate build installs on a physical iPhone.
+- [ ] `docs/ios-release-evidence-template.md` is completed with links to the private artifacts and device evidence.
 
 ## App Store Connect listing
 
