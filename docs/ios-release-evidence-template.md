@@ -9,10 +9,14 @@ credentials into this document.
 - Commit hash:
 - Branch:
 - Codemagic build URL/ID:
+- Candidate attempt history (include failed/superseded build IDs):
 - Workflow (`ios-healthkit` expected):
 - Build start/end UTC:
 - Xcode version (`xcodebuild -version` output):
 - Node/CocoaPods versions:
+- Pre-archive failure action and sanitized log reference:
+- Account-managed blocker and owner:
+- Artifact inventory result (archive/IPA/dSYM/evidence JSON):
 
 ## Signed archive and IPA
 
@@ -73,6 +77,7 @@ Attach the completed `docs/ios-release-device-test-plan.md` copy and record:
 
 ## Final gate
 
+- Repository-controlled pre-signing gates passed:
 - Database blocker cleared with approved evidence:
 - Apple archive/privacy blocker cleared:
 - TestFlight/device blocker cleared:

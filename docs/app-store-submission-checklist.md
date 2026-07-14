@@ -5,6 +5,7 @@
 - [ ] Apple App ID `app.daybreak.mobile` has HealthKit enabled.
 - [ ] Distribution certificate and provisioning profile include HealthKit.
 - [ ] Codemagic secrets are configured without exposing them to build logs.
+- [ ] Codemagic `appstore` group contains `APP_STORE_APPLE_ID` set to the numeric Apple ID from App Store Connect (not `app.daybreak.mobile`).
 - [ ] Codemagic release uses Node 22, Xcode 26.0, `npm ci`, and the committed lockfile.
 - [ ] `npm run ios:assets` produces no diff.
 - [ ] Generated-project and archive release validation pass.
