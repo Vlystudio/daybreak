@@ -19,6 +19,13 @@ function fail(message) {
   process.exit(1);
 }
 
+function failAll(blockers) {
+  console.error("Database test preflight blocked:");
+  for (const blocker of blockers) console.error(`- ${blocker}`);
+  console.error("No Supabase remote command was run and no remote state was modified.");
+  process.exit(1);
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
@@ -33,8 +40,15 @@ function run(command, args, options = {}) {
   };
 }
 
-if (process.argv.slice(2).some((arg) => ["--linked", "--db-url", "--project-ref"].includes(arg))) {
-  fail("remote-targeting arguments are forbidden; this workflow is local-only.");
+const suppliedArgs = process.argv.slice(2);
+const allowedArgs = new Set(["--preflight-only"]);
+const unknownArgs = suppliedArgs.filter((arg) => !allowedArgs.has(arg));
+if (unknownArgs.length > 0) {
+  fail(
+    `only --preflight-only is accepted; remote targets and arbitrary arguments are forbidden (${unknownArgs.join(
+      ", "
+    )}).`
+  );
 }
 
 const configPath = path.join(root, "supabase", "config.toml");
@@ -43,17 +57,17 @@ const config = readFileSync(configPath, "utf8");
 if (!config.includes('project_id = "daybreak-local"')) {
   fail("the Supabase config is not the expected disposable local project.");
 }
+if (config.includes("cybpuscssilbguypptxi")) {
+  fail("the production project reference must never appear in the disposable local config.");
+}
+
+const blockers = [];
 
 const cli = run(npx, [...npxPrefix, "--yes", `supabase@${SUPABASE_VERSION}`, "--version"], {
   capture: true,
 });
-if (!cli.ok || cli.detail.trim() !== SUPABASE_VERSION) {
-  fail(`Supabase CLI ${SUPABASE_VERSION} is unavailable. Check npm/network access.`);
-}
-
-const dockerServer = run(docker, ["version", "--format", "{{.Server.Version}}"], { capture: true });
-if (!dockerServer.ok || !dockerServer.detail) {
-  fail("Docker Engine is unavailable or stopped. Start Docker Desktop and retry.");
+if (!cli.ok || !cli.detail.split(/\r?\n/).includes(SUPABASE_VERSION)) {
+  blockers.push(`Supabase CLI ${SUPABASE_VERSION} is unavailable. Check npm/network/cache access.`);
 }
 
 const migrationsDir = path.join(root, "supabase", "migrations");
@@ -67,26 +81,57 @@ for (const file of migrations) {
 }
 const duplicates = [...versions.entries()].filter(([, files]) => files.length > 1);
 if (duplicates.length > 0) {
-  fail(
+  blockers.push(
     `duplicate migration versions must be reconciled before reset: ${duplicates
       .map(([version, files]) => `${version} (${files.join(", ")})`)
-      .join("; ")}`
+      .join("; ")}. Follow docs/migration-reconciliation.md; do not rename or bypass them.`
   );
 }
+
+const dockerClient = run(docker, ["--version"], { capture: true });
+if (!dockerClient.ok) {
+  blockers.push("Docker CLI is unavailable. Install Docker Desktop and retry.");
+} else {
+  const dockerServer = run(docker, ["version", "--format", "{{.Server.Version}}"], {
+    capture: true,
+  });
+  if (!dockerServer.ok || !dockerServer.detail) {
+    blockers.push("Docker Engine is stopped or unreachable. Start Docker Desktop and retry.");
+  }
+}
+
+if (blockers.length > 0) failAll(blockers);
 
 if (process.argv.includes("--preflight-only")) {
   console.log(`Local database preflight passed with Supabase CLI ${SUPABASE_VERSION}.`);
   process.exit(0);
 }
 
-console.log("Starting disposable local Supabase services; all database commands force --local.");
 const supabase = (...args) =>
   run(npx, [...npxPrefix, "--yes", `supabase@${SUPABASE_VERSION}`, ...args]);
-if (!supabase("start", "--workdir", root).ok) fail("local Supabase services could not start.");
-if (!supabase("db", "reset", "--local", "--no-seed", "--workdir", root).ok) {
-  fail("the disposable local database reset failed; no remote database was targeted.");
+const wasRunning = run(
+  npx,
+  [...npxPrefix, "--yes", `supabase@${SUPABASE_VERSION}`, "status", "--workdir", root],
+  { capture: true }
+).ok;
+const startedHere = !wasRunning;
+let runBlocker = null;
+
+console.log("Starting disposable local Supabase services; every database command forces --local.");
+try {
+  if (!supabase("start", "--workdir", root).ok) {
+    runBlocker = "local Supabase services could not start.";
+  } else if (!supabase("db", "reset", "--local", "--no-seed", "--workdir", root).ok) {
+    runBlocker = "the disposable local database reset failed; no remote database was targeted.";
+  } else if (!supabase("test", "db", "--local", "--workdir", root).ok) {
+    runBlocker = "local SQL/pgTAP tests failed; no remote database was targeted.";
+  } else {
+    console.log("Disposable local database reset and SQL tests passed.");
+  }
+} finally {
+  if (startedHere) {
+    console.log("Stopping the disposable local Supabase services started by this command.");
+    supabase("stop", "--no-backup", "--workdir", root);
+  }
 }
-if (!supabase("test", "db", "--local", "--workdir", root).ok) {
-  fail("local SQL/pgTAP tests failed; no remote database was targeted.");
-}
-console.log("Disposable local database reset and SQL tests passed.");
+if (runBlocker) fail(runBlocker);

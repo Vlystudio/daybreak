@@ -32,7 +32,18 @@ Stop immediately if the linked ref is different, the project cannot be unambiguo
 
 ## 1. Read-only remote discovery
 
-Start from a clean checkout of the exact release commit. These commands only identify the project and read metadata:
+Start from a clean checkout of the exact release commit. First validate the executable discovery tool without credentials or network access:
+
+```bash
+node scripts/discover-migration-state.mjs \
+  --static-check \
+  --read-only \
+  --expected-project-ref cybpuscssilbguypptxi
+```
+
+The static check requires the explicit production ref, verifies it matches `supabase/.temp/project-ref`, fingerprints both duplicate files, scans later migrations, and rejects any DDL/DML keyword in `scripts/sql/migration-discovery-read-only.sql`.
+
+After access and backup approval, run the live read-only discovery. The evidence path must be absolute and outside the repository; the tool refuses to overwrite a file:
 
 ```bash
 export EXPECTED_PROJECT_REF=cybpuscssilbguypptxi
@@ -41,21 +52,23 @@ test "$(cat supabase/.temp/project-ref 2>/dev/null)" = "$EXPECTED_PROJECT_REF" |
   exit 1
 }
 
-npx --yes supabase@2.108.0 projects list --output json \
-  | jq -e --arg ref "$EXPECTED_PROJECT_REF" '.[] | select(.id == $ref)' >/dev/null
-npx --yes supabase@2.108.0 migration list --linked
-```
-
-If a database password is required, read it without echoing and export it only for this shell:
-
-```bash
 read -r -s -p "Production database password: " SUPABASE_DB_PASSWORD
 echo
 export SUPABASE_DB_PASSWORD
-npx --yes supabase@2.108.0 migration list --linked
+trap 'unset SUPABASE_DB_PASSWORD' EXIT
+
+node scripts/discover-migration-state.mjs \
+  --read-only \
+  --expected-project-ref "$EXPECTED_PROJECT_REF" \
+  --evidence "/approved/evidence/daybreak-migration-discovery-$(date -u +%Y%m%dT%H%M%SZ).md"
+
+unset SUPABASE_DB_PASSWORD
+trap - EXIT
 ```
 
-Capture the migration list in the approved evidence store. Record every remote/local row around versions `0020` through `0022`, including any name shown for `0021`.
+The tool pins Supabase CLI `2.108.0`, runs `migration list --linked`, invokes `psql` without embedding the password in arguments, enforces `BEGIN READ ONLY`, inspects the history and both logical bodies, checks database dependencies, redacts credential-shaped text, writes evidence outside Git, and removes the password from its own process environment. It performs no DDL or DML. Preserve the resulting file in the approved evidence store.
+
+The manual SQL below is a reviewable fallback and mirrors the committed script. Prefer the executable tool so project/ref checks and redaction cannot be skipped.
 
 Recompute the local fingerprints rather than trusting copied text:
 
@@ -164,17 +177,20 @@ rg -n "subjective_checkins|input_hash" src supabase --glob '!supabase/migrations
 
 ## 3. Decision matrix
 
-| Remote history                                                                                                    | Remote objects                                                                   | Required disposition                                                                                                                                                                                                                   |
-| ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `0021` clearly represents AI-cache body                                                                           | Both `input_hash` columns exist; subjective objects absent                       | Create a new, forward-only migration at the next unused version for the subjective body. Make it safely idempotent where PostgreSQL allows, validate on a clone, then stage. Do not rename the historical file.                        |
-| `0021` clearly represents subjective body                                                                         | Subjective table/policies/index/trigger exist; either `input_hash` column absent | Create a new, forward-only migration for only the missing column(s), using `ADD COLUMN IF NOT EXISTS`. Validate on a clone, then stage.                                                                                                |
-| `0021` exists but its name/body is ambiguous                                                                      | Both bodies fully exist                                                          | Do not add schema changes. Preserve the historical files and obtain DBA/Supabase support approval for a history-only reconciliation plan. Use `migration repair` only if that written plan names the exact version and desired status. |
-| `0021` exists but its name/body is ambiguous                                                                      | One body partially or wholly absent                                              | Stop. Export the history row and schema, identify how production reached this state, and write a forward migration that creates only missing objects. Do not repair history until the forward state is proven.                         |
-| No remote `0021` history                                                                                          | Neither body exists                                                              | Stop and investigate why later migrations are present without `0021`. Rehearse a complete forward application on a clone; do not apply both historical colliding files directly.                                                       |
-| No remote `0021` history                                                                                          | One or both bodies exist                                                         | Stop. This is out-of-band schema drift. Preserve evidence and require an approved DBA/Supabase support plan.                                                                                                                           |
-| Both logical bodies were applied manually but no reliable history row represents them                             | Both bodies exist                                                                | Treat as out-of-band drift, not as proof that a repair is safe. Stop and obtain an approved history reconciliation from the DBA/Supabase support.                                                                                      |
-| A later object depends on either body                                                                             | Any                                                                              | Preserve the depended-on behavior. The proposed forward migration must be additive and replay through all later migrations on a clone; never remove or rewrite the depended-on object.                                                 |
-| More than one remote `0021` row, checksum mismatch, unexpected object definitions, or nonstandard history columns | Any                                                                              | Stop. Do not guess, rename, or repair. Escalate with the read-only export and backup identifier.                                                                                                                                       |
+| Scenario                                                                  | Evidence required                                                                                                                  | Stop? / clone                         | Likely reconciliation class                            | Forward-only migration                                                                                             | History repair                                                                                                           | Approval/checkpoint/tests                                                                                                           |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| First `0021` (AI cache) recorded; subjective body absent                  | Exact history row/name/hash where available; both `input_hash` columns; absence of table/policies/index/trigger; dependency report | Stop production work; clone mandatory | Add missing logical body under a new unused version    | Likely appropriate, creating only missing subjective objects and preserving expected definitions                   | Not needed merely to add the missing body                                                                                | DBA + application owner; verified backup before clone; fresh reset, pgTAP/RLS, representative check-in CRUD, deletion verification  |
+| Second `0021` (subjective) recorded; one/both `input_hash` columns absent | History evidence; complete subjective definitions; column inspection; dependency report                                            | Stop production work; clone mandatory | Add missing nullable columns                           | Likely appropriate using `ADD COLUMN IF NOT EXISTS` only for absent columns                                        | Not needed merely to add columns                                                                                         | DBA + application owner; backup; full replay, AI generation/cache behavior, SQL/RLS/deletion tests                                  |
+| One `0021` recorded; both logical bodies fully exist                      | History row plus exact schema definitions and evidence of how the unrecorded body arrived                                          | Stop; clone mandatory                 | History/schema reconciliation with no behavior removal | Only if clone comparison finds a real missing/drifted object; otherwise no schema migration                        | May be considered only under a written DBA/Supabase-support plan after backup; never inferred from object presence alone | DBA and Supabase support or equivalent owner; restorable backup; clone migration-list parity, schema diff, full app tests           |
+| Neither `0021` recorded; both logical bodies exist                        | Complete history export, DDL definitions, audit/change records if available, later versions                                        | Stop; clone mandatory                 | Out-of-band/manual schema drift                        | Not until origin is understood; any forward migration must be additive and describe existing state                 | Possible only with explicit support-approved history plan                                                                | DBA + security/production-change approver; backup before any history action; clone replay from production history and fresh install |
+| Neither schema change exists                                              | History before/after `0021`, later versions, dependency scan                                                                       | Stop; clone mandatory                 | Missing migrations/incomplete history                  | A reviewed new forward migration may be appropriate only after proving later migrations replay without both bodies | Do not repair history first                                                                                              | DBA + application owner; backup; full zero-to-head reset, SQL/RLS, AI/check-in flows, deletion                                      |
+| Partial `subjective_checkins` objects exist                               | Table columns/constraints, RLS flags, every policy/index/trigger definition, row-count approval if needed                          | Stop; clone mandatory                 | Partial manual application/schema drift                | May create only objectively missing objects; never drop unexpected objects to force a match                        | Not before schema provenance is established                                                                              | DBA + privacy/security reviewer; backup; data-preserving clone rehearsal, RLS negative tests, CRUD and deletion                     |
+| Unexpected policies exist                                                 | Policy names, roles, commands, `qual`, `with_check`, grants, provenance                                                            | Stop; clone mandatory                 | Security-sensitive schema drift                        | Only an additive/security-reviewed change; removal or replacement requires separate explicit approval              | Not relevant until desired schema is approved                                                                            | DBA + security/privacy owner; backup; adversarial RLS tests for two users and service role                                          |
+| Unexpected trigger exists                                                 | Trigger definition, function definition/owner/security mode, dependencies, provenance                                              | Stop; clone mandatory                 | Behavioral schema drift                                | Only after proving data and side effects; do not replace blindly                                                   | Not relevant until behavior is understood                                                                                | DBA + application/security owner; backup; replay, write-path, audit, performance, deletion tests                                    |
+| Later database or repository migration depends on either body             | Dependency output and clean replay through every later migration                                                                   | Stop; clone mandatory                 | Preserve-dependent forward reconciliation              | Must be additive and maintain all depended-on objects/signatures                                                   | Only after schema is correct and written support plan exists                                                             | DBA + owners of dependent behavior; backup; zero-to-head and production-history replay, all SQL/RLS/application tests               |
+| Production differs from every repository expectation                      | Full redacted discovery, schema-only dump, history export, provenance investigation                                                | Stop; clone mandatory                 | Unknown drift/incident investigation                   | Not selected until differences are classified                                                                      | Not selected                                                                                                             | DBA + security + production incident/change authority; verified backup/restore; bespoke clone plan and complete regression suite    |
+| Migration history is incomplete/corrupt or contains multiple `0021` rows  | Raw read-only history rows/columns, Supabase support evidence, backup identifier                                                   | Stop; clone mandatory                 | History corruption reconciliation                      | No schema migration until history and schema are independently understood                                          | May be considered only by DBA/Supabase support with exact version/status instructions                                    | Highest production DB approval; tested restore point; clone history operations, schema diff, full reset and application tests       |
+| Schema was manually modified                                              | Change/audit evidence, current DDL, history, affected data and dependencies                                                        | Stop; clone mandatory                 | Out-of-band drift                                      | Possibly, to codify the approved final state without destructive normalization                                     | Only if separately needed and support-approved                                                                           | DBA + original change owner + security where applicable; backup; clone replay and affected-feature/deletion tests                   |
 
 Whichever route is selected, record the exact observed history, object definitions, backup identifier, proposed SQL, reviewer, clone results, and staging results in the release evidence.
 
@@ -221,7 +237,7 @@ npm run test:db
 
 `npm run test:db` checks Docker, rejects remote flags, rejects duplicate migration versions, starts local Supabase, runs `db reset --local --no-seed`, and runs `test db --local`. At present, preflight must fail on the duplicate `0021`; that failure is expected and remains a release blocker. After the approved forward reconciliation also resolves the repository's fresh-install ordering without rewriting applied history, both commands must pass from a clean checkout.
 
-The pgTAP suite currently depends on Basejump Supabase test-helper functions. Install and pin those helpers in the local test environment as documented in `supabase/tests/README.md`; a missing helper is also a blocker, not a test skip.
+The pgTAP RLS suite is self-contained and creates synthetic users inside a rolled-back transaction; it requires no third-party test-helper extension or production credential.
 
 ## 6. Staging and production gate
 

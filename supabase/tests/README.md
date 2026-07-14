@@ -1,43 +1,41 @@
 # Database tests (RLS isolation)
 
-These pgTAP tests assert that Row-Level Security keeps each user's data private.
-Run them in CI and before any migration that touches policies.
-
-## One-time local setup
-
-The current suite calls Basejump Supabase test-helper functions such as
-`tests.create_supabase_user` and `tests.authenticate_as`. Pin and install a
-reviewed version of those helpers into the **local test database only** before
-claiming this suite passes. The helper SQL is not vendored in this repository,
-so its absence is a visible test-environment blocker.
-
-```bash
-# from the project root, against the LOCAL dev database only
-npx --yes supabase@2.108.0 start
-psql "$(npx --yes supabase@2.108.0 status -o env | sed -n 's/^DB_URL=//p')" \
-  -v ON_ERROR_STOP=1 -f path/to/reviewed-supabase-test-helpers.sql
-```
-
-Do not install test helpers in a linked staging or production project.
+The pgTAP suite verifies that authenticated users cannot read another user's
+health, briefing, schedule, or check-in rows. It is self-contained: fixtures are
+created inside a transaction and rolled back, so no third-party test-helper SQL
+or production credential is required.
 
 ## Run
 
 ```bash
-npm run test:db:preflight  # configuration, Docker, and duplicate-version checks
+npm run test:db:preflight  # CLI, config, duplicate-version, and Docker checks
 npm run test:db            # pinned CLI; local start/reset/test only
 ```
 
-The wrapper rejects remote flags and never uses the linked project. It starts
-local Supabase, applies all migrations from zero, and runs every
-`supabase/tests/*.sql` file. A duplicate migration version, missing helper, or
-failed assertion is a release blocker. Never replace this command with a linked
-reset or pass a production database URL.
+The wrapper:
 
-## What's covered
+- accepts only `--preflight-only` and rejects all remote/unknown arguments;
+- pins Supabase CLI `2.108.0` through npm's cache rather than requiring a global install;
+- requires `project_id = "daybreak-local"` and rejects the production ref in local config;
+- reports both duplicate migration versions and Docker availability;
+- forces `db reset --local` and `test db --local`;
+- stops and removes only the disposable local services it started; and
+- never runs a linked reset, `db push`, or migration repair.
 
-- `rls_isolation_test.sql` - user A cannot read user B's `health_metrics`,
-  `daily_summaries`, `schedule_events`, or `subjective_checkins`, and each user
-  sees exactly their own rows.
+The current duplicate `0021` files intentionally make preflight nonzero until
+the approved reconciliation plan addresses fresh-install ordering. Do not
+bypass that failure merely to make the suite green.
 
-Extend it as tables are added: every table holding user data should have an
-isolation assertion.
+## Coverage
+
+`rls_isolation_test.sql` creates two synthetic `auth.users`, seeds Alice's rows
+as the database owner, switches to the local `authenticated` role with explicit
+JWT claims, and verifies Bob sees zero while Alice sees exactly one row in:
+
+- `health_metrics`
+- `daily_summaries`
+- `schedule_events`
+- `subjective_checkins`
+
+All fixtures roll back. Extend the suite whenever a new user-owned table or RLS
+policy is added.
