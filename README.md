@@ -2,9 +2,10 @@
 
 > Good morning. Here's how you're doing today — and how to make the most of your day.
 
-Daybreak is a morning wellness companion that gathers your **Oura** sleep/readiness/HRV data,
-**Google Calendar**, local **weather**, and an **AI morning briefing** into one calm, warm
-dashboard — with a manual schedule editor and a shared household view.
+Daybreak is a morning wellness companion that combines optional **Apple Health**, **Oura**, or
+**Fitbit** summaries with **Google Calendar**, local **weather**, manual entries, and consent-gated
+AI features in one calm dashboard. V1 includes a manual schedule editor; social and household
+sharing remain fail-closed behind a disabled release flag.
 
 ## Stack
 
@@ -19,9 +20,13 @@ Use Node.js 22 (the same major used by GitHub Actions and Codemagic).
 ### 1. Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Run the migration: paste `supabase/migrations/0001_init.sql` into the SQL editor
-   (or `supabase db push` with the CLI).
-3. In **Authentication → Providers**, enable Email. For local dev you may want to disable
+2. Apply the complete, ordered migration set with `supabase db reset` for a fresh local project or
+   `supabase db push` for an already linked project. Never paste only `0001_init.sql`: later
+   migrations contain required eligibility, consent, deletion, privacy, and security controls.
+3. Run `npm run check:migrations` before any database operation. Production migration discovery
+   and the duplicate-`0021` reconciliation procedure are documented in
+   `docs/migration-reconciliation.md`.
+4. In **Authentication → Providers**, enable Email. For local dev you may want to disable
    "Confirm email" so sign-ups are instant.
 
 ### 2. Environment

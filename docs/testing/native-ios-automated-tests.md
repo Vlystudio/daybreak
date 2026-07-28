@@ -1,0 +1,9 @@
+# Native iOS automated-test preparation
+
+The checked-in XCUITest source covers launch/login accessibility, unchecked adult attestation, the under-18 no-account path, optional isolated-staging signup/login flows, deterministic screenshots, Dynamic Type launch configuration, and an iOS accessibility audit. Stable identifiers also cover the existing-user eligibility gate, MFA, AI category consent/revocation, export, deletion, and Apple Health connection for expansion and physical-device automation.
+
+The generated UI-test target is deliberately absent from normal and release builds. To install it on a Mac after `npx cap sync ios`, set `DAYBREAK_ENABLE_UI_TEST_TARGET=1` and an HTTPS `DAYBREAK_UI_TEST_BASE_URL` for an isolated nonproduction deployment, then run `ruby scripts/ios-install-ui-tests.rb`. The installer refuses the production origin and changes only generated iOS files. Use the staging fixture/deletion harness for disposable accounts; no reset endpoint or launch-argument behavior exists in the shipping app.
+
+Run with an iOS Simulator destination through the generated shared `AppUITests` scheme. Optional account tests require runner-only `DAYBREAK_UI_SIGNUP_EMAIL`, `DAYBREAK_UI_SIGNUP_PASSWORD`, `DAYBREAK_UI_LOGIN_EMAIL`, and `DAYBREAK_UI_LOGIN_PASSWORD`; absent fixture credentials cause those destructive/network tests to skip explicitly, not pass.
+
+Existing Vitest coverage remains the automated layer for native bridge mapping, HealthKit purpose strings, neutral notification content, URL safety, AI consent/revocation, and sensitive error/log redaction. HealthKit authorization denial/partial/revocation, notification presentation, account-deletion completion, deep-link delivery, offline/radio transitions, backgrounding, performance, and real permission prompts require the exact signed build and the physical-device matrix. Simulator screenshots and skipped hardware cases are not release evidence.

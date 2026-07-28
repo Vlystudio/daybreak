@@ -1,10 +1,10 @@
 # Quick test: does a metaball body read as a smooth, connected bird (not a
 # snowman of separate spheres)?  Builds body+neck+head+tail as fused metaballs,
 # converts to mesh, smooths, renders 3 angles.
-import bpy, math, os
+import bpy, math, os, tempfile
 from mathutils import Vector
 
-RENDER_DIR = "C:/Users/benma/AppData/Local/Temp/bird3d"
+RENDER_DIR = os.path.join(tempfile.gettempdir(), "bird3d")
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 mb = bpy.data.metaballs.new("Bird")

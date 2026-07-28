@@ -25,7 +25,14 @@ Disconnect at **Settings → Connections → Apple Health → disconnect icon**.
 
 ## AI consent
 
-Before the first AI briefing or generated plan, **Plan** shows a disclosure that identifies OpenAI as an external processor. Health summaries, calendar titles, and daily check-ins all default off and require separate opt-ins. Declining is allowed; general planning remains available. Choices can be revoked under **Settings → AI data use**, effective on the next request. HealthKit permission and AI consent are separate.
+Before the first external-AI feature, **Plan** shows a disclosure that identifies OpenAI and the
+optional meal-photo processor. All eight categories default off: basic request data, task/plan
+context, check-ins, health summaries, calendar availability, detailed calendar text, profile and
+preferences, and uploaded photos. The reviewer can save every option off and continue using
+non-AI planning. An AI feature explains which additional categories it needs instead of silently
+enabling them. Choices can be revoked under **Settings → AI data use**; revocation increments the
+consent epoch and invalidates outstanding permits before the next request. HealthKit permission and
+AI consent are separate.
 
 Meal/receipt photos are sent only after the reviewer deliberately selects the analysis feature. Images are resized/re-encoded to remove EXIF/location metadata and are processed transiently. AI output is general wellness guidance, not diagnosis.
 
@@ -53,8 +60,8 @@ The seeded account should not require the reviewer’s own Apple Health, Oura, F
 
 1. Sign in with the review account.
 2. Review Today, Health, Schedule, Nutrition, Coach, and Grocery seeded data.
-3. Open Plan, review AI disclosure, save all options off, and generate a general plan.
-4. Enable one AI category in Settings, generate again, then revoke it.
+3. Open Plan, review the AI disclosure, save all options off, and confirm non-AI planning remains usable.
+4. Enable basic processing plus the categories named by a selected AI feature, generate once, then revoke one required category and confirm the feature is blocked.
 5. Open Apple Health connection disclosure; permission may be declined without blocking the app.
 6. Test meal/receipt photo library and Take Photo flows.
 7. Locate export and in-app deletion under Settings.

@@ -77,6 +77,7 @@ Because the installed app opens the deployed site, verify the Production environ
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `TOKEN_ENCRYPTION_KEY` (and, if rotating, `TOKEN_ENCRYPTION_KEYS` plus `TOKEN_ENCRYPTION_ACTIVE_KEY`)
 - `CRON_SECRET` (and temporary `CRON_SECRET_PREVIOUS` only during rotation)
+- `ADMIN_ACTION_SECRET` (dedicated to high-impact support/admin mutations; never reuse the cron secret)
 
 | Runtime variable(s)                                                  | Purpose                                             | Secret?                      | Where / format                                                           | Safe verification                                                                                   |
 | -------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
@@ -85,6 +86,7 @@ Because the installed app opens the deployed site, verify the Production environ
 | `SUPABASE_SERVICE_ROLE_KEY`                                          | Server administrative operations including deletion | Yes                          | Vercel Production; service-role JWT                                      | Presence check and synthetic staging deletion; never expose to client/build logs.                   |
 | `TOKEN_ENCRYPTION_*`                                                 | Encrypt stored provider tokens                      | Yes                          | Vercel Production; base64 32-byte active key plus optional rotation JSON | Run environment validation and an OAuth round trip; never print decoded keys.                       |
 | `CRON_SECRET*`                                                       | Authenticate scheduled endpoints                    | Yes                          | Vercel Production; high-entropy string, at least 16 characters           | Presence/length check and authorized cron response; do not put secret in evidence.                  |
+| `ADMIN_ACTION_SECRET`                                                | Authenticate high-impact admin actions              | Yes                          | Vercel Production; distinct high-entropy value, at least 32 characters   | Presence/length check and denied wrong-secret test; do not put secret in evidence.                  |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Web push subscription and delivery                  | Mixed; private key is secret | Vercel Production; matching VAPID keypair and `mailto:`/HTTPS subject    | Synthetic-device subscribe/send/unsubscribe check; never print private key.                         |
 
 Feature-specific values must either be valid in Production or the feature must be intentionally unavailable and accurately represented to reviewers:
@@ -94,7 +96,8 @@ Feature-specific values must either be valid in Production or the feature must b
 - Notifications: `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
 - Optional data: `WEATHER_API_KEY`, `SPOONACULAR_API_KEY`, `GROCERYTRACKER_URL`, `GROCERYTRACKER_ANON_KEY`.
 - Observability: `NEXT_PUBLIC_SENTRY_DSN` or an intentional empty value. Confirm health data and secrets are redacted under the provider retention policy.
-- Feature gate: `NEXT_PUBLIC_SOCIAL_FEATURES_ENABLED=false` for the V1 launch.
+- V1 social, household, Nest, and subscription features are source-locked off in
+  `src/lib/features.ts`; release environments cannot enable them accidentally.
 
 `NEXT_PUBLIC_*` values are compiled into the deployed web build. Changing them requires a new Vercel production deployment; rebuilding only the iOS shell does not update them.
 

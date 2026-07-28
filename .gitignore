@@ -50,6 +50,7 @@ next-env.d.ts
 
 # Blender source files for 3D birds (regenerable via scripts/blender; not needed at runtime)
 public/assets/birds3d/**/*.blend
+public/assets/birds3d/**/*.blend1
 
 # Capacitor native iOS project — generated in CI (npx cap add ios). The custom
 # native source lives in native/ios/ and is injected by scripts/ios-prepare.sh.
