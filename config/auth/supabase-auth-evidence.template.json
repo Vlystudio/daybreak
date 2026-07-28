@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "environment": "production",
+  "projectRefFingerprint": null,
+  "reviewedAt": null,
+  "reviewer": null,
+  "evidenceReferences": [],
+  "email": {
+    "confirmationRequired": null,
+    "secureEmailChange": null
+  },
+  "password": {
+    "minimumLength": null,
+    "leakedPasswordProtection": null
+  },
+  "recovery": {
+    "enabled": null,
+    "singleUseVerified": null,
+    "expirySeconds": null
+  },
+  "sessions": {
+    "jwtExpirySeconds": null,
+    "inactivityTimeoutSeconds": null,
+    "maximumLifetimeSeconds": null
+  },
+  "refreshTokens": {
+    "rotationEnabled": null,
+    "reuseDetectionEnabled": null,
+    "reuseIntervalSeconds": null
+  },
+  "rateLimits": {
+    "signupsPerHour": null,
+    "tokenRequestsPerFiveMinutes": null,
+    "recoveryRequestsPerHour": null
+  },
+  "urls": {
+    "siteUrl": null,
+    "redirectAllowlist": []
+  },
+  "oauth": {
+    "accountProviders": [],
+    "connectorsAreNotLoginProviders": null
+  },
+  "abuseControls": {
+    "captchaEnabled": null,
+    "edgeOrWafRateLimiting": null
+  },
+  "mfa": {
+    "totpEnabled": null,
+    "aalEnforcementVerified": null,
+    "stagingEvidenceReference": null
+  },
+  "signInWithApple": {
+    "applicable": false,
+    "configured": false,
+    "rationale": "Free V1 uses email/password account authentication; Google, Oura, and Fitbit are post-login connectors. Reassess App Review Guideline 4.8 before enabling any third-party login provider."
+  },
+  "hooks": {
+    "adultLegalTriggerVerified": null,
+    "failedTriggerRollsBackAuthUser": null
+  },
+  "accountDeletion": {
+    "globalLogoutVerified": null,
+    "authDeletionVerified": null,
+    "stagingEvidenceReference": null
+  }
+}

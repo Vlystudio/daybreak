@@ -45,8 +45,8 @@ export function MorningSummary({ summary }: { summary: DailySummary | null }) {
             <p className="text-lg leading-relaxed sm:text-xl">{summary.summary}</p>
 
             {summary.focus && (
-              <div className="mt-5 flex items-start gap-3 rounded-2xl bg-honey-soft p-4">
-                <Target className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <div className="bg-honey-soft mt-5 flex items-start gap-3 rounded-2xl p-4">
+                <Target className="text-primary mt-0.5 h-5 w-5 shrink-0" aria-hidden />
                 <div>
                   <p className="text-sm font-semibold text-[#9a6b1f]">Today&apos;s focus</p>
                   <p className="text-sm">{summary.focus}</p>
@@ -57,8 +57,8 @@ export function MorningSummary({ summary }: { summary: DailySummary | null }) {
             {summary.insights.length > 0 && (
               <ul className="mt-5 space-y-2" aria-label="Health insights">
                 {summary.insights.map((insight, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                    <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-honey" aria-hidden />
+                  <li key={i} className="text-muted-foreground flex items-start gap-2.5 text-sm">
+                    <Lightbulb className="text-honey mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                     {insight}
                   </li>
                 ))}
@@ -67,8 +67,8 @@ export function MorningSummary({ summary }: { summary: DailySummary | null }) {
           </>
         ) : (
           <p className="text-muted-foreground">
-            Your personal morning briefing appears here. Connect Oura and set your city, then tap
-            Refresh — Daybreak will read the morning for you.
+            Your personal morning briefing appears here. Add schedule or wellness context and set
+            your city, then tap Refresh.
           </p>
         )}
       </CardContent>

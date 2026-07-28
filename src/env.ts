@@ -32,6 +32,9 @@ const serverSchema = z.object({
   // (Vercel Cron) pick up the new CRON_SECRET, then clear PREVIOUS.
   CRON_SECRET: z.string().min(16),
   CRON_SECRET_PREVIOUS: z.string().min(16).optional(),
+  // Separate from CRON_SECRET: scheduler credentials must never authorize
+  // high-impact support/admin mutations such as known-minor restriction.
+  ADMIN_ACTION_SECRET: z.string().min(32).optional(),
   OURA_CLIENT_ID: z.string().min(1).optional(),
   OURA_CLIENT_SECRET: z.string().min(1).optional(),
   FITBIT_CLIENT_ID: z.string().min(1).optional(),

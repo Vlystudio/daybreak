@@ -8,7 +8,7 @@ import type { SubjectiveCheckin } from "@/lib/types";
 const KG_PER_LB = 0.45359237;
 const RANGE_DAYS = 120;
 
-export const metadata = { title: "Health · Daybreak" };
+export const metadata = { title: "Health" };
 export const dynamic = "force-dynamic";
 
 function isoDaysAgo(days: number): string {

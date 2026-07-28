@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "requiredProductionEnvironment": [
+    "LEGAL_OPERATOR_NAME",
+    "LEGAL_PUBLIC_DEVELOPER_NAME",
+    "LEGAL_GOVERNING_JURISDICTION",
+    "LEGAL_BUSINESS_ADDRESS",
+    "LEGAL_PRIVACY_EMAIL",
+    "LEGAL_SECURITY_EMAIL",
+    "LEGAL_SUPPORT_EMAIL",
+    "LEGAL_TERMS_EFFECTIVE_DATE",
+    "LEGAL_PRIVACY_EFFECTIVE_DATE",
+    "LEGAL_HEALTH_PRIVACY_EFFECTIVE_DATE",
+    "LEGAL_COPYRIGHT_OWNER",
+    "LEGAL_APP_STORE_SELLER_NAME",
+    "LEGAL_SUPPORT_URL",
+    "LEGAL_PRIVACY_URL",
+    "LEGAL_TERMS_URL"
+  ],
+  "documentVersions": {
+    "terms": "2026-07-28",
+    "privacy": "2026-07-28",
+    "consumer_health_privacy": "2026-07-28",
+    "health_disclaimer": "2026-07-28",
+    "ai_disclosure": "2026-07-28",
+    "acceptable_use": "2026-07-28",
+    "retention": "2026-07-28"
+  },
+  "attorneyApprovalEvidence": "docs/launch-readiness/evidence/07-privacy-and-legal/attorney-approval.json"
+}

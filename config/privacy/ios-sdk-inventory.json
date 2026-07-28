@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "targets": [
+    {
+      "target": "App",
+      "bundleId": "app.daybreak.mobile",
+      "sdks": [
+        {
+          "name": "Capacitor",
+          "versionSource": "package-lock.json",
+          "necessary": true,
+          "manifestRequiredByAppleList": true,
+          "manifestLocation": "dependency archive; verify in final Xcode privacy report",
+          "signatureRequired": true,
+          "signatureStatus": "external_archive_verification_required",
+          "data": ["webview operational data"],
+          "domains": ["daybreak-one.vercel.app"],
+          "tracking": false,
+          "healthTransmission": false
+        },
+        {
+          "name": "CapacitorPreferences",
+          "versionSource": "package-lock.json",
+          "necessary": true,
+          "manifestRequiredByAppleList": false,
+          "manifestLocation": "dependency archive; verify required-reason declaration",
+          "signatureRequired": false,
+          "signatureStatus": "not_applicable",
+          "data": ["local Apple Health connection and last-sync state"],
+          "domains": [],
+          "tracking": false,
+          "healthTransmission": false
+        },
+        {
+          "name": "DaybreakHealthkit",
+          "versionSource": "native/healthkit/package.json",
+          "necessary": true,
+          "manifestRequiredByAppleList": false,
+          "manifestLocation": "app manifest plus source review",
+          "signatureRequired": false,
+          "signatureStatus": "first_party_source",
+          "data": ["user-authorized HealthKit samples"],
+          "domains": ["daybreak-one.vercel.app"],
+          "tracking": false,
+          "healthTransmission": true
+        }
+      ]
+    }
+  ],
+  "requiredReasonReview": {
+    "directAppCode": [],
+    "dependencyCandidates": [
+      {
+        "api": "UserDefaults",
+        "owner": "Capacitor Preferences dependency",
+        "status": "must be reconciled from final Xcode privacy report and dependency manifest"
+      }
+    ]
+  }
+}

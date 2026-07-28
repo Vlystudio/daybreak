@@ -38,7 +38,6 @@ export async function saveOnboarding(input: OnboardingInput): Promise<ActionResu
       height_in: d.heightIn ?? null,
       weight_lb: d.weightLb ?? null,
       sex: d.sex ?? null,
-      birth_year: d.birthYear ?? null,
       hobbies: d.hobbies,
       social_tendency: d.socialTendency,
       chores: d.chores,

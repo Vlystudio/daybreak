@@ -1,5 +1,7 @@
 import "server-only";
 import { serverEnv, integrationsAvailable } from "@/env";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 
 /**
  * Reads the external grocery-deals feed (the "grocerytracker" Supabase project)
@@ -29,7 +31,7 @@ interface DealRow {
 }
 
 export async function fetchActiveDeals(limit = 5000): Promise<GroceryDeal[] | null> {
-  if (!integrationsAvailable.groceryDeals()) return null;
+  if (!integrationsAvailable.groceryDeals() || !isProcessorEnabled("grocerytracker")) return null;
   const base = serverEnv().GROCERYTRACKER_URL!.replace(/\/$/, "");
   const key = serverEnv().GROCERYTRACKER_ANON_KEY!;
 
@@ -45,9 +47,11 @@ export async function fetchActiveDeals(limit = 5000): Promise<GroceryDeal[] | nu
     const res = await fetch(`${base}/rest/v1/grocery_deals?${params}`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
       cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) {
-      console.error(`[grocery-deals] feed responded ${res.status}`);
+      safeLog("error", "grocery_deals.feed_failed", { status: res.status });
       return null;
     }
     const rows = (await res.json()) as DealRow[];
@@ -68,7 +72,7 @@ export async function fetchActiveDeals(limit = 5000): Promise<GroceryDeal[] | nu
       })
       .filter((d): d is GroceryDeal => d !== null);
   } catch (err) {
-    console.error("[grocery-deals] fetch failed:", err instanceof Error ? err.message : "unknown");
+    safeLog("error", "grocery_deals.fetch_failed", { errorClass: errorClass(err) });
     return null;
   }
 }

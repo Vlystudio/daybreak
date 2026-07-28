@@ -169,19 +169,20 @@ protection"**; set **Minimum password length** ≥ 10; require at least lower+up
 **Where**: Vercel → Project → **Settings → Environment Variables** (Production scope).
 These must all be present (the app validates them at boot):
 
-| Variable                                                                        | Notes                                                |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                                                      | your Supabase URL                                    |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                                 | anon key (safe public)                               |
-| `NEXT_PUBLIC_APP_URL`                                                           | the production URL (used for OAuth redirects)        |
-| `SUPABASE_SERVICE_ROLE_KEY`                                                     | **secret** — server only                             |
-| `TOKEN_ENCRYPTION_KEY`                                                          | 32-byte base64 — **never rotate casually** (see 2.3) |
-| `CRON_SECRET`                                                                   | protects the cron endpoints                          |
-| `OPENAI_API_KEY`                                                                |                                                      |
-| `RESEND_API_KEY`, `EMAIL_FROM`                                                  | email                                                |
-| `OURA_*`, `GOOGLE_*`, `FITBIT_*`                                                | OAuth (only those you use)                           |
-| `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`                             | web push                                             |
-| `WEATHER_API_KEY`, `SPOONACULAR_API_KEY`, `LOGMEAL_API_KEY`, `GROCERYTRACKER_*` | optional                                             |
+| Variable                                                                        | Notes                                                                    |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`                                                      | your Supabase URL                                                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                                 | anon key (safe public)                                                   |
+| `NEXT_PUBLIC_APP_URL`                                                           | the production URL (used for OAuth redirects)                            |
+| `SUPABASE_SERVICE_ROLE_KEY`                                                     | **secret** — server only                                                 |
+| `TOKEN_ENCRYPTION_KEY`                                                          | 32-byte base64 — **never rotate casually** (see 2.3)                     |
+| `CRON_SECRET`                                                                   | protects the cron endpoints                                              |
+| `ADMIN_ACTION_SECRET`                                                           | protects high-impact admin/support actions; do not reuse the cron secret |
+| `OPENAI_API_KEY`                                                                |                                                                          |
+| `RESEND_API_KEY`, `EMAIL_FROM`                                                  | email                                                                    |
+| `OURA_*`, `GOOGLE_*`, `FITBIT_*`                                                | OAuth (only those you use)                                               |
+| `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`                             | web push                                                                 |
+| `WEATHER_API_KEY`, `SPOONACULAR_API_KEY`, `LOGMEAL_API_KEY`, `GROCERYTRACKER_*` | optional                                                                 |
 
 - [ ] All required vars present in Production (and Preview, if you preview-deploy).
 

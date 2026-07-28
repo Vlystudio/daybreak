@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,44 +9,62 @@ import { Switch } from "@/components/ui/switch";
 import { setAiContextPreference } from "@/actions/settings";
 import type { AiConsent } from "@/lib/integrations/ai-consent";
 
-/**
- * Transparent, opt-out controls for what Daybreak sends to its AI processor
- * (OpenAI) when writing the morning briefing and daily plan. Apple-review
- * friendly: clear about what is sent, why, and what is never done with it.
- */
-
 const ROWS: { key: keyof AiConsent; label: string; desc: string }[] = [
   {
+    key: "basic",
+    label: "Basic AI processing",
+    desc: "Direct feature requests; required for any external AI call",
+  },
+  { key: "tasks", label: "Tasks & plan context", desc: "Planning, workout, and meal-plan context" },
+  { key: "checkin", label: "Daily check-ins", desc: "Ratings, reflections, and free-text notes" },
+  {
     key: "health",
-    label: "Health & wearable data",
-    desc: "Sleep, recovery, HRV and activity summaries",
+    label: "Health & wearable summaries",
+    desc: "Sleep, HRV, recovery, and activity summaries",
   },
   {
-    key: "checkin",
-    label: "Daily check-in notes",
-    desc: "Your free-text notes about how you feel",
+    key: "calendarAvailability",
+    label: "Calendar availability",
+    desc: "Times only, labeled Busy time",
+  },
+  { key: "calendarDetail", label: "Detailed calendar text", desc: "Event titles and descriptions" },
+  {
+    key: "profile",
+    label: "Profile & preferences",
+    desc: "Routines, goals, equipment, diet, and local weather",
   },
   {
-    key: "calendar",
-    label: "Calendar details",
-    desc: "Event titles — busy times are always used to avoid clashes",
+    key: "uploads",
+    label: "Uploaded photos",
+    desc: "Meal and receipt images for an Analyze action",
   },
 ];
 
-export function AiDataUseCard({ consent }: { consent: AiConsent }) {
+export function AiDataUseCard({
+  consent,
+  updatedAt,
+  expiresAt,
+}: {
+  consent: AiConsent;
+  updatedAt: string | null;
+  expiresAt: string | null;
+}) {
   const [state, setState] = useState<AiConsent>(consent);
   const [pending, startTransition] = useTransition();
 
   function toggle(context: keyof AiConsent, enabled: boolean) {
-    const previous = state[context];
-    setState((s) => ({ ...s, [context]: enabled }));
+    const previous = state;
+    const next = { ...state, [context]: enabled };
+    if (context === "calendarAvailability" && !enabled) next.calendarDetail = false;
+    if (context === "calendarDetail" && enabled) next.calendarAvailability = true;
+    setState(next);
     startTransition(async () => {
-      const r = await setAiContextPreference({ context, enabled });
-      if (!r.ok) {
-        setState((s) => ({ ...s, [context]: previous }));
-        toast.error(r.error ?? "Couldn't update that setting.");
+      const result = await setAiContextPreference({ context, enabled });
+      if (!result.ok) {
+        setState(previous);
+        toast.error(result.error ?? "Couldn't update that setting.");
       } else {
-        toast.success("AI settings updated.");
+        toast.success(enabled ? "AI permission enabled." : "AI permission revoked immediately.");
       }
     });
   }
@@ -57,27 +76,37 @@ export function AiDataUseCard({ consent }: { consent: AiConsent }) {
           <Sparkles className="text-honey h-4 w-4" aria-hidden /> AI data use
         </CardTitle>
         <CardDescription>
-          To write your morning briefing and daily plan, Daybreak sends a short summary of the items
-          below to an AI provider (OpenAI). It&apos;s used only to generate your plan — never for
-          advertising, never sold, and never to diagnose. Turn any of it off and Daybreak will
-          simply make a more general plan.
+          OpenAI processes authorized categories only for the feature you start; LogMeal may process
+          an authorized meal photo. AI may be inaccurate and is not medical advice. Turning a
+          category off invalidates outstanding permits and future retries. Learn more in the{" "}
+          <Link href="/legal/ai" className="underline">
+            AI disclosure
+          </Link>
+          .
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {ROWS.map((r) => (
-          <div key={r.key} className="flex items-center justify-between gap-3">
+        {ROWS.map((row) => (
+          <div key={row.key} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium">{r.label}</p>
-              <p className="text-muted-foreground text-xs">{r.desc}</p>
+              <p className="text-sm font-medium">{row.label}</p>
+              <p className="text-muted-foreground text-xs">{row.desc}</p>
             </div>
             <Switch
-              checked={state[r.key]}
+              id={`ai-consent-${row.key}`}
+              data-testid={`ai-consent-${row.key}`}
+              checked={state[row.key]}
               disabled={pending}
-              aria-label={`Send ${r.label.toLowerCase()} to AI`}
-              onCheckedChange={(v) => toggle(r.key, v)}
+              aria-label={`Send ${row.label.toLowerCase()} to an AI provider`}
+              onCheckedChange={(value) => toggle(row.key, value)}
             />
           </div>
         ))}
+        <p className="text-muted-foreground pt-1 text-xs">
+          {updatedAt
+            ? `Last changed ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(updatedAt))}. ${expiresAt ? `Review again by ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(expiresAt))}.` : "A new review is required."}`
+            : "No AI data-sharing decision has been recorded. Every category remains off."}
+        </p>
       </CardContent>
     </Card>
   );

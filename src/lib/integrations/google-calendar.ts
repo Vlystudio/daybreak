@@ -1,6 +1,8 @@
 import "server-only";
 import { serverEnv, publicEnv } from "@/env";
 import { getValidAccessToken, type TokenSet } from "@/lib/integrations/tokens";
+import { safeLog } from "@/lib/security/safe-logger";
+import { assertProcessorEnabled } from "@/lib/privacy/processors";
 
 /** Google Calendar API v3 (OAuth2). Full calendar scope so we can both read the
  *  user's events and create/manage a dedicated "Daybreak" calendar for export. */
@@ -12,13 +14,26 @@ const API_BASE = "https://www.googleapis.com/calendar/v3";
 export const GOOGLE_REDIRECT_PATH = "/api/oauth/google/callback";
 const SCOPES = "https://www.googleapis.com/auth/calendar";
 
+function googleFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  assertProcessorEnabled("google");
+  return fetch(input, {
+    ...init,
+    redirect: "error",
+    signal: init.signal ?? AbortSignal.timeout(30_000),
+  });
+}
+
 /** True if a granted scope string allows writing events (not just read-only). */
 export function scopeAllowsWrite(scope: string | null | undefined): boolean {
   const s = scope ?? "";
-  return /https:\/\/www\.googleapis\.com\/auth\/calendar(?![.\w])/.test(s) || s.includes("auth/calendar.events");
+  return (
+    /https:\/\/www\.googleapis\.com\/auth\/calendar(?![.\w])/.test(s) ||
+    s.includes("auth/calendar.events")
+  );
 }
 
 export function googleAuthorizeUrl(state: string): string {
+  assertProcessorEnabled("google");
   const env = serverEnv();
   const params = new URLSearchParams({
     response_type: "code",
@@ -34,7 +49,7 @@ export function googleAuthorizeUrl(state: string): string {
 
 export async function exchangeGoogleCode(code: string): Promise<TokenSet> {
   const env = serverEnv();
-  const res = await fetch(TOKEN_URL, {
+  const res = await googleFetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -99,7 +114,7 @@ export async function fetchGoogleEvents(
     });
     if (pageToken) params.set("pageToken", pageToken);
 
-    const res = await fetch(
+    const res = await googleFetch(
       `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
@@ -141,7 +156,7 @@ function eventBody(e: GoogleEventInput) {
 
 /** Create the dedicated "Daybreak" calendar; returns its id (or null on failure). */
 export async function createDaybreakCalendar(accessToken: string): Promise<string | null> {
-  const res = await fetch(`${API_BASE}/calendars`, {
+  const res = await googleFetch(`${API_BASE}/calendars`, {
     method: "POST",
     headers: authHeaders(accessToken),
     body: JSON.stringify({
@@ -150,7 +165,7 @@ export async function createDaybreakCalendar(accessToken: string): Promise<strin
     }),
   });
   if (!res.ok) {
-    console.error("[google] create calendar failed:", res.status);
+    safeLog("error", "google_calendar.create_calendar_failed", { status: res.status });
     return null;
   }
   const json = (await res.json()) as { id?: string };
@@ -162,13 +177,13 @@ export async function insertGoogleEvent(
   calendarId: string,
   e: GoogleEventInput
 ): Promise<string | null> {
-  const res = await fetch(`${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`, {
+  const res = await googleFetch(`${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events`, {
     method: "POST",
     headers: authHeaders(accessToken),
     body: JSON.stringify(eventBody(e)),
   });
   if (!res.ok) {
-    console.error("[google] insert event failed:", res.status);
+    safeLog("error", "google_calendar.insert_event_failed", { status: res.status });
     return null;
   }
   const json = (await res.json()) as { id?: string };
@@ -182,7 +197,7 @@ export async function updateGoogleEvent(
   eventId: string,
   e: GoogleEventInput
 ): Promise<"ok" | "gone" | "error"> {
-  const res = await fetch(
+  const res = await googleFetch(
     `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     { method: "PATCH", headers: authHeaders(accessToken), body: JSON.stringify(eventBody(e)) }
   );
@@ -196,7 +211,7 @@ export async function deleteGoogleEvent(
   calendarId: string,
   eventId: string
 ): Promise<boolean> {
-  const res = await fetch(
+  const res = await googleFetch(
     `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
   );
@@ -225,7 +240,7 @@ export async function listDaybreakCalendarEvents(
       maxResults: "250",
     });
     if (pageToken) params.set("pageToken", pageToken);
-    const res = await fetch(
+    const res = await googleFetch(
       `${API_BASE}/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );

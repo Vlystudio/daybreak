@@ -16,11 +16,15 @@ import {
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
 import { analyzeReceipt, type ReceiptAnalysis } from "@/lib/integrations/receipt-vision";
 import { validateImageDataUrl } from "@/lib/image-upload";
+import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 import { integrationsAvailable } from "@/env";
 import { z } from "zod";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 async function householdId(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  if (!SOCIAL_FEATURES_ENABLED) return null;
   const { data } = await supabase
     .from("household_members")
     .select("household_id")
@@ -125,7 +129,7 @@ export async function refreshGroceryDeals(): Promise<
     revalidatePath("/grocery");
     return { ok: true, prices: result.prices };
   } catch (err) {
-    console.error("[grocery] deal import failed:", err);
+    safeLog("error", "grocery.deal_import_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "The deal import hit a snag — please try again." };
   }
 }
@@ -144,7 +148,9 @@ export async function analyzeReceiptPhoto(input: { imageDataUrl: string }): Prom
   const valid = validateImageDataUrl(input.imageDataUrl);
   if (!valid.ok) return { ok: false, error: valid.error };
 
-  const receipt = await analyzeReceipt(input.imageDataUrl);
+  const permit = await getAiProcessingPermit(user.id, "receipt_image");
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  const receipt = await analyzeReceipt(permit, input.imageDataUrl);
   if (!receipt)
     return { ok: false, error: "Couldn't read that receipt — enter the total manually." };
   await audit(user.id, "receipt.scanned");

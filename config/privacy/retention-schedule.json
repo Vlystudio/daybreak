@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "categories": [
+    {
+      "id": "account_records",
+      "purpose": "Account operation",
+      "trigger": "Account active",
+      "activeRetention": "Account lifetime",
+      "postDeletionRetention": "None in active database",
+      "exception": "Narrow legal/security hold",
+      "deletionMechanism": "Durable account deletion worker",
+      "backupExpiration": "Provider lifecycle; external confirmation required",
+      "responsibleJob": "account-deletion",
+      "verification": "account deletion SQL and worker tests"
+    },
+    {
+      "id": "adult_attestation",
+      "purpose": "Adult eligibility evidence",
+      "trigger": "Attestation",
+      "activeRetention": "Account lifetime",
+      "postDeletionRetention": "No direct record; minimal hashed deletion receipt only",
+      "exception": "Narrow legal requirement",
+      "deletionMechanism": "Auth cascade",
+      "backupExpiration": "Provider lifecycle; external confirmation required",
+      "responsibleJob": "account-deletion",
+      "verification": "adult and deletion pgTAP"
+    },
+    {
+      "id": "legal_acceptance",
+      "purpose": "Contract/version evidence",
+      "trigger": "Acceptance",
+      "activeRetention": "Account lifetime",
+      "postDeletionRetention": "None in active database",
+      "exception": "Narrow dispute hold",
+      "deletionMechanism": "Auth cascade",
+      "backupExpiration": "Provider lifecycle; external confirmation required",
+      "responsibleJob": "account-deletion",
+      "verification": "legal acceptance pgTAP"
+    },
+    {
+      "id": "consent_history",
+      "purpose": "Consent and revocation evidence",
+      "trigger": "Consent decision",
+      "activeRetention": "Account lifetime",
+      "postDeletionRetention": "None in active database",
+      "exception": "Narrow dispute hold",
+      "deletionMechanism": "Auth cascade",
+      "backupExpiration": "Provider lifecycle; external confirmation required",
+      "responsibleJob": "account-deletion",
+      "verification": "AI consent pgTAP"
+    },
+    {
+      "id": "tasks_plans_calendar_health",
+      "purpose": "User-requested functionality",
+      "trigger": "User creates/connects data",
+      "activeRetention": "Until user deletes/disconnects or account ends",
+      "postDeletionRetention": "None in active database",
+      "exception": "Narrow legal/security hold",
+      "deletionMechanism": "User controls and durable account deletion",
+      "backupExpiration": "Provider lifecycle; external confirmation required",
+      "responsibleJob": "account-deletion",
+      "verification": "deletion inventory and RLS tests"
+    },
+    {
+      "id": "ai_permits",
+      "purpose": "AI egress authorization",
+      "trigger": "Permit issue",
+      "activeRetention": "Two-minute validity; cleanup after one hour",
+      "postDeletionRetention": "None",
+      "exception": "None",
+      "deletionMechanism": "Consent revocation, deletion, retention SQL",
+      "backupExpiration": "Provider lifecycle",
+      "responsibleJob": "retention",
+      "verification": "permit and retention pgTAP"
+    },
+    {
+      "id": "ai_cache",
+      "purpose": "Short-lived duplicate suppression",
+      "trigger": "AI feature request",
+      "activeRetention": "Maximum two hours",
+      "postDeletionRetention": "None",
+      "exception": "None",
+      "deletionMechanism": "Consent-change purge and retention SQL",
+      "backupExpiration": "Provider lifecycle",
+      "responsibleJob": "retention",
+      "verification": "retention pgTAP"
+    },
+    {
+      "id": "uploads",
+      "purpose": "Avatar and transient image analysis",
+      "trigger": "User upload",
+      "activeRetention": "Avatar until replaced/deleted; analysis images transient",
+      "postDeletionRetention": "None in active storage",
+      "exception": "Narrow legal hold",
+      "deletionMechanism": "Storage deletion worker",
+      "backupExpiration": "Provider lifecycle; external confirmation required",
+      "responsibleJob": "account-deletion",
+      "verification": "storage deletion worker tests"
+    },
+    {
+      "id": "integration_notification_tokens",
+      "purpose": "Connected services and notifications",
+      "trigger": "Connect/subscribe",
+      "activeRetention": "Until disconnect/unsubscribe",
+      "postDeletionRetention": "None",
+      "exception": "None",
+      "deletionMechanism": "Remote revoke then local deletion",
+      "backupExpiration": "Provider lifecycle",
+      "responsibleJob": "account-deletion",
+      "verification": "provider revocation tests"
+    },
+    {
+      "id": "security_rate_limits",
+      "purpose": "Abuse prevention",
+      "trigger": "Protected action",
+      "activeRetention": "Up to two days",
+      "postDeletionRetention": "Up to two days, keyed by opaque operational key",
+      "exception": "Active incident hold",
+      "deletionMechanism": "Retention SQL",
+      "backupExpiration": "Provider lifecycle",
+      "responsibleJob": "retention",
+      "verification": "retention pgTAP"
+    },
+    {
+      "id": "deletion_receipts",
+      "purpose": "Tokenless deletion status",
+      "trigger": "Deletion request",
+      "activeRetention": "45 days",
+      "postDeletionRetention": "45 days",
+      "exception": "None",
+      "deletionMechanism": "Retention SQL",
+      "backupExpiration": "Provider lifecycle",
+      "responsibleJob": "retention",
+      "verification": "deletion and retention pgTAP"
+    },
+    {
+      "id": "product_analytics",
+      "purpose": "Allowlisted product operation",
+      "trigger": "Approved event",
+      "activeRetention": "Up to 365 days",
+      "postDeletionRetention": "Deleted by account worker or retention",
+      "exception": "None",
+      "deletionMechanism": "Account deletion and retention SQL",
+      "backupExpiration": "Provider lifecycle",
+      "responsibleJob": "retention",
+      "verification": "analytics boundary and retention tests"
+    },
+    {
+      "id": "rights_support_backups",
+      "purpose": "Rights/support completion and recovery",
+      "trigger": "Request or backup",
+      "activeRetention": "Request/account lifecycle",
+      "postDeletionRetention": "Contract/legal criteria",
+      "exception": "Legal/security preservation",
+      "deletionMechanism": "Workflow close, account deletion, provider rotation",
+      "backupExpiration": "External confirmation required",
+      "responsibleJob": "human workflow/provider",
+      "verification": "manual processor and backup evidence"
+    }
+  ]
+}

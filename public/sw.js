@@ -33,7 +33,7 @@ self.addEventListener("push", (event) => {
   let payload = { title: "Daybreak", body: "You have a new update.", url: "/dashboard" };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
-  } catch (_e) {
+  } catch {
     // Non-JSON payload — keep the defaults.
   }
 
@@ -72,7 +72,7 @@ self.addEventListener("fetch", (event) => {
               new Response(file, { headers: { "Content-Type": file.type } })
             );
           }
-        } catch (_e) {
+        } catch {
           // fall through to the page; it will show an empty state
         }
         return Response.redirect("/nutrition/share?shared=1", 303);

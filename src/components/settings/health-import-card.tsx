@@ -9,18 +9,35 @@ import { importHealthMetrics, type ImportRow } from "@/actions/health-import";
 
 // Flexible header aliases → health_metrics fields.
 const COLUMN_MAP: Record<string, keyof ImportRow> = {
-  date: "date", day: "date",
-  steps: "steps", step_count: "steps",
-  resting_hr: "resting_hr", resting_heart_rate: "resting_hr", rhr: "resting_hr",
-  hrv: "hrv_avg", hrv_avg: "hrv_avg", heart_rate_variability: "hrv_avg",
-  sleep_minutes: "sleep_duration_min", sleep_duration_min: "sleep_duration_min", asleep_minutes: "sleep_duration_min", time_asleep_min: "sleep_duration_min",
+  date: "date",
+  day: "date",
+  steps: "steps",
+  step_count: "steps",
+  resting_hr: "resting_hr",
+  resting_heart_rate: "resting_hr",
+  rhr: "resting_hr",
+  hrv: "hrv_avg",
+  hrv_avg: "hrv_avg",
+  heart_rate_variability: "hrv_avg",
+  sleep_minutes: "sleep_duration_min",
+  sleep_duration_min: "sleep_duration_min",
+  asleep_minutes: "sleep_duration_min",
+  time_asleep_min: "sleep_duration_min",
   sleep_score: "sleep_score",
-  readiness: "readiness_score", readiness_score: "readiness_score",
-  active_calories: "active_calories", active_energy: "active_calories", active_calories_kcal: "active_calories",
+  readiness: "readiness_score",
+  readiness_score: "readiness_score",
+  active_calories: "active_calories",
+  active_energy: "active_calories",
+  active_calories_kcal: "active_calories",
 };
 
 function normHeader(h: string): string {
-  return h.trim().toLowerCase().replace(/[\s/()-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  return h
+    .trim()
+    .toLowerCase()
+    .replace(/[\s/()-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
 }
 
 /** Minimal CSV line splitter that respects double-quoted fields. */
@@ -31,9 +48,13 @@ function splitCsvLine(line: string): string[] {
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
     if (c === '"') {
-      if (inQ && line[i + 1] === '"') { cur += '"'; i++; } else inQ = !inQ;
+      if (inQ && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else inQ = !inQ;
     } else if (c === "," && !inQ) {
-      out.push(cur); cur = "";
+      out.push(cur);
+      cur = "";
     } else cur += c;
   }
   out.push(cur);
@@ -53,7 +74,11 @@ function parseCsv(text: string): ImportRow[] {
       const raw = (cells[idx] ?? "").trim();
       if (field === "date") {
         // Accept YYYY-MM-DD or anything Date can parse → normalize.
-        const d = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : isNaN(Date.parse(raw)) ? "" : new Date(raw).toISOString().slice(0, 10);
+        const d = /^\d{4}-\d{2}-\d{2}$/.test(raw)
+          ? raw
+          : isNaN(Date.parse(raw))
+            ? ""
+            : new Date(raw).toISOString().slice(0, 10);
         if (d) row.date = d;
       } else if (raw !== "") {
         const n = parseFloat(raw);
@@ -84,7 +109,10 @@ export function HealthImportCard() {
       }
       startTransition(async () => {
         const result = await importHealthMetrics(rows);
-        if (result.ok) toast.success(`Imported ${result.imported} day${result.imported === 1 ? "" : "s"} of data.`);
+        if (result.ok)
+          toast.success(
+            `Imported ${result.imported} day${result.imported === 1 ? "" : "s"} of data.`
+          );
         else toast.error(result.error);
       });
     } catch {
@@ -96,22 +124,28 @@ export function HealthImportCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <FileUp className="h-4 w-4 text-sky" aria-hidden />
+          <FileUp className="text-sky h-4 w-4" aria-hidden />
           Import health data
         </CardTitle>
-        <CardDescription>From Apple Health, Health Connect, Garmin, or any CSV export</CardDescription>
+        <CardDescription>Import a compatible daily-metrics CSV export</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={onFile} />
-        <Button variant="secondary" size="sm" disabled={pending} onClick={() => fileRef.current?.click()}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={pending}
+          onClick={() => fileRef.current?.click()}
+        >
           <Upload aria-hidden />
           {pending ? "Importing…" : "Upload CSV"}
         </Button>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           {fileName ? `Last file: ${fileName}. ` : ""}
-          Recognized columns: <span className="font-medium">date</span>, steps, resting_hr, hrv, sleep_minutes,
-          sleep_score, readiness, active_calories. A <span className="font-medium">date</span> column is required;
-          include whichever metrics you have.
+          Recognized columns: <span className="font-medium">date</span>, steps, resting_hr, hrv,
+          sleep_minutes, sleep_score, readiness, active_calories. A{" "}
+          <span className="font-medium">date</span> column is required; include whichever metrics
+          you have.
         </p>
       </CardContent>
     </Card>

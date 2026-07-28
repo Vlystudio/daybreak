@@ -11,6 +11,7 @@ import {
   upsertHealthObservations,
 } from "@/lib/health/observations";
 import type { ActionResult } from "@/actions/schedule";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 const scale = z.number().int().min(1).max(5).nullable();
 
@@ -65,7 +66,7 @@ export async function logSubjectiveCheckin(input: SubjectiveCheckinInput): Promi
       subjectiveCheckinToObservations(user.id, { date: today, ...parsed.data })
     );
   } catch (err) {
-    console.error("[checkin] observation dual-write failed:", err);
+    safeLog("error", "checkin.observation_dual_write_failed", { errorClass: errorClass(err) });
   }
 
   await audit(user.id, "checkin.logged");

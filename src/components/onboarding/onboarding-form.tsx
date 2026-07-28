@@ -96,11 +96,19 @@ function MultiChips({
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-2">
       <Label className="text-sm font-medium">{label}</Label>
-      {hint && <p className="-mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-muted-foreground -mt-1 text-xs">{hint}</p>}
       {children}
     </div>
   );
@@ -126,9 +134,10 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
   const initIn = initial?.height_in != null ? initial.height_in % 12 : "";
   const [heightFt, setHeightFt] = useState<string>(String(initFt));
   const [heightInches, setHeightInches] = useState<string>(String(initIn));
-  const [weightLb, setWeightLb] = useState(initial?.weight_lb != null ? String(initial.weight_lb) : "");
+  const [weightLb, setWeightLb] = useState(
+    initial?.weight_lb != null ? String(initial.weight_lb) : ""
+  );
   const [sex, setSex] = useState(initial?.sex ?? "");
-  const [birthYear, setBirthYear] = useState(initial?.birth_year != null ? String(initial.birth_year) : "");
 
   const [hobbies, setHobbies] = useState<string[]>(initial?.hobbies ?? []);
   const [customHobby, setCustomHobby] = useState("");
@@ -162,10 +171,19 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
     setChores((prev) => prev.map((c) => (c.name === name ? { ...c, frequency } : c)));
   }
 
-  const customHobbies = hobbies.filter((h) => !HOBBY_SUGGESTIONS.includes(h as (typeof HOBBY_SUGGESTIONS)[number]));
+  const customHobbies = hobbies.filter(
+    (h) => !HOBBY_SUGGESTIONS.includes(h as (typeof HOBBY_SUGGESTIONS)[number])
+  );
 
   function handleSubmit() {
-    if (!workType || !fitnessGoal || !activityLevel || !exerciseFrequency || !socialTendency || !planningScope) {
+    if (
+      !workType ||
+      !fitnessGoal ||
+      !activityLevel ||
+      !exerciseFrequency ||
+      !socialTendency ||
+      !planningScope
+    ) {
       toast.error("Please answer the required questions (marked *).");
       return;
     }
@@ -192,7 +210,6 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
       heightIn,
       weightLb: weightLb ? Number(weightLb) : undefined,
       sex: sex || undefined,
-      birthYear: birthYear ? Number(birthYear) : undefined,
       hobbies,
       socialTendency,
       chores,
@@ -226,12 +243,28 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
             <ChipGroup options={WORK_TYPES} value={workType} onChange={setWorkType} />
           </Field>
           <Field label="What's your role / job title?" hint="Optional — helps tailor suggestions.">
-            <Input value={workTitle} onChange={(e) => setWorkTitle(e.target.value)} placeholder="e.g. Nurse, Software engineer" maxLength={120} />
+            <Input
+              value={workTitle}
+              onChange={(e) => setWorkTitle(e.target.value)}
+              placeholder="e.g. Nurse, Software engineer"
+              maxLength={120}
+            />
           </Field>
-          <Field label="What's your typical work schedule?" hint="Optional notes — e.g. rotating shifts, on-call.">
-            <Input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="e.g. rotating shifts" maxLength={200} />
+          <Field
+            label="What's your typical work schedule?"
+            hint="Optional notes — e.g. rotating shifts, on-call."
+          >
+            <Input
+              value={workSchedule}
+              onChange={(e) => setWorkSchedule(e.target.value)}
+              placeholder="e.g. rotating shifts"
+              maxLength={200}
+            />
           </Field>
-          <Field label="Which days do you work?" hint="Daybreak keeps these hours free of personal plans — no need to put work on Google Calendar.">
+          <Field
+            label="Which days do you work?"
+            hint="Daybreak keeps these hours free of personal plans — no need to put work on Google Calendar."
+          >
             <div className="flex flex-wrap gap-2">
               {WORK_DAYS.map((d) => {
                 const active = workDays.includes(d.value);
@@ -273,16 +306,20 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <p className="text-sm font-medium">When does your day start and end?</p>
-            <p className="-mt-1 text-xs text-muted-foreground">
-              Your goal wake and bedtime — the planner schedules only within this window. If your Oura
-              ring is connected, your actual sleep/wake takes over automatically.
+            <p className="text-muted-foreground -mt-1 text-xs">
+              Your goal wake and bedtime — the planner schedules only within this window. If your
+              Oura ring is connected, your actual sleep/wake takes over automatically.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Wake up">
                 <Input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} />
               </Field>
               <Field label="Bedtime">
-                <Input type="time" value={sleepTime} onChange={(e) => setSleepTime(e.target.value)} />
+                <Input
+                  type="time"
+                  value={sleepTime}
+                  onChange={(e) => setSleepTime(e.target.value)}
+                />
               </Field>
             </div>
           </div>
@@ -299,10 +336,18 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
             <ChipGroup options={FITNESS_GOALS} value={fitnessGoal} onChange={setFitnessGoal} />
           </Field>
           <Field label="How active are you day to day right now?">
-            <ChipGroup options={ACTIVITY_LEVELS} value={activityLevel} onChange={setActivityLevel} />
+            <ChipGroup
+              options={ACTIVITY_LEVELS}
+              value={activityLevel}
+              onChange={setActivityLevel}
+            />
           </Field>
           <Field label="How often do you exercise or do something that raises your heart rate?">
-            <ChipGroup options={EXERCISE_FREQUENCIES} value={exerciseFrequency} onChange={setExerciseFrequency} />
+            <ChipGroup
+              options={EXERCISE_FREQUENCIES}
+              value={exerciseFrequency}
+              onChange={setExerciseFrequency}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -313,21 +358,39 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
           <CardTitle className="text-base">Body basics</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             Optional, but the personal trainer needs these to build a workout and nutrition plan.
           </p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <Field label="Height (ft)">
-              <Input type="number" min={3} max={8} value={heightFt} onChange={(e) => setHeightFt(e.target.value)} placeholder="5" />
+              <Input
+                type="number"
+                min={3}
+                max={8}
+                value={heightFt}
+                onChange={(e) => setHeightFt(e.target.value)}
+                placeholder="5"
+              />
             </Field>
             <Field label="Height (in)">
-              <Input type="number" min={0} max={11} value={heightInches} onChange={(e) => setHeightInches(e.target.value)} placeholder="10" />
+              <Input
+                type="number"
+                min={0}
+                max={11}
+                value={heightInches}
+                onChange={(e) => setHeightInches(e.target.value)}
+                placeholder="10"
+              />
             </Field>
             <Field label="Weight (lb)">
-              <Input type="number" min={50} max={800} value={weightLb} onChange={(e) => setWeightLb(e.target.value)} placeholder="160" />
-            </Field>
-            <Field label="Birth year">
-              <Input type="number" min={1900} max={2025} value={birthYear} onChange={(e) => setBirthYear(e.target.value)} placeholder="1995" />
+              <Input
+                type="number"
+                min={50}
+                max={800}
+                value={weightLb}
+                onChange={(e) => setWeightLb(e.target.value)}
+                placeholder="160"
+              />
             </Field>
           </div>
           <Field label="Sex (for nutrition calculations)">
@@ -343,10 +406,18 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
         </CardHeader>
         <CardContent className="space-y-4">
           <Field label="What do you enjoy doing?" hint="Pick any that fit — add your own too.">
-            <MultiChips options={HOBBY_SUGGESTIONS} selected={hobbies} onToggle={(v) => toggle(hobbies, setHobbies, v)} />
+            <MultiChips
+              options={HOBBY_SUGGESTIONS}
+              selected={hobbies}
+              onToggle={(v) => toggle(hobbies, setHobbies, v)}
+            />
             {customHobbies.length > 0 && (
               <div className="mt-2">
-                <MultiChips options={customHobbies} selected={hobbies} onToggle={(v) => toggle(hobbies, setHobbies, v)} />
+                <MultiChips
+                  options={customHobbies}
+                  selected={hobbies}
+                  onToggle={(v) => toggle(hobbies, setHobbies, v)}
+                />
               </div>
             )}
             <div className="mt-2 flex gap-2">
@@ -368,7 +439,11 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
             </div>
           </Field>
           <Field label="Which sounds most like you?">
-            <ChipGroup options={SOCIAL_TENDENCIES} value={socialTendency} onChange={setSocialTendency} />
+            <ChipGroup
+              options={SOCIAL_TENDENCIES}
+              value={socialTendency}
+              onChange={setSocialTendency}
+            />
           </Field>
         </CardContent>
       </Card>
@@ -379,7 +454,10 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
           <CardTitle className="text-base">Chores</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Field label="Which chores do you handle?" hint="Select the ones you do, then set how often.">
+          <Field
+            label="Which chores do you handle?"
+            hint="Select the ones you do, then set how often."
+          >
             <MultiChips
               options={CHORE_OPTIONS}
               selected={chores.map((c) => c.name)}
@@ -387,14 +465,14 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
             />
           </Field>
           {chores.length > 0 && (
-            <div className="space-y-2 rounded-lg border border-border p-3">
+            <div className="border-border space-y-2 rounded-lg border p-3">
               {chores.map((c) => (
                 <div key={c.name} className="flex items-center justify-between gap-3 text-sm">
                   <span>{c.name}</span>
                   <select
                     value={c.frequency}
                     onChange={(e) => setChoreFreq(c.name, e.target.value as ChoreFrequency)}
-                    className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                    className="border-border bg-background rounded-md border px-2 py-1 text-sm"
                   >
                     {CHORE_FREQUENCIES.map((f) => (
                       <option key={f.value} value={f.value}>
@@ -416,9 +494,16 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
         </CardHeader>
         <CardContent className="space-y-4">
           <Field label="Any dietary restrictions or allergies?">
-            <MultiChips options={DIETARY_OPTIONS} selected={dietary} onToggle={(v) => toggle(dietary, setDietary, v)} />
+            <MultiChips
+              options={DIETARY_OPTIONS}
+              selected={dietary}
+              onToggle={(v) => toggle(dietary, setDietary, v)}
+            />
           </Field>
-          <Field label="Anything else about your diet?" hint="Optional — other allergies, dislikes, preferences.">
+          <Field
+            label="Anything else about your diet?"
+            hint="Optional — other allergies, dislikes, preferences."
+          >
             <Textarea
               value={dietaryNotes}
               onChange={(e) => setDietaryNotes(e.target.value)}
@@ -437,13 +522,21 @@ export function OnboardingForm({ initial }: { initial: UserPreferences | null })
         </CardHeader>
         <CardContent>
           <Field label="What kind of planning do you want from Daybreak?">
-            <ChipGroup options={PLANNING_SCOPES} value={planningScope} onChange={setPlanningScope} />
+            <ChipGroup
+              options={PLANNING_SCOPES}
+              value={planningScope}
+              onChange={setPlanningScope}
+            />
           </Field>
           <Field
             label="Build it for me automatically?"
-            hint="Daybreak can regenerate your plan on this cadence each morning — no need to press Generate. Today still refreshes from your Oura recovery."
+            hint="Daybreak can regenerate your plan on this cadence each morning — no need to press Generate. Today can use recovery signals only from sources you connect."
           >
-            <ChipGroup options={AUTO_PLAN_CADENCES} value={autoPlanCadence} onChange={setAutoPlanCadence} />
+            <ChipGroup
+              options={AUTO_PLAN_CADENCES}
+              value={autoPlanCadence}
+              onChange={setAutoPlanCadence}
+            />
           </Field>
         </CardContent>
       </Card>

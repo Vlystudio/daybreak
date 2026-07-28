@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-28T11:40:00-04:00",
+  "environment": "local Next.js production build with repository-only CI legal identity fallback",
+  "productionIdentityClaimed": false,
+  "checks": {
+    "homeMeaningfulContent": "pass",
+    "homeNavigationToLogin": "pass",
+    "loginInteractiveControls": "pass",
+    "signupAdultAttestationUnchecked": "pass",
+    "signupTermsAcceptanceUnchecked": "pass",
+    "signupPrivacyAcknowledgementUnchecked": "pass",
+    "under18RejectionSurface": "pass",
+    "publicLegalAndSecurityRoutes": "pass",
+    "frameworkErrorOverlay": "absent",
+    "browserErrors": "none",
+    "consoleErrors": "none",
+    "visualInspection": "pass after correcting legal-copy spacing and duplicate title suffix"
+  },
+  "routes": [
+    "/",
+    "/login",
+    "/privacy",
+    "/terms",
+    "/legal",
+    "/legal/acceptable-use",
+    "/legal/ai",
+    "/legal/consumer-health-privacy",
+    "/legal/copyright",
+    "/legal/health-disclaimer",
+    "/legal/retention",
+    "/security",
+    "/.well-known/security.txt"
+  ],
+  "screenshots": [
+    "build/release-evidence/browser-home.png",
+    "build/release-evidence/browser-login.png",
+    "build/release-evidence/browser-signup.png",
+    "build/release-evidence/browser-under-18.png",
+    "build/release-evidence/browser-privacy-final.png"
+  ],
+  "limitations": [
+    "No real account or production Supabase project was used.",
+    "Authenticated, OAuth, provider, staging-deletion, and physical-device flows remain separate blockers.",
+    "The visible local legal identity is deliberately invalid for deployment; production values remain blocked."
+  ]
+}

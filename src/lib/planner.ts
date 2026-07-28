@@ -2,7 +2,9 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyPlan, type PlanBlockType } from "@/lib/integrations/ai";
 import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
-import { aiConsentFromPrefs, redactEventTitle } from "@/lib/integrations/ai-consent";
+import { redactEventTitle } from "@/lib/integrations/ai-consent";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { getAiProcessingPermit, type AiProcessingPermit } from "@/lib/integrations/ai-permit";
 import { fetchWeather } from "@/lib/integrations/weather";
 import { generateWorkoutForUser } from "@/lib/workout-engine";
 import { audit } from "@/lib/audit";
@@ -121,9 +123,15 @@ interface DayMetric {
  */
 async function planDays(
   userId: string,
-  dateList: { date: string; weekday: string }[]
+  dateList: { date: string; weekday: string }[],
+  suppliedPermit?: AiProcessingPermit
 ): Promise<number | null> {
   const admin = createAdminClient();
+  if (suppliedPermit && suppliedPermit.userId !== userId) {
+    throw new Error("AI processing permit user mismatch.");
+  }
+  const permit = suppliedPermit ?? (await getAiProcessingPermit(userId, "daily_plan"));
+  if (!permit) return null;
 
   const { data: prefs } = await admin
     .from("user_preferences")
@@ -135,7 +143,7 @@ async function planDays(
 
   // Per-user AI data-use consent. When a context is off we omit it from the AI
   // payload (calendar keeps busy time-blocks but with titles stripped).
-  const consent = aiConsentFromPrefs(prefs);
+  const consent = permit.consent;
 
   const { data: profile } = await admin
     .from("profiles")
@@ -196,15 +204,17 @@ async function planDays(
   // Day window the planner schedules within. Prefer the wearable's most recent
   // actual sleep/wake; fall back to the user's goal times; then sane defaults.
   const latestSleep = (metrics ?? []).find((m) => m.bedtime_end || m.bedtime_start) ?? null;
-  const actualWake = latestSleep?.bedtime_end ? localTime(latestSleep.bedtime_end, tz) : null;
-  const actualSleep = latestSleep?.bedtime_start ? localTime(latestSleep.bedtime_start, tz) : null;
+  const actualWake =
+    consent.health && latestSleep?.bedtime_end ? localTime(latestSleep.bedtime_end, tz) : null;
+  const actualSleep =
+    consent.health && latestSleep?.bedtime_start ? localTime(latestSleep.bedtime_start, tz) : null;
   const dayWindow = {
-    wake: actualWake ?? prefs.wake_time ?? "07:00",
-    sleep: actualSleep ?? prefs.sleep_time ?? "22:30",
+    wake: actualWake ?? (consent.profile ? prefs.wake_time : null) ?? "07:00",
+    sleep: actualSleep ?? (consent.profile ? prefs.sleep_time : null) ?? "22:30",
     source:
       actualWake || actualSleep
         ? "wearable"
-        : prefs.wake_time || prefs.sleep_time
+        : consent.profile && (prefs.wake_time || prefs.sleep_time)
           ? "goal"
           : "default",
   };
@@ -237,7 +247,9 @@ async function planDays(
   const lon = profile?.longitude;
   const planningToday = dateList.some((d) => d.date === todayStr);
   const weatherToday =
-    planningToday && lat != null && lon != null ? await fetchWeather(lat, lon) : null;
+    planningToday && consent.profile && lat != null && lon != null
+      ? await fetchWeather(lat, lon)
+      : null;
 
   // Normalized, source-aware health context for TODAY — so the plan adapts to
   // whichever wearable (or just a check-in) the user has, never Oura specifically.
@@ -258,19 +270,22 @@ async function planDays(
   const workStart = prefs.work_start_time;
   const workEnd = prefs.work_end_time;
 
-  const preferences = {
-    work_type: prefs.work_type,
-    work_title: prefs.work_title,
-    work_schedule: prefs.work_schedule,
-    fitness_goal: prefs.fitness_goal,
-    activity_level: prefs.activity_level,
-    exercise_frequency: prefs.exercise_frequency,
-    hobbies: prefs.hobbies,
-    social_tendency: prefs.social_tendency,
-    chores: prefs.chores,
-    dietary_restrictions: prefs.dietary_restrictions,
-    planning_scope: prefs.planning_scope,
-  };
+  const preferences =
+    consent.profile && consent.tasks
+      ? {
+          work_type: prefs.work_type,
+          work_title: prefs.work_title,
+          work_schedule: prefs.work_schedule,
+          fitness_goal: prefs.fitness_goal,
+          activity_level: prefs.activity_level,
+          exercise_frequency: prefs.exercise_frequency,
+          hobbies: prefs.hobbies,
+          social_tendency: prefs.social_tendency,
+          chores: prefs.chores,
+          dietary_restrictions: prefs.dietary_restrictions,
+          planning_scope: prefs.planning_scope,
+        }
+      : {};
 
   const allRows: PlanRow[] = [];
   const clearDates: string[] = [];
@@ -285,30 +300,33 @@ async function planDays(
   const dayCtx = dateList.map((d) => {
     const isWorkDay = workDays.includes(d.weekday);
     const workBusy =
-      workStart && workEnd && isWorkDay
+      consent.tasks && consent.profile && workStart && workEnd && isWorkDay
         ? [{ date: d.date, start: workStart, end: workEnd, title: "Work" }]
         : [];
-    const dayFixed = (fixed ?? []).filter((e) => localDate(e.starts_at, tz) === d.date);
+    const dayFixed = consent.calendarAvailability
+      ? (fixed ?? []).filter((e) => localDate(e.starts_at, tz) === d.date)
+      : [];
     const busyForDay = [
       ...dayFixed.map((e) => ({
         date: d.date,
         start: localTime(e.starts_at, tz),
         end: localTime(e.ends_at, tz),
-        title: redactEventTitle(e.title, consent.calendar),
+        title: redactEventTitle(e.title, consent.calendarDetail),
       })),
       ...workBusy,
     ];
     const dm = metricsByDate.get(d.date) ?? latestMetric;
-    const recent = dm
-      ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }]
-      : [];
+    const recent =
+      consent.health && dm
+        ? [{ date: d.date, readiness: dm.readiness_score, sleep: dm.sleep_score }]
+        : [];
     const weather = d.date === todayStr ? weatherToday : null;
     return { d, dayFixed, workBusy, busyForDay, recent, weather };
   });
 
   const dayPlans = await Promise.all(
     dayCtx.map((c) =>
-      generateWeeklyPlan({
+      generateWeeklyPlan(permit, {
         preferences,
         days: [c.d],
         busy: c.busyForDay,
@@ -323,7 +341,7 @@ async function planDays(
               precipitationChance: c.weather.precipitationChance,
             }
           : null,
-        reflection: c.d.date === earliestDate ? reflection : null,
+        reflection: c.d.date === earliestDate && consent.checkin ? reflection : null,
         checkin: c.d.date === todayStr && consent.checkin ? todayCheckin : null,
         health: c.d.date === todayStr ? todayHealth : null,
       })
@@ -435,10 +453,7 @@ async function planDays(
         }
       }
     } catch (err) {
-      console.error(
-        "[planner] workout link failed:",
-        err instanceof Error ? err.message : "unknown"
-      );
+      safeLog("error", "planner.workout_link_failed", { errorClass: errorClass(err) });
     }
   }
 
@@ -446,7 +461,10 @@ async function planDays(
 }
 
 /** Generate the plan for the user's whole scope window (manual "Generate"). */
-export async function generatePlanForUser(userId: string): Promise<number | null> {
+export async function generatePlanForUser(
+  userId: string,
+  permit?: AiProcessingPermit
+): Promise<number | null> {
   const admin = createAdminClient();
   const { data: prefs } = await admin
     .from("user_preferences")
@@ -462,7 +480,7 @@ export async function generatePlanForUser(userId: string): Promise<number | null
     .maybeSingle<{ timezone: string }>();
   const tz = profile?.timezone || "UTC";
 
-  const count = await planDays(userId, planningDays(prefs.planning_scope, tz));
+  const count = await planDays(userId, planningDays(prefs.planning_scope, tz), permit);
   if (count !== null) {
     // Mark today as planned so the hourly job doesn't clobber a manual plan.
     await admin
@@ -474,7 +492,10 @@ export async function generatePlanForUser(userId: string): Promise<number | null
 }
 
 /** Re-plan only TODAY from fresh data. */
-export async function refreshTodayPlanForUser(userId: string): Promise<number | null> {
+export async function refreshTodayPlanForUser(
+  userId: string,
+  permit?: AiProcessingPermit
+): Promise<number | null> {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
@@ -485,12 +506,15 @@ export async function refreshTodayPlanForUser(userId: string): Promise<number | 
 
   const todayStr = localToday(tz);
   const dow = new Date(`${todayStr}T12:00:00Z`).getUTCDay();
-  return planDays(userId, [{ date: todayStr, weekday: WEEKDAYS[dow] }]);
+  return planDays(userId, [{ date: todayStr, weekday: WEEKDAYS[dow] }], permit);
 }
 
 /** Manual "Plan today" — (re)build just today now and mark the day planned. */
-export async function generateTodayPlanForUser(userId: string): Promise<number | null> {
-  const count = await refreshTodayPlanForUser(userId);
+export async function generateTodayPlanForUser(
+  userId: string,
+  permit?: AiProcessingPermit
+): Promise<number | null> {
+  const count = await refreshTodayPlanForUser(userId, permit);
   if (count !== null) {
     const admin = createAdminClient();
     const { data: profile } = await admin

@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { BIRDS } from "@/data/birds";
 import { NEST_ENABLED } from "@/lib/features";
 
-export const metadata = { title: "Bird Gallery · Daybreak" };
+export const metadata = { title: "Bird Gallery" };
 
 const RARITY_COLOR: Record<string, string> = {
   common: "#8a9099",

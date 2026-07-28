@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchWeather, type WeatherSnapshot } from "@/lib/integrations/weather";
 import { computeHabitStatus } from "@/lib/habits";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 import type {
   Profile,
   HealthMetric,
@@ -161,13 +162,15 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .is("read_at", null)
       .order("created_at", { ascending: false })
       .limit(10)
-      .returns<{ id: string; from_user_id: string; kind: "cheer" | "reminder"; message: string | null }[]>(),
+      .returns<
+        { id: string; from_user_id: string; kind: "cheer" | "reminder"; message: string | null }[]
+      >(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
   // household this user verifiably belongs to).
   let household: HouseholdInfo | null = null;
-  if (membership?.households) {
+  if (SOCIAL_FEATURES_ENABLED && membership?.households) {
     const admin = createAdminClient();
     const { data: members } = await admin
       .from("household_members")
@@ -203,14 +206,21 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
 
   const allEvents = events ?? [];
   const todayEvents = allEvents.filter((e) => e.user_id === userId);
-  const householdEvents = allEvents.filter((e) => e.user_id !== userId);
+  const householdEvents = SOCIAL_FEATURES_ENABLED
+    ? allEvents.filter((e) => e.user_id !== userId)
+    : [];
 
   const todayMetric = (metrics ?? []).find((m) => m.date === todayStr) ?? null;
 
   // Adherence over the last 7 days, plus a current daily streak.
   const tz = profile?.timezone || "UTC";
   const localDay = (d: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
   const week = weekEvents ?? [];
   const pastEvents = week.filter((e) => new Date(e.ends_at).getTime() <= Date.now());
   const doneCount = pastEvents.filter((e) => e.completed_at != null).length;
@@ -240,7 +250,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
   );
 
   // Resolve nudge sender names (admin read, scoped to the senders only).
-  const nudgeList = nudgeRows ?? [];
+  const nudgeList = SOCIAL_FEATURES_ENABLED ? (nudgeRows ?? []) : [];
   const nudgeNames = new Map<string, string>();
   if (nudgeList.length) {
     const admin = createAdminClient();

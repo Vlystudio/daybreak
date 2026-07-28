@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "status": "not_reviewed",
+  "aggregateReportReviewed": false,
+  "archiveIpaSha256": "",
+  "codemagicBuildId": "",
+  "commit": "",
+  "buildNumber": "",
+  "xcodeVersion": "",
+  "reviewer": "",
+  "reviewedAt": "",
+  "controlledReportReference": "",
+  "sdkManifestInventoryReconciled": false,
+  "requiredReasonApisReconciled": false,
+  "trackingDeclarationsReconciled": false,
+  "collectedDataTypesReconciled": false,
+  "sdkSignaturesReconciled": false,
+  "notes": "Complete only after exporting Apple's aggregate privacy report from the exact retained signed archive in Xcode Organizer."
+}

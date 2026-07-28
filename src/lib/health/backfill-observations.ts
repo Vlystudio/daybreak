@@ -7,6 +7,7 @@ import {
   upsertHealthObservations,
 } from "./observations";
 import type { SourceAttribution } from "./observation-mappers";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /**
  * One-time (idempotent) backfill of health_observations from the legacy tables.
@@ -133,8 +134,9 @@ export async function backfillObservationsForAllUsers(
       totals.legacy_best_effort += r.byAttribution.legacy_best_effort;
     } catch (err) {
       totals.errors += 1;
-      const message = err instanceof Error ? err.message : "unknown error";
-      console.error(`[backfill] user ${id} failed:`, message);
+      safeLog("error", "health.observation_backfill_user_failed", {
+        errorClass: errorClass(err),
+      });
       results.push({
         userId: id,
         planned: 0,
@@ -143,7 +145,7 @@ export async function backfillObservationsForAllUsers(
         dryRun: options.dryRun ?? false,
         bySource: {},
         byAttribution: { exact: 0, legacy_best_effort: 0 },
-        error: message,
+        error: "backfill_failed",
       });
     }
   }

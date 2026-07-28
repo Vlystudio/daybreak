@@ -12,17 +12,20 @@ import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HealthSourcesCard } from "@/components/settings/health-sources-card";
 import { AiDataUseCard } from "@/components/settings/ai-data-use-card";
 import { HEALTH_PROVIDERS, providerState } from "@/lib/health/providers";
-import { aiConsentFromPrefs } from "@/lib/integrations/ai-consent";
+import { aiConsentFromPrefs, type AiConsentPreferences } from "@/lib/integrations/ai-consent";
 import type { Reminder } from "@/lib/types";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldCheck, UserRound, ChevronRight } from "lucide-react";
+import { ShieldCheck, UserRound, ChevronRight, FileText, LifeBuoy } from "lucide-react";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
+import { getLegalIdentity } from "@/lib/legal/identity";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const user = await requireUser();
+  const legalIdentity = getLegalIdentity();
   const data = await loadDashboardData(user.id);
 
   const supabase = await createClient();
@@ -48,13 +51,11 @@ export default async function SettingsPage() {
         .maybeSingle<{ metrics_days: number; range_end: string | null }>(),
       supabase
         .from("user_preferences")
-        .select("allow_ai_health_context, allow_ai_calendar_context, allow_ai_checkin_context")
+        .select(
+          "allow_ai_basic_processing, allow_ai_tasks_context, allow_ai_health_context, allow_ai_calendar_availability, allow_ai_calendar_detail, allow_ai_checkin_context, allow_ai_profile_context, allow_ai_uploads, ai_consent_version, ai_consent_updated_at, ai_consent_expires_at"
+        )
         .eq("user_id", user.id)
-        .maybeSingle<{
-          allow_ai_health_context: boolean | null;
-          allow_ai_calendar_context: boolean | null;
-          allow_ai_checkin_context: boolean | null;
-        }>(),
+        .maybeSingle<AiConsentPreferences>(),
     ]);
   const aiConsent = aiConsentFromPrefs(aiPrefs);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
@@ -63,19 +64,15 @@ export default async function SettingsPage() {
   // Provider registry → per-user state for the health-sources overview.
   const connectedProviders = new Set<string>(data.connections.map((c) => c.provider));
   const fitbitConfigured = integrationsAvailable.fitbit();
-  const healthSources = HEALTH_PROVIDERS.map((p) => {
+  // The registry contains only supported V1 sources.
+  const healthSources = HEALTH_PROVIDERS.filter((p) => p.status === "active").map((p) => {
     const connected =
       p.id === "apple_health"
         ? Boolean(appleImport)
         : p.id === "manual"
           ? false
           : connectedProviders.has(p.id);
-    const configured =
-      p.id === "fitbit"
-        ? fitbitConfigured
-        : p.id === "google_health" || p.id === "garmin"
-          ? false
-          : undefined;
+    const configured = p.id === "fitbit" ? fitbitConfigured : undefined;
     return {
       id: p.id,
       label: p.label,
@@ -122,8 +119,12 @@ export default async function SettingsPage() {
       />
       <HealthImportCard />
       <HealthSourcesCard sources={healthSources} />
-      <AiDataUseCard consent={aiConsent} />
-      <HouseholdCard household={data.household} householdEvents={[]} />
+      <AiDataUseCard
+        consent={aiConsent}
+        updatedAt={aiPrefs?.ai_consent_updated_at ?? null}
+        expiresAt={aiPrefs?.ai_consent_expires_at ?? null}
+      />
+      {SOCIAL_FEATURES_ENABLED && <HouseholdCard household={data.household} householdEvents={[]} />}
 
       <Card>
         <CardHeader>
@@ -137,8 +138,8 @@ export default async function SettingsPage() {
           <p>· Every record is protected by row-level security — only you can read your data.</p>
           <p>· OAuth tokens are encrypted at rest with AES-256-GCM and never leave the server.</p>
           <p>
-            · Your health metrics are sent to OpenAI solely to write your morning briefing, and are
-            never used for anything else.
+            · AI processing is off until you opt in. Each optional data category is controlled
+            separately, and only categories needed for the feature you request may be sent.
           </p>
           <p>· Disconnecting a provider immediately deletes its tokens.</p>
         </CardContent>
@@ -146,6 +147,32 @@ export default async function SettingsPage() {
 
       <MfaCard />
       <DataPrivacyCard />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="text-primary h-5 w-5" aria-hidden /> Legal &amp; support
+          </CardTitle>
+          <CardDescription>Policies, help, export, and account controls.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <Link className="text-primary block underline" href="/privacy">
+            Privacy Policy
+          </Link>
+          <Link className="text-primary block underline" href="/terms">
+            Terms of Service
+          </Link>
+          <a
+            className="text-primary flex items-center gap-2 underline"
+            href={`mailto:${legalIdentity.supportEmail}`}
+          >
+            <LifeBuoy className="h-4 w-4" aria-hidden /> Contact support
+          </a>
+          <a className="text-primary block underline" href="#data-privacy">
+            Export or delete my data
+          </a>
+        </CardContent>
+      </Card>
     </div>
   );
 }

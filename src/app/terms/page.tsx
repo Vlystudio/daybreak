@@ -1,134 +1,116 @@
 import Link from "next/link";
-import { Sunrise } from "lucide-react";
 import type { Metadata } from "next";
+import { LegalPage, LegalSection } from "@/components/legal/legal-page";
+import { getLegalIdentity } from "@/lib/legal/identity";
 
-export const metadata: Metadata = {
-  title: "Terms of Service · Daybreak",
-  description: "The terms governing your use of Daybreak.",
-};
-
-const UPDATED = "June 18, 2026";
-const CONTACT = "valeyardvisuals@vlystudios.com";
+export const metadata: Metadata = { title: "Terms of Service" };
 
 export default function TermsPage() {
+  const identity = getLegalIdentity();
   return (
-    <main className="bg-sunrise-soft min-h-screen">
-      <div className="mx-auto w-full max-w-3xl px-6 py-12">
-        <header className="mb-10 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-lg font-semibold">
-            <span className="bg-sunrise flex h-9 w-9 items-center justify-center rounded-full shadow-soft">
-              <Sunrise className="h-5 w-5 text-[#7a4a12]" aria-hidden />
-            </span>
-            Daybreak
+    <LegalPage title="Terms of Service" effectiveDate={identity.termsEffectiveDate}>
+      <p>
+        These Terms form an agreement between you and {identity.operatorName}. If you do not agree,
+        do not create or use an account. The current release is free and offers no paid digital
+        feature or automatically renewing subscription.
+      </p>
+      <LegalSection title="1. Eligibility and account responsibility">
+        <p>
+          You must be at least 18, have authority to enter this agreement, and make a truthful adult
+          self-attestation. Keep account information accurate and credentials secure; do not share
+          an account or access another person&apos;s account. Daybreak may restrict or terminate
+          access for safety, law, security, or violations. Accounts known to belong to minors are
+          not permitted.
+        </p>
+      </LegalSection>
+      <LegalSection title="2. Wellness service; no emergency or medical care">
+        <p>
+          Daybreak provides general wellness, planning, organization, nutrition, and fitness
+          information. It is not a medical device, clinician, therapist, dietitian, or emergency
+          service, and it does not diagnose, treat, cure, or prevent disease. Do not use it for an
+          emergency. Contact local emergency services for urgent danger and consult qualified
+          professionals before making medical decisions.
+        </p>
+      </LegalSection>
+      <LegalSection title="3. AI limitations and user decisions">
+        <p>
+          Optional AI outputs can be inaccurate, incomplete, biased, or inappropriate. Review all
+          generated plans and recommendations before acting. Daybreak does not guarantee results or
+          medical accuracy. AI may not prescribe, stop, or dose medication. Your granular AI consent
+          controls future sharing and is independent of these Terms.
+        </p>
+      </LegalSection>
+      <LegalSection title="4. Third-party services">
+        <p>
+          Optional Apple Health, Oura, Fitbit, Google, AI, email, weather, recipe, and notification
+          services have separate terms, availability, and permissions. You authorize only the
+          connections you select and may disconnect them. Daybreak is not responsible for a third
+          party&apos;s independent service, but remains responsible for its own obligations under
+          law.
+        </p>
+      </LegalSection>
+      <LegalSection title="5. Content, intellectual property, and feedback">
+        <p>
+          You retain ownership of content you provide and grant Daybreak a limited, nonexclusive
+          license to host, process, reproduce, and transmit it only as needed to operate and improve
+          the service according to your permissions and the Privacy Policy. You represent that you
+          may provide that content. Daybreak software, branding, and first-party assets remain the
+          property of their owners. Feedback may be used without restriction or compensation, but
+          does not transfer your personal content.
+        </p>
+      </LegalSection>
+      <LegalSection title="6. Acceptable use">
+        <p>
+          Follow the{" "}
+          <Link className="text-primary underline" href="/legal/acceptable-use">
+            Acceptable Use Policy
           </Link>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-            ← Back home
-          </Link>
-        </header>
-
-        <article className="space-y-6 text-sm leading-relaxed text-foreground/90">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Terms of Service</h1>
-            <p className="mt-2 text-muted-foreground">Last updated: {UPDATED}</p>
-          </div>
-
-          <p>
-            These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Daybreak (the
-            &ldquo;Service&rdquo;). By creating an account or using the Service, you agree to these
-            Terms. If you do not agree, please do not use the Service.
-          </p>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">1. The Service</h2>
-            <p>
-              Daybreak is a personal wellness dashboard that aggregates your sleep and readiness data,
-              calendar, local weather, and an AI-generated morning briefing. Features that rely on
-              third-party integrations (such as Oura and Google Calendar) require you to connect those
-              accounts.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">2. Eligibility &amp; accounts</h2>
-            <p>
-              You must be at least 16 years old to use the Service. You are responsible for the
-              activity under your account and for keeping your login credentials secure. Notify us
-              promptly of any unauthorized use.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">3. Not medical advice</h2>
-            <p>
-              Daybreak presents wellness information and AI-generated suggestions for general,
-              informational purposes only. It is <strong>not</strong> a medical device and does not
-              provide medical advice, diagnosis, or treatment. Always consult a qualified healthcare
-              professional regarding your health. Do not disregard professional medical advice because
-              of something you read in Daybreak.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">4. Acceptable use</h2>
-            <p>
-              You agree not to misuse the Service, including attempting to access other users&rsquo;
-              data, disrupting the Service, reverse-engineering it, or using it to violate any
-              applicable law or the terms of connected providers (e.g., Oura, Google).
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">5. Third-party services</h2>
-            <p>
-              The Service integrates with third parties including Oura, Google, OpenAI, Open-Meteo,
-              Supabase, and Vercel. Your use of those integrations is also subject to their respective
-              terms and privacy policies. We are not responsible for third-party services.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">6. Your content &amp; data</h2>
-            <p>
-              You retain ownership of the data you provide and connect. You grant us a limited license
-              to process it solely to operate the Service as described in our{" "}
-              <Link href="/privacy" className="text-primary underline">Privacy Policy</Link>.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">7. Disclaimers &amp; limitation of liability</h2>
-            <p>
-              The Service is provided &ldquo;as is&rdquo; without warranties of any kind. To the
-              maximum extent permitted by law, we are not liable for any indirect, incidental, or
-              consequential damages arising from your use of the Service.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">8. Termination</h2>
-            <p>
-              You may stop using the Service and delete your account at any time. We may suspend or
-              terminate access if you violate these Terms or to protect the Service.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">9. Changes to these Terms</h2>
-            <p>
-              We may update these Terms from time to time. Continued use after changes take effect
-              constitutes acceptance of the revised Terms.
-            </p>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">10. Contact</h2>
-            <p>
-              Questions about these Terms? Email{" "}
-              <a className="text-primary underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>.
-            </p>
-          </section>
-        </article>
-      </div>
-    </main>
+          . Do not break law, violate rights, evade access or consent controls, introduce malicious
+          code, scrape or overload the service, reverse engineer where prohibited, or use output to
+          harm a person. You may not use Daybreak for clinical diagnosis or emergency response.
+        </p>
+      </LegalSection>
+      <LegalSection title="7. Availability, changes, and termination">
+        <p>
+          Daybreak is provided on an “as available” basis and may change, experience outages, or
+          discontinue features. Where reasonable, material changes receive notice. You can stop
+          using Daybreak and delete your account in Settings. Terms that by their nature survive,
+          including ownership and lawful limitations, continue after termination.
+        </p>
+      </LegalSection>
+      <LegalSection title="8. Warranties and liability">
+        <p>
+          To the maximum extent permitted by law, Daybreak disclaims implied warranties and does not
+          guarantee uninterrupted availability, error-free output, particular results, or data-loss
+          prevention. To the maximum extent permitted, neither party is liable for indirect,
+          incidental, special, exemplary, or consequential damages. Any aggregate liability cap and
+          jurisdiction-specific exclusions apply only as permitted by mandatory law and as stated in
+          a counsel-approved version; these Terms do not waive privacy, breach-notification,
+          consumer, Apple-required, or other non-waivable rights.
+        </p>
+      </LegalSection>
+      <LegalSection title="9. General terms">
+        <p>
+          You are responsible for claims caused by your unlawful content or intentional misuse to
+          the extent lawful. Neither party is liable for delay caused by events beyond reasonable
+          control. If a provision is unenforceable, the remainder continues; failure to enforce is
+          not a waiver. You may not assign these Terms without consent; Daybreak may assign them
+          with a lawful business transfer. These Terms and incorporated policies are the entire
+          agreement. Governing law and venue are {identity.governingJurisdiction}, subject to
+          mandatory local rights. No arbitration or class-action waiver applies unless separately
+          approved by counsel, clearly disclosed, and validly accepted.
+        </p>
+      </LegalSection>
+      <LegalSection title="10. Changes and contact">
+        <p>
+          Material changes requiring acceptance are versioned and presented before continued use.
+          Contact{" "}
+          <a className="text-primary underline" href={`mailto:${identity.supportEmail}`}>
+            {identity.supportEmail}
+          </a>{" "}
+          or write to {identity.businessAddress}.
+        </p>
+      </LegalSection>
+    </LegalPage>
   );
 }

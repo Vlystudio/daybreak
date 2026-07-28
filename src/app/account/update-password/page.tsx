@@ -19,8 +19,8 @@ export default function UpdatePasswordPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (password.length < 8) {
-      toast.error("Use at least 8 characters.");
+    if (password.length < 12) {
+      toast.error("Use at least 12 characters.");
       return;
     }
     if (password !== confirm) {
@@ -47,7 +47,7 @@ export default function UpdatePasswordPage() {
   return (
     <main className="bg-sunrise-soft flex min-h-screen flex-1 flex-col items-center justify-center px-6 py-12">
       <Link href="/" className="mb-8 flex items-center gap-2 text-lg font-semibold">
-        <span className="bg-sunrise flex h-9 w-9 items-center justify-center rounded-full shadow-soft">
+        <span className="bg-sunrise shadow-soft flex h-9 w-9 items-center justify-center rounded-full">
           <Sunrise className="h-5 w-5 text-[#7a4a12]" aria-hidden />
         </span>
         Daybreak
@@ -55,7 +55,9 @@ export default function UpdatePasswordPage() {
       <Card className="glass w-full max-w-md border-none">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Choose a new password</CardTitle>
-          <CardDescription>Pick something you&apos;ll remember — at least 8 characters.</CardDescription>
+          <CardDescription>
+            Pick something you&apos;ll remember — at least 12 characters.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={submit} className="space-y-4" noValidate>

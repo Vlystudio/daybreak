@@ -17,7 +17,7 @@ function weekStart(): string {
   return d.toISOString().slice(0, 10);
 }
 
-export const metadata = { title: "Prices · Daybreak" };
+export const metadata = { title: "Prices" };
 
 interface RecentPriceRow {
   id: string;
@@ -49,12 +49,17 @@ export default async function PricesPage() {
       .returns<Store[]>(),
     supabase
       .from("product_prices")
-      .select("id, price, sale_price, unit, package_size, recorded_at, products(name, brand), stores(name)")
+      .select(
+        "id, price, sale_price, unit, package_size, recorded_at, products(name, brand), stores(name)"
+      )
       .eq("recorded_by", user.id)
       .order("recorded_at", { ascending: false })
       .limit(20)
       .returns<RecentPriceRow[]>(),
-    supabase.from("product_prices").select("id", { count: "exact", head: true }).eq("source_key", "web"),
+    supabase
+      .from("product_prices")
+      .select("id", { count: "exact", head: true })
+      .eq("source_key", "web"),
     supabase
       .from("product_prices")
       .select("recorded_at")
@@ -79,19 +84,21 @@ export default async function PricesPage() {
   const recentPrices = recent ?? [];
   const purchases = (recentRaw ?? []) as PurchaseRow[];
   const ws = weekStart();
-  const weeklySpend = purchases.filter((p) => p.purchased_on >= ws).reduce((sum, p) => sum + Number(p.total), 0);
+  const weeklySpend = purchases
+    .filter((p) => p.purchased_on >= ws)
+    .reduce((sum, p) => sum + Number(p.total), 0);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5">
       <div>
         <Link
           href="/grocery"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden /> Grocery
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Prices</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           The more prices you log, the smarter your shopping trips get.
         </p>
       </div>
@@ -102,7 +109,11 @@ export default async function PricesPage() {
         lastUpdated={latestDeal?.recorded_at ?? null}
       />
 
-      <ReceiptCard weeklySpend={weeklySpend} weeklyBudget={budgetRow?.weekly_budget ?? null} recent={purchases} />
+      <ReceiptCard
+        weeklySpend={weeklySpend}
+        weeklyBudget={budgetRow?.weekly_budget ?? null}
+        recent={purchases}
+      />
 
       <PriceEntry stores={stores ?? []} />
 
@@ -112,9 +123,9 @@ export default async function PricesPage() {
         </CardHeader>
         <CardContent>
           {recentPrices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No prices recorded yet.</p>
+            <p className="text-muted-foreground text-sm">No prices recorded yet.</p>
           ) : (
-            <ul className="divide-y divide-border/60 text-sm">
+            <ul className="divide-border/60 divide-y text-sm">
               {recentPrices.map((r) => {
                 const eff = effectivePrice({ price: r.price, sale_price: r.sale_price });
                 const onSale = r.sale_price != null && (r.price == null || r.sale_price < r.price);
@@ -125,7 +136,7 @@ export default async function PricesPage() {
                       {r.products?.brand && (
                         <span className="text-muted-foreground"> · {r.products.brand}</span>
                       )}
-                      <span className="block text-xs text-muted-foreground">
+                      <span className="text-muted-foreground block text-xs">
                         {r.stores?.name ?? "Unknown store"}
                         {r.package_size ? ` · ${r.package_size}` : ""}
                         {r.unit ? ` · per ${r.unit}` : ""}
@@ -135,7 +146,7 @@ export default async function PricesPage() {
                       <span className="font-semibold tabular-nums">
                         {eff != null ? `$${eff.toFixed(2)}` : "—"}
                       </span>
-                      {onSale && <span className="block text-xs text-sage">on sale</span>}
+                      {onSale && <span className="text-sage block text-xs">on sale</span>}
                     </div>
                   </li>
                 );

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
+import { safeLog } from "@/lib/security/safe-logger";
 
 /**
  * Error boundary for every authenticated route. A thrown error in a page (or a
@@ -19,7 +20,7 @@ export default function AppError({
 }) {
   useEffect(() => {
     Sentry.captureException(error);
-    console.error("[app] route error:", error.digest ?? error.message);
+    safeLog("error", "ui.app_route_error", { digest: error.digest ?? "none" });
   }, [error]);
 
   return (
