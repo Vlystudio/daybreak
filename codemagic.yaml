@@ -15,6 +15,11 @@ workflows:
     name: Daybreak iOS (HealthKit) → TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
+    cache:
+      cache_paths:
+        - $CM_BUILD_DIR/node_modules/.cache
+        - $HOME/Library/Caches/CocoaPods
+        - $HOME/.npm
     # Auto-build every push to main. Without this block, pushing to main builds
     # NOTHING (the comment at the top of this file long claimed it did, but the
     # trigger was never wired), so fixes merged to main never reached TestFlight
@@ -43,6 +48,19 @@ workflows:
     scripts:
       - name: Install JS dependencies
         script: npm ci --no-audit --no-fund
+      - name: Verify repository release controls
+        script: |
+          set -euo pipefail
+          npm run typecheck
+          npm run lint
+          npm run test:run
+          npm run compliance:generate
+          git diff --exit-code
+          npm run compliance:check
+          npm run check:migrations
+          npm run migration:discover:static
+          npm run verify:app-store-sections-1-8 -- --allow-external-blockers --no-write-evidence
+          npm run release:verify-production
       - name: Generate and verify deterministic iOS assets
         script: |
           set -euo pipefail

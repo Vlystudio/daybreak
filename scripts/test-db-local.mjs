@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
@@ -63,6 +63,13 @@ if (config.includes("cybpuscssilbguypptxi")) {
 
 const blockers = [];
 
+const integrity = run(process.execPath, [path.join(root, "scripts", "check-migrations.mjs")], {
+  capture: true,
+});
+if (!integrity.ok) {
+  blockers.push(integrity.detail || "migration integrity checker failed.");
+}
+
 const cli = run(npx, [...npxPrefix, "--yes", `supabase@${SUPABASE_VERSION}`, "--version"], {
   capture: true,
 });
@@ -122,11 +129,22 @@ try {
   if (!supabase("start", "--workdir", root).ok) {
     runBlocker = "local Supabase services could not start.";
   } else if (!supabase("db", "reset", "--local", "--no-seed", "--workdir", root).ok) {
-    runBlocker = "the disposable local database reset failed; no remote database was targeted.";
+    runBlocker =
+      "the first disposable local database reset failed; no remote database was targeted.";
+  } else if (!run(process.execPath, [path.join(root, "scripts", "test-db-upgrades.mjs")]).ok) {
+    runBlocker =
+      "the duplicate-0021 or representative local upgrade matrix failed; no remote database was targeted.";
   } else if (!supabase("test", "db", "--local", "--workdir", root).ok) {
-    runBlocker = "local SQL/pgTAP tests failed; no remote database was targeted.";
+    runBlocker =
+      "local SQL/pgTAP tests failed after the first reset; no remote database was targeted.";
+  } else if (!supabase("db", "reset", "--local", "--no-seed", "--workdir", root).ok) {
+    runBlocker =
+      "the repeated disposable local database reset failed; no remote database was targeted.";
+  } else if (!supabase("test", "db", "--local", "--workdir", root).ok) {
+    runBlocker =
+      "local SQL/pgTAP tests failed after the repeated reset; no remote database was targeted.";
   } else {
-    console.log("Disposable local database reset and SQL tests passed.");
+    console.log("Two disposable local database resets and both SQL test passes succeeded.");
   }
 } finally {
   if (startedHere) {
@@ -135,3 +153,66 @@ try {
   }
 }
 if (runBlocker) fail(runBlocker);
+
+const upgradeResultPath = path.join(
+  root,
+  "build",
+  "release-evidence",
+  "database-upgrade-matrix.json"
+);
+if (!existsSync(upgradeResultPath))
+  fail("the successful upgrade matrix did not produce its intermediate result");
+const upgradeResult = JSON.parse(readFileSync(upgradeResultPath, "utf8"));
+if (
+  !Array.isArray(upgradeResult.results) ||
+  upgradeResult.results.some((result) => result.status !== "pass")
+) {
+  fail("the upgrade matrix intermediate result is incomplete");
+}
+const canonicalEvidence = {
+  schemaVersion: 2,
+  generatedAt: new Date().toISOString(),
+  commit: (() => {
+    const result = spawnSync("git", ["rev-parse", "HEAD"], {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+    });
+    return result.status === 0 ? result.stdout.trim() : null;
+  })(),
+  database: "disposable local Supabase only",
+  supabaseCli: SUPABASE_VERSION,
+  status: "pass",
+  freshInitialization: { status: "pass", resets: 2 },
+  duplicate0021AndRepresentativeUpgrades: {
+    status: "pass",
+    results: upgradeResult.results,
+    historicalHashes: upgradeResult.historicalHashes,
+  },
+  pgTapAndRuntimeSecurity: {
+    status: "pass",
+    executions: 2,
+    suites: [
+      "RLS and cross-user isolation",
+      "adult eligibility",
+      "AI consent and health authorization",
+      "account deletion",
+      "runtime security surface",
+    ],
+  },
+  productionAccessed: false,
+  sensitiveData: false,
+};
+const canonicalEvidencePath = path.join(
+  root,
+  "docs",
+  "launch-readiness",
+  "evidence",
+  "database",
+  "fresh-and-upgrade-test.json"
+);
+mkdirSync(path.dirname(canonicalEvidencePath), { recursive: true });
+writeFileSync(canonicalEvidencePath, `${JSON.stringify(canonicalEvidence, null, 2)}\n`, "utf8");
+console.log(
+  `Complete database runtime evidence written to ${path.relative(root, canonicalEvidencePath)}.`
+);

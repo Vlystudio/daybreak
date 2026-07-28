@@ -54,11 +54,11 @@ plist_set() {
   /usr/libexec/PlistBuddy -c "Add :$1 $2" "$INFO_PLIST"
 }
 plist_set "NSHealthShareUsageDescription string" \
-  "Daybreak reads your Health data (sleep, heart, activity, and workouts) to show your morning briefing and trends."
+  "Daybreak reads sleep, heart-rate, activity, body, and workout summaries you choose so it can show trends and adapt your wellness plan. Imported daily summaries are sent to Daybreak servers; they reach an AI provider only if you separately enable Health AI sharing."
 # Apple requires BOTH purpose strings whenever the HealthKit entitlement is
 # present, even for read-only apps (App Store validation error 90683).
 plist_set "NSHealthUpdateUsageDescription string" \
-  "Daybreak does not write data to Apple Health."
+  "Daybreak requests no Apple Health write access and never writes measured or AI-generated data to HealthKit."
 # Camera + microphone + photo library purpose strings. The web app opens the
 # system camera / photo picker via <input type="file" accept="image/*"> (meal
 # photos for calorie estimates, grocery receipts, profile picture). The picker's
@@ -84,6 +84,7 @@ plist_set "NSPhotoLibraryUsageDescription string" \
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" "$INFO_PLIST"
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains:0 string $HEALTH_DOMAIN" "$INFO_PLIST"
 plist_set "CFBundleDisplayName string" "Daybreak"
+plist_set "ITSAppUsesNonExemptEncryption bool" "false"
 /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$INFO_PLIST"
 /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$INFO_PLIST"
@@ -106,7 +107,7 @@ fi
 # is ever reported again).
 echo "→ Verifying privacy usage strings in Info.plist"
 verify_fail=0
-for k in NSCameraUsageDescription NSMicrophoneUsageDescription NSPhotoLibraryUsageDescription NSHealthShareUsageDescription NSHealthUpdateUsageDescription; do
+for k in NSCameraUsageDescription NSMicrophoneUsageDescription NSPhotoLibraryUsageDescription NSHealthShareUsageDescription NSHealthUpdateUsageDescription ITSAppUsesNonExemptEncryption; do
   if /usr/libexec/PlistBuddy -c "Print :$k" "$INFO_PLIST" >/dev/null 2>&1; then
     echo "  ✓ $k"
   else

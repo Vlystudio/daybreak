@@ -37,14 +37,14 @@ const evidence = {
   codemagicBuildId: process.env.IOS_EVIDENCE_BUILD_ID || null,
   workflow: process.env.IOS_EVIDENCE_WORKFLOW,
   archive: {
-    path: process.env.IOS_EVIDENCE_ARCHIVE_PATH,
+    fileName: path.basename(process.env.IOS_EVIDENCE_ARCHIVE_PATH),
     modifiedAt: archiveStat.mtime.toISOString(),
   },
   ipa: {
-    path: process.env.IOS_EVIDENCE_IPA_PATH,
+    fileName: path.basename(process.env.IOS_EVIDENCE_IPA_PATH),
     sha256: computedHash,
   },
-  dSYM: { path: process.env.IOS_EVIDENCE_DSYM_PATH },
+  dSYM: { fileName: path.basename(process.env.IOS_EVIDENCE_DSYM_PATH) },
   application: {
     bundleId: process.env.IOS_EVIDENCE_BUNDLE_ID,
     version: process.env.IOS_EVIDENCE_VERSION,
@@ -68,6 +68,8 @@ const evidence = {
     iconDeclaration: true,
     launchScreenDeclaration: true,
     dSYMExists: true,
+    unexpectedEntitlementsAbsent: true,
+    exportComplianceDeclaration: true,
   },
   notVerifiedByThisArtifact: [
     "Xcode Organizer privacy report",
@@ -75,6 +77,7 @@ const evidence = {
     "TestFlight installation",
     "physical-device behavior",
   ],
+  sanitized: true,
 };
 
 const output = path.resolve(process.env.IOS_EVIDENCE_OUTPUT);

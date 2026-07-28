@@ -27,6 +27,8 @@ for key in NSHealthShareUsageDescription NSHealthUpdateUsageDescription NSCamera
   has_plist_key "$key" || fail "$key missing"
   [ -n "$(plist_value "$PLIST" "$key")" ] || fail "$key is empty"
 done
+encryption_export=$(plist_value "$PLIST" ITSAppUsesNonExemptEncryption)
+[ "$encryption_export" = "false" ] || fail "ITSAppUsesNonExemptEncryption must be false for the reviewed OS-provided HTTPS-only cryptography configuration"
 
 version=$(plist_value "$PLIST" CFBundleShortVersionString)
 build=$(plist_value "$PLIST" CFBundleVersion)
@@ -59,9 +61,11 @@ if [ -n "${IPA_PATH:-}" ]; then
   archive_bundle=$(plist_value "$archive_plist" CFBundleIdentifier)
   archive_version=$(plist_value "$archive_plist" CFBundleShortVersionString)
   archive_build=$(plist_value "$archive_plist" CFBundleVersion)
+  archive_encryption_export=$(plist_value "$archive_plist" ITSAppUsesNonExemptEncryption)
   [ "$archive_bundle" = "$EXPECTED_BUNDLE" ] || fail "archive bundle identifier mismatch"
   [ "$archive_version" = "$EXPECTED_APP_VERSION" ] || fail "archive marketing version mismatch"
   [ "$archive_build" = "$EXPECTED_BUILD_NUMBER" ] || fail "archive build number mismatch"
+  [ "$archive_encryption_export" = "false" ] || fail "archive export-compliance declaration mismatch"
   plist_value "$archive_plist" CFBundleIcons >/dev/null || fail "archive icon declaration missing"
   plist_value "$archive_plist" UILaunchStoryboardName >/dev/null || fail "archive launch screen declaration missing"
 
@@ -77,6 +81,7 @@ if [ -n "${IPA_PATH:-}" ]; then
   codesign --verify --deep --strict "$app" || fail "archive code signature verification failed"
   codesign -d --entitlements :- "$app" >"$tmp/entitlements.plist" 2>"$tmp/codesign-entitlements.log"
   plutil -lint "$tmp/entitlements.plist" >/dev/null || fail "archive entitlement dump is invalid"
+  plutil -convert json -o "$tmp/entitlements.json" "$tmp/entitlements.plist"
   plist_value "$tmp/entitlements.plist" com.apple.developer.healthkit >/dev/null || fail "archive lacks HealthKit entitlement"
   entitlement_team=$(plist_value "$tmp/entitlements.plist" com.apple.developer.team-identifier)
   entitlement_app_id=$(plist_value "$tmp/entitlements.plist" application-identifier)
@@ -84,6 +89,7 @@ if [ -n "${IPA_PATH:-}" ]; then
   [ "$entitlement_app_id" = "$EXPECTED_TEAM_ID.$EXPECTED_BUNDLE" ] || fail "signed application identifier mismatch"
 
   security cms -D -i "$app/embedded.mobileprovision" >"$tmp/embedded-profile.plist"
+  plutil -convert json -o "$tmp/embedded-profile.json" "$tmp/embedded-profile.plist"
   profile_team=$(plist_value "$tmp/embedded-profile.plist" TeamIdentifier:0)
   profile_app_id=$(plist_value "$tmp/embedded-profile.plist" Entitlements:application-identifier)
   profile_name=$(plist_value "$tmp/embedded-profile.plist" Name)
@@ -98,6 +104,17 @@ if [ -n "${IPA_PATH:-}" ]; then
   signed_team=$(sed -n 's/^TeamIdentifier=//p' "$tmp/codesign-details.log" | head -1)
   [ -n "$signing_identity" ] || fail "signing identity was not reported"
   [ "$signed_team" = "$EXPECTED_TEAM_ID" ] || fail "code signature team mismatch"
+
+  node scripts/validate-ios-signing-evidence.mjs \
+    --entitlements "$tmp/entitlements.json" \
+    --profile "$tmp/embedded-profile.json" \
+    --bundle-id "$EXPECTED_BUNDLE" \
+    --team-id "$EXPECTED_TEAM_ID" \
+    --output "build/release-evidence/ios-signing-report.json"
+
+  node scripts/write-ios-privacy-inventory.mjs \
+    --archive "$ARCHIVE_PATH" \
+    --output "build/release-evidence/ios-privacy-inventory.json"
 
   ipa_sha256=$(shasum -a 256 "$IPA_PATH" | awk '{print $1}')
   export IOS_EVIDENCE_OUTPUT="$EVIDENCE_OUTPUT"
