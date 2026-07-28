@@ -12,9 +12,9 @@ to the build evidence during handoff; local verification is rerun against the fi
 
 | Commit                                     | Scope                                                                                                                |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `ecd473c1c3045cf41c05a1b9c01694e82d279dfb` | Account lifecycle, AI/processor, telemetry, legal-version, privacy-rights, migration, and runtime security controls. |
-| `bf134537b40c41fa08f1c6d9cf7ebfd47a6e612a` | App Store/compliance/legal evidence, working-tree review, and deployable asset cleanup.                              |
-| `196c7672777c2da0edb6445079423510881843ac` | CI, Codemagic, database/staging/production verifiers, native validation, and physical-device tooling.                |
+| `ecd473cc01b957313fbb0973075ba64565bc258d` | Account lifecycle, AI/processor, telemetry, legal-version, privacy-rights, migration, and runtime security controls. |
+| `bf1345334a6f6239bf7212b9a8a445f5a6ccd9bb` | App Store/compliance/legal evidence, working-tree review, and deployable asset cleanup.                              |
+| `196c7673cd8e0268097fa017728305b1aa000472` | CI, Codemagic, database/staging/production verifiers, native validation, and physical-device tooling.                |
 
 The evidence-only commit that contains this table is verified as the final clean
 `HEAD`; its exact hash and cleanliness flag are written by the release verifier
