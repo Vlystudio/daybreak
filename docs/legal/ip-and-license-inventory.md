@@ -18,7 +18,7 @@ Generated from `config/legal/ip-assets.json` and `package-lock.json`.
 
 ## Package summary
 
-- Unique package versions: 876
+- Unique package versions: 878
 - Unknown licenses: 0
 - Prohibited licenses: 0
 - Unclassified/custom licenses: 0
