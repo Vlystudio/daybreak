@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import * as prettier from "prettier";
 
 const root = process.cwd();
 const readJson = (file) => JSON.parse(readFileSync(path.join(root, file), "utf8"));
@@ -210,9 +211,13 @@ generated.set(
 );
 
 const check = process.argv.includes("--check");
+const prettierConfig = (await prettier.resolveConfig(root)) ?? {};
 let drift = 0;
-for (const [file, content] of generated) {
+for (const [file, rawContent] of generated) {
   const target = path.join(root, file);
+  const content = file.endsWith(".md")
+    ? await prettier.format(rawContent, { ...prettierConfig, filepath: target })
+    : rawContent;
   if (check) {
     let current = "";
     try {
