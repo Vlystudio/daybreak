@@ -8,6 +8,19 @@ machine-readable run is `build/release-evidence/app-store-sections-1-8.json`; af
 it records the exact Git commit and whether the tree is dirty. The logical commit hashes are added
 to the build evidence during handoff; local verification is rerun against the final clean `HEAD`.
 
+## Implementation commit set
+
+| Commit                                     | Scope                                                                                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `ecd473c1c3045cf41c05a1b9c01694e82d279dfb` | Account lifecycle, AI/processor, telemetry, legal-version, privacy-rights, migration, and runtime security controls. |
+| `bf134537b40c41fa08f1c6d9cf7ebfd47a6e612a` | App Store/compliance/legal evidence, working-tree review, and deployable asset cleanup.                              |
+| `196c7672777c2da0edb6445079423510881843ac` | CI, Codemagic, database/staging/production verifiers, native validation, and physical-device tooling.                |
+
+The evidence-only commit that contains this table is verified as the final clean
+`HEAD`; its exact hash and cleanliness flag are written by the release verifier
+to the ignored local JSON and by GitHub Actions after push. A Git commit cannot
+truthfully embed its own final hash in its tracked contents.
+
 ## Automated and repository-verifiable gates
 
 | Gate                               | Status         | Executed evidence                                                                                                                                                                                                                                                    |
