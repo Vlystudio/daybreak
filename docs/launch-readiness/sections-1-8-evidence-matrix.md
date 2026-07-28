@@ -15,6 +15,7 @@ to the build evidence during handoff; local verification is rerun against the fi
 | `ecd473cc01b957313fbb0973075ba64565bc258d` | Account lifecycle, AI/processor, telemetry, legal-version, privacy-rights, migration, and runtime security controls. |
 | `bf1345334a6f6239bf7212b9a8a445f5a6ccd9bb` | App Store/compliance/legal evidence, working-tree review, and deployable asset cleanup.                              |
 | `196c7673cd8e0268097fa017728305b1aa000472` | CI, Codemagic, database/staging/production verifiers, native validation, and physical-device tooling.                |
+| `7c0998acce61bc40e32e86fc18ed69161142c8b1` | Deterministic Prettier-normalized compliance generation, found by the exact post-commit verification pass.           |
 
 The evidence-only commit that contains this table is verified as the final clean
 `HEAD`; its exact hash and cleanliness flag are written by the release verifier
