@@ -109,7 +109,7 @@ export async function searchExercises(filters: ExerciseFilters): Promise<Exercis
       : { ok: false, error: "Daily generation limit reached — try again tomorrow." };
   }
 
-  const permit = await getAiProcessingPermit(user.id);
+  const permit = await getAiProcessingPermit(user.id, "workout_plan");
   if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   const generated = await generateExercises(permit, filters, 8);
   if (!generated) {

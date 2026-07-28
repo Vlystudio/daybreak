@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { inputHash, openaiClient } from "@/lib/integrations/openai";
 import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
 
@@ -17,9 +17,13 @@ describe("inputHash", () => {
 });
 
 describe("server-side AI consent boundary", () => {
-  it("cannot initialize a model client without a server-issued permit", () => {
-    expect(() => openaiClient(undefined as unknown as AiProcessingPermit)).toThrow(
-      /consent permit is required/i
-    );
+  afterEach(() => vi.restoreAllMocks());
+
+  it("cannot initialize a model client without a server-issued permit", async () => {
+    const outbound = vi.spyOn(globalThis, "fetch");
+    await expect(
+      openaiClient(undefined as unknown as AiProcessingPermit, "morning_briefing")
+    ).rejects.toThrow(/consent permit is required/i);
+    expect(outbound).not.toHaveBeenCalled();
   });
 });

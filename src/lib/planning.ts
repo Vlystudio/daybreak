@@ -196,7 +196,6 @@ export interface UserPreferences {
   height_in: number | null;
   weight_lb: number | null;
   sex: string | null;
-  birth_year: number | null;
   hobbies: string[];
   social_tendency: string | null;
   chores: ChoreEntry[];
@@ -206,9 +205,16 @@ export interface UserPreferences {
   auto_plan_cadence: string | null;
   onboarding_completed: boolean;
   // AI data-use consent (deny by default). See src/lib/integrations/ai-consent.ts.
+  allow_ai_basic_processing: boolean | null;
+  allow_ai_tasks_context: boolean | null;
   allow_ai_health_context: boolean | null;
+  allow_ai_calendar_availability: boolean | null;
+  allow_ai_calendar_detail: boolean | null;
   allow_ai_calendar_context: boolean | null;
   allow_ai_checkin_context: boolean | null;
+  allow_ai_profile_context: boolean | null;
+  allow_ai_uploads: boolean | null;
   ai_consent_version: string | null;
   ai_consent_updated_at: string | null;
+  ai_consent_expires_at: string | null;
 }

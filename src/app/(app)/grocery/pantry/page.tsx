@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PantryView } from "@/components/grocery/pantry-view";
 import type { PantryItem } from "@/lib/grocery";
 
-export const metadata = { title: "Pantry · Daybreak" };
+export const metadata = { title: "Pantry" };
 
 export default async function PantryPage() {
   const user = await requireUser();
@@ -13,7 +13,9 @@ export default async function PantryPage() {
 
   const { data: items } = await supabase
     .from("pantry_items")
-    .select("id, name, normalized_ingredient_id, quantity, unit, location, expiration_date, updated_at")
+    .select(
+      "id, name, normalized_ingredient_id, quantity, unit, location, expiration_date, updated_at"
+    )
     .eq("user_id", user.id)
     .order("name")
     .returns<PantryItem[]>();
@@ -23,12 +25,12 @@ export default async function PantryPage() {
       <div>
         <Link
           href="/grocery"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden /> Grocery
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Pantry</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           What&apos;s in your kitchen. Items expiring soon are flagged.
         </p>
       </div>

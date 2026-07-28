@@ -22,6 +22,8 @@ import { fetchWeather } from "@/lib/integrations/weather";
 import { generateMorningBriefing, type MetricsForPrompt } from "@/lib/integrations/ai";
 import { inputHash } from "@/lib/integrations/openai";
 import { audit } from "@/lib/audit";
+import { isUserEligible } from "@/lib/account-eligibility";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /**
  * Sync orchestration. All functions take a server-derived userId and are
@@ -34,6 +36,7 @@ function isoDate(d: Date): string {
 
 /** Pull the last `days` days of Oura data into health_metrics. */
 export async function syncOuraForUser(userId: string, days = 7): Promise<boolean> {
+  if (!(await isUserEligible(userId))) return false;
   const end = new Date();
   const start = new Date(end.getTime() - days * 86_400_000);
   const metrics = await fetchOuraDailyMetrics(userId, isoDate(start), isoDate(end));
@@ -42,6 +45,7 @@ export async function syncOuraForUser(userId: string, days = 7): Promise<boolean
 
 /** Pull the last `days` days of Fitbit data into health_metrics. */
 export async function syncFitbitForUser(userId: string, days = 7): Promise<boolean> {
+  if (!(await isUserEligible(userId))) return false;
   const end = new Date();
   const start = new Date(end.getTime() - days * 86_400_000);
   const metrics = await fetchFitbitDailyMetrics(userId, isoDate(start), isoDate(end));
@@ -79,7 +83,10 @@ async function storeMetrics(
     try {
       await upsertHealthObservations(dailyMetricsToObservations(userId, metrics, source));
     } catch (err) {
-      console.error(`[sync] ${source} observation dual-write failed:`, err);
+      safeLog("error", "sync.observation_dual_write_failed", {
+        provider: source,
+        errorClass: errorClass(err),
+      });
     }
   }
   return true;
@@ -87,6 +94,7 @@ async function storeMetrics(
 
 /** Mirror the next 7 days of Google Calendar events into schedule_events. */
 export async function syncCalendarForUser(userId: string): Promise<boolean> {
+  if (!(await isUserEligible(userId))) return false;
   const admin = createAdminClient();
 
   const { data: settings } = await admin
@@ -165,7 +173,7 @@ export async function syncCalendarForUser(userId: string): Promise<boolean> {
   try {
     await exportPlanToGoogle(userId);
   } catch (err) {
-    console.error("[sync] export to Google failed:", err);
+    safeLog("error", "sync.google_export_failed", { errorClass: errorClass(err) });
   }
   return true;
 }
@@ -206,6 +214,7 @@ function toGoogleInput(e: PlanEventRow): GoogleEventInput {
  * read-only (user needs to reconnect for write access).
  */
 export async function exportPlanToGoogle(userId: string): Promise<boolean> {
+  if (!(await isUserEligible(userId))) return false;
   const admin = createAdminClient();
   const accessToken = await getValidAccessToken(userId, "google");
   if (!accessToken) return false;
@@ -290,74 +299,58 @@ export async function exportPlanToGoogle(userId: string): Promise<boolean> {
 
 /** Generate (or regenerate) today's AI briefing for a user. */
 export async function generateSummaryForUser(userId: string): Promise<boolean> {
-  const permit = await getAiProcessingPermit(userId);
+  const permit = await getAiProcessingPermit(userId, "morning_briefing");
   if (!permit) return false;
   const admin = createAdminClient();
   const today = isoDate(new Date());
   const weekAgo = isoDate(new Date(Date.now() - 7 * 86_400_000));
 
-  const [
-    { data: profile },
-    { data: metrics },
-    { data: events },
-    { data: checkin },
-    { data: prefs },
-  ] = await Promise.all([
-    admin
-      .from("profiles")
-      .select("display_name, latitude, longitude")
-      .eq("id", userId)
-      .maybeSingle<{ display_name: string; latitude: number | null; longitude: number | null }>(),
-    admin
-      .from("health_metrics")
-      .select(
-        "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency"
-      )
-      .eq("user_id", userId)
-      .gte("date", weekAgo)
-      .order("date", { ascending: true })
-      .returns<MetricsForPrompt[]>(),
-    admin
-      .from("schedule_events")
-      .select("title, starts_at, ends_at, all_day")
-      .eq("user_id", userId)
-      .gte("starts_at", `${today}T00:00:00Z`)
-      .lt("starts_at", `${today}T23:59:59Z`)
-      .order("starts_at", { ascending: true })
-      .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
-    admin
-      .from("subjective_checkins")
-      .select("date, mood, energy, stress, soreness, note")
-      .eq("user_id", userId)
-      .order("date", { ascending: false })
-      .limit(1)
-      .maybeSingle<{
-        date: string;
-        mood: number | null;
-        energy: number | null;
-        stress: number | null;
-        soreness: number | null;
-        note: string | null;
-      }>(),
-    admin
-      .from("user_preferences")
-      .select("allow_ai_health_context, allow_ai_calendar_context, allow_ai_checkin_context")
-      .eq("user_id", userId)
-      .maybeSingle<{
-        allow_ai_health_context: boolean | null;
-        allow_ai_calendar_context: boolean | null;
-        allow_ai_checkin_context: boolean | null;
-      }>(),
-  ]);
+  const [{ data: profile }, { data: metrics }, { data: events }, { data: checkin }] =
+    await Promise.all([
+      admin
+        .from("profiles")
+        .select("display_name, latitude, longitude")
+        .eq("id", userId)
+        .maybeSingle<{ display_name: string; latitude: number | null; longitude: number | null }>(),
+      admin
+        .from("health_metrics")
+        .select(
+          "date, readiness_score, sleep_score, hrv_avg, resting_hr, sleep_duration_min, sleep_efficiency"
+        )
+        .eq("user_id", userId)
+        .gte("date", weekAgo)
+        .order("date", { ascending: true })
+        .returns<MetricsForPrompt[]>(),
+      admin
+        .from("schedule_events")
+        .select("title, starts_at, ends_at, all_day")
+        .eq("user_id", userId)
+        .gte("starts_at", `${today}T00:00:00Z`)
+        .lt("starts_at", `${today}T23:59:59Z`)
+        .order("starts_at", { ascending: true })
+        .returns<{ title: string; starts_at: string; ends_at: string; all_day: boolean }[]>(),
+      admin
+        .from("subjective_checkins")
+        .select("date, mood, energy, stress, soreness, note")
+        .eq("user_id", userId)
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle<{
+          date: string;
+          mood: number | null;
+          energy: number | null;
+          stress: number | null;
+          soreness: number | null;
+          note: string | null;
+        }>(),
+    ]);
 
   // Per-user AI data-use consent — omit any context the user opted out of.
   // The opaque server-issued permit is the authoritative consent source.
-  // Keep the selected row in this batch for backward-compatible schema checks.
-  void prefs;
   const consent = permit.consent;
 
   const weather =
-    profile?.latitude != null && profile?.longitude != null
+    consent.profile && profile?.latitude != null && profile?.longitude != null
       ? await fetchWeather(profile.latitude, profile.longitude)
       : null;
 
@@ -396,16 +389,18 @@ export async function generateSummaryForUser(userId: string): Promise<boolean> {
     : null;
 
   const briefingInput = {
-    displayName: profile?.display_name ?? "",
+    displayName: consent.profile ? (profile?.display_name ?? "") : "",
     todayMetrics,
     recentMetrics: consent.health ? (metrics ?? []) : [],
     weather,
-    todayEvents: (events ?? []).map((e) => ({
-      title: redactEventTitle(e.title, consent.calendar),
-      startsAt: e.starts_at,
-      endsAt: e.ends_at,
-      allDay: e.all_day,
-    })),
+    todayEvents: consent.calendarAvailability
+      ? (events ?? []).map((e) => ({
+          title: redactEventTitle(e.title, consent.calendarDetail),
+          startsAt: e.starts_at,
+          endsAt: e.ends_at,
+          allDay: e.all_day,
+        }))
+      : [],
     subjective,
     health,
   };

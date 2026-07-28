@@ -5,20 +5,17 @@
  * understanding layer (`./understanding`, `./fusion`) — providers never
  * reimplement it.
  *
- * Status:
- *  - active:  fully wired today (Oura, Apple Health, Fitbit, manual check-in).
- *  - planned: interface reserved; the Android/Fitbit forward path is the Google
- *             Health API (Health Connect), NOT the legacy Fitbit Web API.
- *  - gated:   requires approval / commercial licensing before it can be enabled
- *             (Garmin). Nothing in Daily Plan depends on a gated provider.
+ * Only supported V1 sources belong here. Future integrations must not enter the
+ * product registry until their code, privacy, commercial, and release reviews
+ * are complete.
  */
 
-export type ProviderId = "oura" | "apple_health" | "google_health" | "fitbit" | "garmin" | "manual";
-export type ProviderStatus = "active" | "planned" | "gated";
+export type ProviderId = "oura" | "apple_health" | "fitbit" | "manual";
+export type ProviderStatus = "active";
 export type Platform = "ios" | "android" | "web" | "cross_platform";
 
 /** The state of a provider for a given user, shown in the connections UI. */
-export type ProviderState = "Connected" | "Available" | "Planned" | "Gated" | "Not configured";
+export type ProviderState = "Connected" | "Available" | "Not configured";
 
 export interface HealthProviderInfo {
   id: ProviderId;
@@ -65,43 +62,6 @@ export const HEALTH_PROVIDERS: HealthProviderInfo[] = [
     status: "active",
     description: "Sleep, heart rate & activity",
     signals: ["sleep", "hrv", "resting_heart_rate", "steps", "active_minutes"],
-    note: "Fitbit is migrating under the Google Health API; treat as the legacy entry into the google_health path.",
-  },
-  {
-    id: "google_health",
-    label: "Google Health",
-    platformSupport: ["android"],
-    status: "planned",
-    description: "Android sleep, steps & heart rate",
-    signals: [
-      "sleep",
-      "steps",
-      "active_minutes",
-      "resting_heart_rate",
-      "hrv",
-      "spo2",
-      "respiratory_rate",
-      "calories",
-    ],
-    note: "Android/Fitbit forward path via Google Health / Health Connect. Interface reserved; not yet wired — TODO when API config lands.",
-  },
-  {
-    id: "garmin",
-    label: "Garmin",
-    platformSupport: ["cross_platform"],
-    status: "gated",
-    description: "Sleep, body battery & stress",
-    signals: [
-      "steps",
-      "sleep",
-      "calories",
-      "heart_rate",
-      "stress",
-      "spo2",
-      "body_battery",
-      "respiration",
-    ],
-    note: "Garmin Health API requires approval and may need a commercial license. Disabled unless explicitly configured; Daily Plan never depends on it.",
   },
   {
     id: "manual",
@@ -123,7 +83,7 @@ export function providerInfo(id: string): HealthProviderInfo | undefined {
   return BY_ID.get(id as ProviderId);
 }
 
-/** A provider can only contribute data when it is active (not planned/gated). */
+/** Registered V1 providers can contribute data. */
 export function isProviderEnabled(id: string): boolean {
   return BY_ID.get(id as ProviderId)?.status === "active";
 }
@@ -138,9 +98,6 @@ export function providerState(
   info: HealthProviderInfo,
   opts: { connected?: boolean; configured?: boolean } = {}
 ): ProviderState {
-  if (info.status === "gated") return "Gated";
-  if (info.status === "planned") return opts.configured ? "Available" : "Planned";
-  // active:
   if (opts.connected) return "Connected";
   return opts.configured === false ? "Not configured" : "Available";
 }

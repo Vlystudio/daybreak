@@ -9,6 +9,9 @@ import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
 import { rollSpecies, resolveSpecies, sellValueFor, type OwnedBirdBase } from "@/lib/game/birds";
 import { SEED_COST_EGG } from "@/lib/game/rewards";
+import { NEST_ENABLED } from "@/lib/features";
+
+const NEST_DISABLED_ERROR = "Nest is not available in this release.";
 
 /**
  * Game economy server actions. Every balance change runs inside a Postgres RPC
@@ -40,6 +43,7 @@ function localDate(timeZone: string): string {
 
 /** Spend seeds (or a banked free egg) to hatch a random bird — atomically. */
 export async function hatchEgg(): Promise<HatchResult> {
+  if (!NEST_ENABLED) return { ok: false, error: NEST_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await securityRateLimit(`hatch:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
@@ -80,6 +84,7 @@ export async function hatchEgg(): Promise<HatchResult> {
  * One-time — guarded by starter_done inside the RPC.
  */
 export async function claimStarter(): Promise<HatchResult> {
+  if (!NEST_ENABLED) return { ok: false, error: NEST_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await securityRateLimit(`starter:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "One moment…" };
@@ -127,6 +132,7 @@ type SellableBirdRow = OwnedBirdBase & { id: string };
  * trusted rarity mapping, never from client input.
  */
 export async function sellBird(birdId: string): Promise<SellResult> {
+  if (!NEST_ENABLED) return { ok: false, error: NEST_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await securityRateLimit(`sell:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
@@ -175,6 +181,7 @@ export async function sellBird(birdId: string): Promise<SellResult> {
 }
 
 export async function setActiveBird(birdId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!NEST_ENABLED) return { ok: false, error: NEST_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(birdId).success) return { ok: false, error: "Unknown bird" };
 
@@ -197,6 +204,7 @@ export async function renameBird(
   birdId: string,
   nickname: string
 ): Promise<{ ok: boolean; error?: string }> {
+  if (!NEST_ENABLED) return { ok: false, error: NEST_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = z
     .object({ id: uuidSchema, nickname: z.string().trim().max(40) })
@@ -217,6 +225,7 @@ export async function renameBird(
 
 /** Pet the companion: a tiny once-a-day affection bonus + XP, granted atomically. */
 export async function petBird(): Promise<{ ok: boolean; seeds?: number; error?: string }> {
+  if (!NEST_ENABLED) return { ok: false, error: NEST_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await securityRateLimit(`pet:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "One moment…" };

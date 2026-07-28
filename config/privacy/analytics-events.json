@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "events": [
+    { "name": "app_opened", "allowedMetadataKeys": ["platform", "appVersion"] },
+    { "name": "feature_completed", "allowedMetadataKeys": ["feature", "platform", "success"] }
+  ],
+  "forbiddenKeyPattern": "health|wellness|medical|sleep|hrv|heart|weight|body|checkin|calendar|title|description|prompt|response|content|message|note|token|secret|password|email|name|location|latitude|longitude|photo|image|minor|deletion"
+}

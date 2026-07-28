@@ -3,9 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Mail, KeyRound, LogOut } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { signOut } from "@/actions/auth";
-import { publicEnv } from "@/env";
+import { requestPasswordReset, signOut, signOutAllDevices } from "@/actions/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -15,12 +13,9 @@ export function AccountCard({ email }: { email: string }) {
   async function sendReset() {
     if (!email) return;
     setPending(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${publicEnv.NEXT_PUBLIC_APP_URL}/auth/callback?next=/account/update-password`,
-    });
+    const result = await requestPasswordReset({ email });
     setPending(false);
-    if (error) toast.error(error.message);
+    if (!result.ok) toast.error(result.error);
     else toast.success("Password reset link sent to your email.");
   }
 
@@ -32,7 +27,7 @@ export function AccountCard({ email }: { email: string }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 text-sm">
-          <Mail className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <Mail className="text-muted-foreground h-4 w-4" aria-hidden />
           <span className="text-muted-foreground">Signed in as</span>
           <span className="font-medium">{email}</span>
         </div>
@@ -43,6 +38,11 @@ export function AccountCard({ email }: { email: string }) {
           <form action={signOut}>
             <Button type="submit" variant="ghost">
               <LogOut className="h-4 w-4" aria-hidden /> Sign out
+            </Button>
+          </form>
+          <form action={signOutAllDevices}>
+            <Button type="submit" variant="ghost">
+              <LogOut className="h-4 w-4" aria-hidden /> Sign out all devices
             </Button>
           </form>
         </div>

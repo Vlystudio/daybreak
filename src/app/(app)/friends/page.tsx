@@ -6,7 +6,7 @@ import { CompetitionsView } from "@/components/friends/competitions-view";
 import { notFound } from "next/navigation";
 import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
-export const metadata = { title: "Friends · Daybreak" };
+export const metadata = { title: "Friends" };
 export const dynamic = "force-dynamic";
 
 export default async function FriendsPage() {

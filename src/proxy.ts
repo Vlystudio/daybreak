@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { publicEnv } from "@/env";
+import { requiresMfaChallenge, safePostAuthPath } from "@/lib/security/mfa";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
@@ -80,12 +81,35 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isMfaPath = pathname === "/login/mfa";
 
-  if (!user && PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))) {
+  if (!user && (isMfaPath || PROTECTED_PREFIXES.some((p) => pathname.startsWith(p)))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
+  }
+
+  if (user) {
+    const { data: assurance, error: assuranceError } =
+      await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (assuranceError) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "session");
+      return NextResponse.redirect(url);
+    }
+    if (requiresMfaChallenge(assurance) && !isMfaPath) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login/mfa";
+      url.searchParams.set("next", safePostAuthPath(`${pathname}${request.nextUrl.search}`));
+      return NextResponse.redirect(url);
+    }
+    if (!requiresMfaChallenge(assurance) && isMfaPath) {
+      return NextResponse.redirect(
+        new URL(safePostAuthPath(request.nextUrl.searchParams.get("next")), request.url)
+      );
+    }
   }
 
   if (user && (pathname === "/login" || pathname === "/")) {

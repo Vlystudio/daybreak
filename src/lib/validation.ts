@@ -55,11 +55,20 @@ export const householdJoinSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.email("Enter a valid email"),
-  password: z.string().min(8, "At least 8 characters"),
+  // Do not lock out a legacy account with a shorter provider-managed password.
+  password: z.string().min(1, "Enter your password").max(200),
 });
 
 export const signupSchema = loginSchema.extend({
+  password: z.string().min(12, "Use at least 12 characters").max(200),
   displayName: z.string().trim().min(1, "Tell us what to call you").max(80),
+  adultAttested: z
+    .boolean()
+    .refine((value) => value, "You must confirm that you are at least 18 years old"),
+  acceptedTerms: z.boolean().refine((value) => value, "You must accept the Terms of Service"),
+  privacyAcknowledged: z
+    .boolean()
+    .refine((value) => value, "You must acknowledge the Privacy Policy"),
 });
 
 export const calendarSyncSchema = z.object({
@@ -104,7 +113,6 @@ export const onboardingSchema = z.object({
   heightIn: z.coerce.number().min(36, "Enter a valid height").max(96).optional(),
   weightLb: z.coerce.number().min(50, "Enter a valid weight").max(800).optional(),
   sex: z.enum(enumValues(SEXES)).optional(),
-  birthYear: z.coerce.number().int().min(1900).max(2025).optional(),
   hobbies: z.array(z.string().trim().min(1).max(40)).max(40).default([]),
   socialTendency: z.enum(enumValues(SOCIAL_TENDENCIES)),
   chores: z.array(choreEntrySchema).max(40).default([]),

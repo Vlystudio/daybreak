@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   AccountDeletionError,
   buildAccountDeletionSteps,
+  hashDeletionStatusToken,
+  isAuthUserAlreadyDeleted,
   removeUserStorage,
   runAccountDeletionSteps,
   type AdminClient,
@@ -15,12 +17,32 @@ describe("account deletion orchestration", () => {
     );
     expect(steps.map((step) => step.name)).toEqual([
       "storage",
-      "provider credentials and notifications",
+      "local credentials and notifications",
       "social relationships",
       "retained-reference cleanup",
-      "authentication account",
+      "authentication account and sessions",
     ]);
-    expect(steps.at(-1)?.name).toBe("authentication account");
+    expect(steps.at(-1)?.name).toBe("authentication account and sessions");
+  });
+
+  it("hashes opaque status capabilities without retaining the token", () => {
+    const token = "a".repeat(43);
+    expect(hashDeletionStatusToken(token)).toMatch(/^[a-f0-9]{64}$/);
+    expect(hashDeletionStatusToken(token)).toBe(hashDeletionStatusToken(token));
+    expect(hashDeletionStatusToken(`${token}b`)).not.toBe(hashDeletionStatusToken(token));
+  });
+
+  it("treats only explicit Auth not-found responses as idempotent deletion", () => {
+    expect(isAuthUserAlreadyDeleted(Object.assign(new Error("missing"), { status: 404 }))).toBe(
+      true
+    );
+    expect(
+      isAuthUserAlreadyDeleted(Object.assign(new Error("missing"), { code: "user_not_found" }))
+    ).toBe(true);
+    expect(isAuthUserAlreadyDeleted(Object.assign(new Error("outage"), { status: 500 }))).toBe(
+      false
+    );
+    expect(isAuthUserAlreadyDeleted(new Error("ambiguous"))).toBe(false);
   });
 
   it("runs Auth deletion last", async () => {

@@ -27,7 +27,7 @@ VALUES
     'alice.rls-test@example.invalid',
     '',
     '{"provider":"email","providers":["email"]}'::jsonb,
-    '{}'::jsonb,
+    '{"adult_attested":true,"adult_attestation_version":"2026-07-28","accepted_terms_version":"2026-07-28","acknowledged_privacy_version":"2026-07-28"}'::jsonb,
     now(),
     now()
   ),
@@ -38,7 +38,7 @@ VALUES
     'bob.rls-test@example.invalid',
     '',
     '{"provider":"email","providers":["email"]}'::jsonb,
-    '{}'::jsonb,
+    '{"adult_attested":true,"adult_attestation_version":"2026-07-28","accepted_terms_version":"2026-07-28","acknowledged_privacy_version":"2026-07-28"}'::jsonb,
     now(),
     now()
   );

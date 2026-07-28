@@ -9,10 +9,21 @@ import { rateLimit, securityRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { profileSchema, calendarSyncSchema, type ProfileInput } from "@/lib/validation";
 import { geocodeCity } from "@/lib/integrations/weather";
-import { deleteConnection, type Provider } from "@/lib/integrations/tokens";
+import {
+  deleteConnection,
+  ProviderRevocationRetryableError,
+  revokeProviderConnection,
+  type Provider,
+} from "@/lib/integrations/tokens";
 import { syncOuraForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import type { ActionResult } from "@/actions/schedule";
-import { AI_CONSENT_VERSION, type AiConsent } from "@/lib/integrations/ai-consent";
+import {
+  AI_CONSENT_VERSION,
+  aiConsentFromPrefs,
+  type AiConsent,
+  type AiConsentPreferences,
+} from "@/lib/integrations/ai-consent";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 export async function updateProfile(input: ProfileInput): Promise<ActionResult> {
   const user = await requireUser();
@@ -184,15 +195,63 @@ export async function setMorningEmailEnabled(input: { enabled: boolean }): Promi
 }
 
 const AI_CONTEXT_COLUMN = {
-  health: "allow_ai_health_context",
-  calendar: "allow_ai_calendar_context",
+  basic: "allow_ai_basic_processing",
+  tasks: "allow_ai_tasks_context",
   checkin: "allow_ai_checkin_context",
+  health: "allow_ai_health_context",
+  calendarAvailability: "allow_ai_calendar_availability",
+  calendarDetail: "allow_ai_calendar_detail",
+  profile: "allow_ai_profile_context",
+  uploads: "allow_ai_uploads",
 } as const;
 
 const aiContextSchema = z.object({
-  context: z.enum(["health", "calendar", "checkin"]),
+  context: z.enum([
+    "basic",
+    "tasks",
+    "checkin",
+    "health",
+    "calendarAvailability",
+    "calendarDetail",
+    "profile",
+    "uploads",
+  ]),
   enabled: z.boolean(),
 });
+
+const aiConsentSchema = z
+  .object({
+    basic: z.boolean(),
+    tasks: z.boolean(),
+    checkin: z.boolean(),
+    health: z.boolean(),
+    calendarAvailability: z.boolean(),
+    calendarDetail: z.boolean(),
+    profile: z.boolean(),
+    uploads: z.boolean(),
+  })
+  .refine((choice) => !choice.calendarDetail || choice.calendarAvailability, {
+    message: "Calendar details require calendar availability.",
+    path: ["calendarDetail"],
+  });
+
+async function persistAiConsent(choice: AiConsent): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_current_user_ai_consent", {
+    p_basic: choice.basic,
+    p_tasks: choice.tasks,
+    p_checkin: choice.checkin,
+    p_health: choice.health,
+    p_calendar_availability: choice.calendarAvailability,
+    p_calendar_detail: choice.calendarDetail,
+    p_profile: choice.profile,
+    p_uploads: choice.uploads,
+    p_consent_version: AI_CONSENT_VERSION,
+    p_application_version: "web-0.1.0",
+    p_platform: "web",
+  });
+  return error ? { ok: false, error: "Couldn't save your AI consent choice." } : { ok: true };
+}
 
 /** Toggle whether a given context may be sent to the AI processor. */
 export async function setAiContextPreference(input: {
@@ -201,35 +260,40 @@ export async function setAiContextPreference(input: {
 }): Promise<ActionResult> {
   const user = await requireUser();
 
-  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  const limited = await securityRateLimit(`ai-consent:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
 
   const parsed = aiContextSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid setting" };
 
-  // Server-derived user id; only the one consent column is written.
-  const admin = createAdminClient();
-  const { error } = await admin.from("user_preferences").upsert(
-    {
-      user_id: user.id,
-      [AI_CONTEXT_COLUMN[parsed.data.context]]: parsed.data.enabled,
-      ai_consent_version: AI_CONSENT_VERSION,
-      ai_consent_updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
-  if (error) return { ok: false, error: "Couldn't update your AI settings." };
+  const supabase = await createClient();
+  const { data: prefs, error: readError } = await supabase
+    .from("user_preferences")
+    .select(Object.values(AI_CONTEXT_COLUMN).join(","))
+    .eq("user_id", user.id)
+    .maybeSingle<AiConsentPreferences>();
+  if (readError) return { ok: false, error: "Couldn't update your AI settings." };
+  const next = {
+    ...aiConsentFromPrefs(prefs),
+    [parsed.data.context]: parsed.data.enabled,
+  };
+  if (parsed.data.context === "calendarAvailability" && !parsed.data.enabled) {
+    next.calendarDetail = false;
+  }
+  if (parsed.data.context === "calendarDetail" && parsed.data.enabled) {
+    next.calendarAvailability = true;
+  }
+  const result = await persistAiConsent(next);
+  if (!result.ok) return result;
+
+  await audit(user.id, "ai.consent_updated", {
+    metadata: { version: AI_CONSENT_VERSION, category: parsed.data.context },
+  });
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
   return { ok: true };
 }
-
-const aiConsentSchema = z.object({
-  health: z.boolean(),
-  calendar: z.boolean(),
-  checkin: z.boolean(),
-});
 
 /** Record the complete disclosure decision atomically before first AI use. */
 export async function setAiConsentPreferences(input: AiConsent): Promise<ActionResult> {
@@ -240,19 +304,8 @@ export async function setAiConsentPreferences(input: AiConsent): Promise<ActionR
   const limited = await securityRateLimit(`ai-consent:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
 
-  const admin = createAdminClient();
-  const { error } = await admin.from("user_preferences").upsert(
-    {
-      user_id: user.id,
-      allow_ai_health_context: parsed.data.health,
-      allow_ai_calendar_context: parsed.data.calendar,
-      allow_ai_checkin_context: parsed.data.checkin,
-      ai_consent_version: AI_CONSENT_VERSION,
-      ai_consent_updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
-  if (error) return { ok: false, error: "Couldn't save your AI consent choice." };
+  const result = await persistAiConsent(parsed.data);
+  if (!result.ok) return result;
 
   await audit(user.id, "ai.consent_updated", {
     metadata: { version: AI_CONSENT_VERSION },
@@ -265,16 +318,29 @@ export async function setAiConsentPreferences(input: AiConsent): Promise<ActionR
 
 const providerActionSchema = z.enum(["oura", "google", "fitbit"]);
 
-export async function disconnectProvider(provider: string): Promise<ActionResult> {
+export async function disconnectProvider(providerName: string): Promise<ActionResult> {
   const user = await requireUser();
 
   const limited = await securityRateLimit(`disconnect:${user.id}`, RATE_LIMITS.disconnect);
   if (!limited.ok) return { ok: false, error: "Too many changes — please try again shortly." };
 
-  const parsed = providerActionSchema.safeParse(provider);
+  const parsed = providerActionSchema.safeParse(providerName);
   if (!parsed.success) return { ok: false, error: "Unknown provider" };
 
-  await deleteConnection(user.id, parsed.data as Provider);
+  const provider = parsed.data as Provider;
+  try {
+    await revokeProviderConnection(user.id, provider);
+  } catch (error) {
+    if (error instanceof ProviderRevocationRetryableError) {
+      return {
+        ok: false,
+        error:
+          "The provider could not confirm revocation yet. Your connection was kept so you can retry.",
+      };
+    }
+    return { ok: false, error: "Couldn't revoke this provider connection." };
+  }
+  await deleteConnection(user.id, provider);
   await audit(user.id, "connection.unlinked", {
     entity: "oauth_connection",
     metadata: { provider: parsed.data },
@@ -304,7 +370,7 @@ export async function syncNow(): Promise<ActionResult> {
     ]);
     if (oura || calendar) await generateSummaryForUser(user.id);
   } catch (err) {
-    console.error("[sync] manual sync failed:", err);
+    safeLog("error", "sync.manual_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "Sync hit a snag — please try again in a minute." };
   }
 

@@ -1,63 +1,84 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   AI_CONSENT_VERSION,
+  DEFAULT_AI_CONSENT,
+  aiConsentCategories,
   aiConsentFromPrefs,
   gateContext,
   hasCurrentAiConsentDecision,
   redactEventTitle,
 } from "./ai-consent";
 
-describe("aiConsentFromPrefs", () => {
-  it("defaults every context to denied when prefs are missing", () => {
-    expect(aiConsentFromPrefs(null)).toEqual({ health: false, calendar: false, checkin: false });
-    expect(aiConsentFromPrefs(undefined)).toEqual({
-      health: false,
-      calendar: false,
-      checkin: false,
-    });
-    expect(aiConsentFromPrefs({})).toEqual({ health: false, calendar: false, checkin: false });
+describe("granular AI consent", () => {
+  it("defaults all eight categories to denied", () => {
+    expect(aiConsentFromPrefs(null)).toEqual(DEFAULT_AI_CONSENT);
+    expect(aiConsentFromPrefs({})).toEqual(DEFAULT_AI_CONSENT);
   });
 
-  it("treats null as denied and includes only explicit true values", () => {
+  it("includes only explicit true values and does not let detail imply availability", () => {
     expect(
       aiConsentFromPrefs({
-        allow_ai_health_context: null,
-        allow_ai_calendar_context: true,
-        allow_ai_checkin_context: false,
+        allow_ai_basic_processing: true,
+        allow_ai_calendar_availability: false,
+        allow_ai_calendar_detail: true,
+        allow_ai_health_context: true,
       })
-    ).toEqual({ health: false, calendar: true, checkin: false });
+    ).toMatchObject({
+      basic: true,
+      health: true,
+      calendarAvailability: false,
+      calendarDetail: false,
+    });
   });
-});
 
-describe("hasCurrentAiConsentDecision", () => {
-  it("requires both the current disclosure version and a timestamp", () => {
-    expect(hasCurrentAiConsentDecision(null)).toBe(false);
-    expect(hasCurrentAiConsentDecision({ ai_consent_version: AI_CONSENT_VERSION })).toBe(false);
+  it("maps each affirmative choice to a bounded gateway category", () => {
     expect(
-      hasCurrentAiConsentDecision({
-        ai_consent_version: AI_CONSENT_VERSION,
-        ai_consent_updated_at: "2026-07-13T12:00:00.000Z",
+      aiConsentCategories({
+        ...DEFAULT_AI_CONSENT,
+        basic: true,
+        tasks: true,
+        calendarAvailability: true,
       })
-    ).toBe(true);
+    ).toEqual(["basic", "tasks", "calendar_availability"]);
   });
 });
 
-describe("gateContext (health / check-in)", () => {
-  it("passes the value through when allowed", () => {
-    const snapshot = { metrics: [{ metric: "hrv" }], sources: ["Oura"] };
-    expect(gateContext(snapshot, true)).toBe(snapshot);
+describe("current AI decision", () => {
+  const now = new Date("2026-07-28T12:00:00.000Z");
+  const current = {
+    allow_ai_basic_processing: false,
+    ai_consent_version: AI_CONSENT_VERSION,
+    ai_consent_updated_at: "2026-07-28T10:00:00.000Z",
+    ai_consent_expires_at: "2027-01-24T10:00:00.000Z",
+  };
+
+  it("recognizes an explicit decline-all as a recorded current decision", () => {
+    expect(hasCurrentAiConsentDecision(current, now)).toBe(true);
   });
-  it("drops the value to null when not allowed (no health/source labels sent)", () => {
+
+  it("fails closed for missing, old-version, invalid, and expired decisions", () => {
+    expect(hasCurrentAiConsentDecision(null, now)).toBe(false);
+    expect(hasCurrentAiConsentDecision({ ...current, ai_consent_version: "old" }, now)).toBe(false);
+    expect(hasCurrentAiConsentDecision({ ...current, ai_consent_expires_at: "invalid" }, now)).toBe(
+      false
+    );
+    expect(
+      hasCurrentAiConsentDecision(
+        { ...current, ai_consent_expires_at: "2026-07-28T11:59:59.000Z" },
+        now
+      )
+    ).toBe(false);
+  });
+});
+
+describe("sensitive context minimization", () => {
+  it("omits health and check-in values unless allowed", () => {
     expect(gateContext({ metrics: [], sources: ["Oura"] }, false)).toBeNull();
-    expect(gateContext("slept badly, knee hurts", false)).toBeNull(); // free-text check-in note
+    expect(gateContext("slept badly, knee hurts", false)).toBeNull();
   });
-});
 
-describe("redactEventTitle (calendar)", () => {
-  it("keeps the title when calendar context is allowed", () => {
-    expect(redactEventTitle("Therapy with Dr. Lee", true)).toBe("Therapy with Dr. Lee");
-  });
-  it("replaces the title with a generic label when calendar context is off", () => {
+  it("replaces a private title while retaining an authorized busy block", () => {
     expect(redactEventTitle("Therapy with Dr. Lee", false)).toBe("Busy time");
+    expect(redactEventTitle("Therapy with Dr. Lee", true)).toBe("Therapy with Dr. Lee");
   });
 });

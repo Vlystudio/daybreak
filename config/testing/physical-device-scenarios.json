@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    { "id": "install-fresh", "category": "installation_lifecycle", "name": "Fresh install" },
+    { "id": "install-upgrade", "category": "installation_lifecycle", "name": "Upgrade install" },
+    { "id": "lifecycle-cold-launch", "category": "installation_lifecycle", "name": "Cold launch" },
+    {
+      "id": "lifecycle-background-resume",
+      "category": "installation_lifecycle",
+      "name": "Background and resume"
+    },
+    {
+      "id": "lifecycle-reboot-relaunch",
+      "category": "installation_lifecycle",
+      "name": "Reboot and relaunch"
+    },
+    {
+      "id": "lifecycle-low-storage",
+      "category": "installation_lifecycle",
+      "name": "Low-storage behavior"
+    },
+    { "id": "network-poor", "category": "installation_lifecycle", "name": "Poor network" },
+    { "id": "network-offline", "category": "installation_lifecycle", "name": "Offline mode" },
+    {
+      "id": "time-timezone-change",
+      "category": "installation_lifecycle",
+      "name": "Timezone change"
+    },
+    {
+      "id": "time-daylight-saving",
+      "category": "installation_lifecycle",
+      "name": "Daylight-saving transition"
+    },
+
+    {
+      "id": "auth-adult-unchecked",
+      "category": "adult_authentication",
+      "name": "Unchecked adult box"
+    },
+    { "id": "auth-adult-signup", "category": "adult_authentication", "name": "Adult signup" },
+    { "id": "auth-under-18", "category": "adult_authentication", "name": "Under-18 rejection" },
+    {
+      "id": "auth-existing-legal-gate",
+      "category": "adult_authentication",
+      "name": "Existing-user legal gate"
+    },
+    { "id": "auth-email-login", "category": "adult_authentication", "name": "Email login" },
+    {
+      "id": "auth-password-recovery",
+      "category": "adult_authentication",
+      "name": "Password recovery"
+    },
+    {
+      "id": "auth-sign-in-with-apple",
+      "category": "adult_authentication",
+      "name": "Sign in with Apple",
+      "notApplicableAllowed": true
+    },
+    { "id": "auth-global-logout", "category": "adult_authentication", "name": "Global logout" },
+    { "id": "auth-totp-aal2", "category": "adult_authentication", "name": "TOTP and AAL2" },
+    {
+      "id": "auth-session-expiration",
+      "category": "adult_authentication",
+      "name": "Session expiration"
+    },
+
+    { "id": "healthkit-denial", "category": "healthkit", "name": "HealthKit denial" },
+    {
+      "id": "healthkit-partial",
+      "category": "healthkit",
+      "name": "HealthKit partial authorization"
+    },
+    {
+      "id": "healthkit-full-applicable",
+      "category": "healthkit",
+      "name": "HealthKit applicable full authorization"
+    },
+    { "id": "healthkit-empty", "category": "healthkit", "name": "HealthKit empty data" },
+    { "id": "healthkit-sparse", "category": "healthkit", "name": "HealthKit sparse data" },
+    {
+      "id": "healthkit-revocation",
+      "category": "healthkit",
+      "name": "HealthKit permission revocation"
+    },
+    { "id": "healthkit-disconnect", "category": "healthkit", "name": "HealthKit disconnect" },
+    {
+      "id": "healthkit-no-notification-log",
+      "category": "healthkit",
+      "name": "Health data absent from notifications and logs"
+    },
+    {
+      "id": "healthkit-no-ai-without-consent",
+      "category": "healthkit",
+      "name": "Health data omitted from AI without consent"
+    },
+
+    { "id": "calendar-denial", "category": "calendar_integrations", "name": "Calendar denial" },
+    {
+      "id": "calendar-availability-only",
+      "category": "calendar_integrations",
+      "name": "Availability-only permission"
+    },
+    {
+      "id": "calendar-detailed-consent",
+      "category": "calendar_integrations",
+      "name": "Detailed-calendar consent"
+    },
+    {
+      "id": "calendar-revocation",
+      "category": "calendar_integrations",
+      "name": "Calendar revocation"
+    },
+    {
+      "id": "provider-expired-oauth",
+      "category": "calendar_integrations",
+      "name": "Expired OAuth token"
+    },
+    {
+      "id": "provider-reconnect",
+      "category": "calendar_integrations",
+      "name": "Provider reconnect"
+    },
+    {
+      "id": "provider-disconnect",
+      "category": "calendar_integrations",
+      "name": "Provider disconnect"
+    },
+
+    { "id": "ai-decline-all", "category": "ai", "name": "Decline all AI consent" },
+    { "id": "ai-basic-only", "category": "ai", "name": "Basic AI only" },
+    { "id": "ai-health-separate", "category": "ai", "name": "Health consent separately" },
+    { "id": "ai-calendar-detail-separate", "category": "ai", "name": "Calendar detail separately" },
+    { "id": "ai-consent-revocation", "category": "ai", "name": "AI consent revocation" },
+    { "id": "ai-provider-outage", "category": "ai", "name": "AI provider outage" },
+    { "id": "ai-rate-limit", "category": "ai", "name": "AI rate limit" },
+    { "id": "ai-emergency-language", "category": "ai", "name": "Emergency-language handling" },
+    { "id": "ai-output-label", "category": "ai", "name": "AI output marked appropriately" },
+    {
+      "id": "ai-no-medical-certainty",
+      "category": "ai",
+      "name": "No medical certainty or medication instruction"
+    },
+
+    {
+      "id": "notifications-denial",
+      "category": "notifications_privacy",
+      "name": "Notification permission denial"
+    },
+    {
+      "id": "notifications-approval",
+      "category": "notifications_privacy",
+      "name": "Notification permission approval"
+    },
+    {
+      "id": "notifications-lock-screen",
+      "category": "notifications_privacy",
+      "name": "Lock-screen display"
+    },
+    {
+      "id": "notifications-generic-sensitive",
+      "category": "notifications_privacy",
+      "name": "Generic sensitive notification wording"
+    },
+    {
+      "id": "notifications-disabled-categories",
+      "category": "notifications_privacy",
+      "name": "Disabled notification categories"
+    },
+    {
+      "id": "notifications-token-refresh",
+      "category": "notifications_privacy",
+      "name": "Notification token refresh"
+    },
+
+    { "id": "privacy-data-export", "category": "export_deletion", "name": "Data export" },
+    {
+      "id": "deletion-reauthentication",
+      "category": "export_deletion",
+      "name": "Deletion reauthentication"
+    },
+    { "id": "deletion-active", "category": "export_deletion", "name": "Active deletion" },
+    { "id": "deletion-receipt", "category": "export_deletion", "name": "Deletion receipt" },
+    { "id": "deletion-relaunch", "category": "export_deletion", "name": "Relaunch after deletion" },
+    {
+      "id": "deletion-login-failure",
+      "category": "export_deletion",
+      "name": "Login failure after deletion"
+    },
+    {
+      "id": "deletion-subscription-warning",
+      "category": "export_deletion",
+      "name": "Subscription warning",
+      "notApplicableAllowed": true
+    },
+    {
+      "id": "deletion-transient-retry",
+      "category": "export_deletion",
+      "name": "Retry after transient failure"
+    },
+
+    {
+      "id": "accessibility-voiceover",
+      "category": "accessibility_performance",
+      "name": "VoiceOver"
+    },
+    {
+      "id": "accessibility-dynamic-type",
+      "category": "accessibility_performance",
+      "name": "Dynamic Type"
+    },
+    { "id": "appearance-light", "category": "accessibility_performance", "name": "Light mode" },
+    { "id": "appearance-dark", "category": "accessibility_performance", "name": "Dark mode" },
+    {
+      "id": "accessibility-reduced-motion",
+      "category": "accessibility_performance",
+      "name": "Reduced Motion"
+    },
+    {
+      "id": "layout-small-screen",
+      "category": "accessibility_performance",
+      "name": "Small screen"
+    },
+    {
+      "id": "layout-large-screen",
+      "category": "accessibility_performance",
+      "name": "Large screen"
+    },
+    {
+      "id": "performance-battery",
+      "category": "accessibility_performance",
+      "name": "Battery behavior"
+    },
+    {
+      "id": "performance-thermal",
+      "category": "accessibility_performance",
+      "name": "Thermal behavior"
+    },
+    {
+      "id": "performance-memory",
+      "category": "accessibility_performance",
+      "name": "Memory behavior"
+    }
+  ]
+}

@@ -6,16 +6,12 @@ import type { ProviderState } from "@/lib/health/providers";
 /**
  * Read-only overview of every health source Daybreak understands and its state
  * for this user. Connecting/disconnecting active wearables stays in the
- * Connections card; this surface explains the full landscape — including
- * Planned (Google Health) and Gated (Garmin) sources — without inventing auth
- * flows that don't exist yet.
+ * Connections card. The release UI receives only supported V1 sources.
  */
 
-const STATE_BADGE: Record<ProviderState, "sage" | "secondary" | "honey" | "outline"> = {
+const STATE_BADGE: Record<ProviderState, "sage" | "secondary" | "outline"> = {
   Connected: "sage",
   Available: "secondary",
-  Planned: "honey",
-  Gated: "outline",
   "Not configured": "outline",
 };
 
@@ -35,8 +31,7 @@ export function HealthSourcesCard({ sources }: { sources: HealthSourceRow[] }) {
           <HeartPulse className="text-sage h-4 w-4" aria-hidden /> Health sources
         </CardTitle>
         <CardDescription>
-          Where Daybreak reads your wellness signals. Your plan works with any of these — or just a
-          daily check-in.
+          Supported sources for wellness signals. Your plan also works with only a daily check-in.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -51,10 +46,6 @@ export function HealthSourcesCard({ sources }: { sources: HealthSourceRow[] }) {
             </Badge>
           </div>
         ))}
-        <p className="text-muted-foreground pt-1 text-[11px]">
-          Planned and gated sources aren&apos;t available yet — Daybreak never depends on them for
-          your plan.
-        </p>
       </CardContent>
     </Card>
   );

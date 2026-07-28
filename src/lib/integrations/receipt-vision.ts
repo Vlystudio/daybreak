@@ -38,7 +38,7 @@ export async function analyzeReceipt(
 ): Promise<ReceiptAnalysis | null> {
   if (!/^data:image\//.test(dataUrl)) return null;
 
-  const client = openaiClient(permit);
+  const client = await openaiClient(permit, "receipt_image", ["basic", "uploads"]);
   if (!client) return null;
   try {
     const completion = await client.chat.completions.create({

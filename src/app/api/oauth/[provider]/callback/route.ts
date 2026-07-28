@@ -1,12 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getUser } from "@/lib/auth";
+import { getUser, isAuthenticatedUserEligible } from "@/lib/auth";
 import { verifyState } from "@/lib/crypto";
 import { saveConnection } from "@/lib/integrations/tokens";
 import { OAUTH_PROVIDERS, OAUTH_PROVIDER_NAMES } from "@/lib/integrations/oauth-providers";
 import { syncWearableForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import { audit } from "@/lib/audit";
 import { publicEnv } from "@/env";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 const providerSchema = z.enum(OAUTH_PROVIDER_NAMES);
 
@@ -31,6 +32,9 @@ export async function GET(
   if (!user) {
     return NextResponse.redirect(new URL("/login", publicEnv.NEXT_PUBLIC_APP_URL));
   }
+  if (!(await isAuthenticatedUserEligible(user.id))) {
+    return NextResponse.redirect(new URL("/eligibility", publicEnv.NEXT_PUBLIC_APP_URL));
+  }
 
   const searchParams = request.nextUrl.searchParams;
   if (searchParams.get("error")) {
@@ -45,7 +49,13 @@ export async function GET(
   // user, and carry the nonce we set when the flow started.
   const statePayload = state ? verifyState(state) : null;
   const [stateUserId, stateNonce] = statePayload?.split(":") ?? [];
-  if (!code || !statePayload || stateUserId !== user.id || !nonceCookie || stateNonce !== nonceCookie) {
+  if (
+    !code ||
+    !statePayload ||
+    stateUserId !== user.id ||
+    !nonceCookie ||
+    stateNonce !== nonceCookie
+  ) {
     return dashboardRedirect({ connect_error: "invalid_state" });
   }
 
@@ -53,7 +63,10 @@ export async function GET(
     const config = OAUTH_PROVIDERS[provider];
     const tokens = await config.exchangeCode(code);
     await saveConnection(user.id, provider, tokens);
-    await audit(user.id, "connection.linked", { entity: "oauth_connection", metadata: { provider } });
+    await audit(user.id, "connection.linked", {
+      entity: "oauth_connection",
+      metadata: { provider },
+    });
 
     // Kick off an initial sync so the dashboard is populated immediately.
     try {
@@ -64,14 +77,14 @@ export async function GET(
         await syncCalendarForUser(user.id);
       }
     } catch (err) {
-      console.error(`[oauth] initial ${provider} sync failed:`, err);
+      safeLog("error", "oauth.initial_sync_failed", { provider, errorClass: errorClass(err) });
     }
 
     const response = dashboardRedirect({ connected: provider });
     response.cookies.delete(`oauth_nonce_${provider}`);
     return response;
   } catch (err) {
-    console.error(`[oauth] ${provider} connection failed:`, err);
+    safeLog("error", "oauth.connection_failed", { provider, errorClass: errorClass(err) });
     return dashboardRedirect({ connect_error: "exchange_failed" });
   }
 }

@@ -1,5 +1,7 @@
 import "server-only";
 import { serverEnv } from "@/env";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 
 /** Recipe search via Spoonacular (https://spoonacular.com/food-api). */
 
@@ -92,7 +94,7 @@ export async function searchRecipes(input: {
   number?: number;
 }): Promise<RecipeSuggestion[] | null> {
   const apiKey = serverEnv().SPOONACULAR_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || !isProcessorEnabled("spoonacular")) return null;
   if (input.ingredients.length === 0) return [];
 
   const { diet, intolerances } = mapDietary(input.dietaryRestrictions);
@@ -111,6 +113,8 @@ export async function searchRecipes(input: {
   try {
     const res = await fetch(`https://api.spoonacular.com/recipes/complexSearch?${params}`, {
       next: { revalidate: 0 },
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) return null;
 
@@ -123,7 +127,9 @@ export async function searchRecipes(input: {
       const id = typeof r.id === "number" ? r.id : Number(r.id);
       if (!Number.isFinite(id) || exclude.has(id)) continue;
 
-      const missedRaw = Array.isArray(r.missedIngredients) ? (r.missedIngredients as unknown[]) : [];
+      const missedRaw = Array.isArray(r.missedIngredients)
+        ? (r.missedIngredients as unknown[])
+        : [];
       out.push({
         id,
         title: typeof r.title === "string" ? r.title : "Recipe",
@@ -143,7 +149,7 @@ export async function searchRecipes(input: {
 
     return out;
   } catch (err) {
-    console.error("[recipes] search failed:", err instanceof Error ? err.message : "unknown");
+    safeLog("error", "recipes.search_failed", { errorClass: errorClass(err) });
     return null;
   }
 }

@@ -2,6 +2,7 @@
   "name": "daybreak-healthkit",
   "version": "0.0.1",
   "description": "HealthKit bridge for the Daybreak iOS app (local Capacitor plugin).",
+  "license": "MIT",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",

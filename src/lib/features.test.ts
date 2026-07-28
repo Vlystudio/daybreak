@@ -1,14 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { enabledOnlyWhenExplicitlyTrue } from "@/lib/features";
+import { NEST_ENABLED, SOCIAL_FEATURES_ENABLED, SUBSCRIPTIONS_ENABLED } from "@/lib/features";
 
 describe("safe production feature flags", () => {
-  it("defaults missing and malformed values to disabled", () => {
-    expect(enabledOnlyWhenExplicitlyTrue(undefined)).toBe(false);
-    expect(enabledOnlyWhenExplicitlyTrue("false")).toBe(false);
-    expect(enabledOnlyWhenExplicitlyTrue("TRUE")).toBe(false);
-  });
-
-  it("enables only an explicit lowercase true", () => {
-    expect(enabledOnlyWhenExplicitlyTrue("true")).toBe(true);
+  it("source-locks non-V1 surfaces off", () => {
+    expect(NEST_ENABLED).toBe(false);
+    expect(SOCIAL_FEATURES_ENABLED).toBe(false);
+    expect(SUBSCRIPTIONS_ENABLED).toBe(false);
   });
 });

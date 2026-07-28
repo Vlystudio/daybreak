@@ -1,6 +1,8 @@
 import "server-only";
 import { serverEnv, publicEnv } from "@/env";
 import { getValidAccessToken, type TokenSet } from "@/lib/integrations/tokens";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { assertProcessorEnabled } from "@/lib/privacy/processors";
 
 /** Oura API v2 (OAuth2). https://cloud.ouraring.com/v2/docs */
 
@@ -11,7 +13,17 @@ const API_BASE = "https://api.ouraring.com/v2";
 export const OURA_REDIRECT_PATH = "/api/oauth/oura/callback";
 const SCOPES = "daily heartrate personal";
 
+function ouraFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  assertProcessorEnabled("oura");
+  return fetch(input, {
+    ...init,
+    redirect: "error",
+    signal: init.signal ?? AbortSignal.timeout(30_000),
+  });
+}
+
 export function ouraAuthorizeUrl(state: string): string {
+  assertProcessorEnabled("oura");
   const env = serverEnv();
   const params = new URLSearchParams({
     response_type: "code",
@@ -25,7 +37,7 @@ export function ouraAuthorizeUrl(state: string): string {
 
 export async function exchangeOuraCode(code: string): Promise<TokenSet> {
   const env = serverEnv();
-  const res = await fetch(TOKEN_URL, {
+  const res = await ouraFetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -122,7 +134,7 @@ async function ouraGet<T>(
   do {
     const search = new URLSearchParams(params);
     if (nextToken) search.set("next_token", nextToken);
-    const res = await fetch(`${API_BASE}${path}?${search}`, {
+    const res = await ouraFetch(`${API_BASE}${path}?${search}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) throw new Error(`Oura API ${path} failed (${res.status})`);
@@ -144,7 +156,7 @@ async function safeGet<T>(
   try {
     return await ouraGet<T>(accessToken, path, params);
   } catch (err) {
-    console.error(`[oura] optional endpoint ${path} skipped:`, err instanceof Error ? err.message : "unknown");
+    safeLog("warn", "oura.optional_endpoint_skipped", { errorClass: errorClass(err) });
     return [];
   }
 }
@@ -188,15 +200,16 @@ export async function fetchOuraDailyMetrics(
   if (!accessToken) return null;
 
   const range = { start_date: startDate, end_date: endDate };
-  const [readiness, dailySleep, sleepPeriods, activity, spo2, stress, resilience] = await Promise.all([
-    ouraGet<OuraDailyReadiness>(accessToken, "/usercollection/daily_readiness", range),
-    ouraGet<OuraDailySleep>(accessToken, "/usercollection/daily_sleep", range),
-    ouraGet<OuraSleepPeriod>(accessToken, "/usercollection/sleep", range),
-    safeGet<OuraDailyActivity>(accessToken, "/usercollection/daily_activity", range),
-    safeGet<OuraDailySpo2>(accessToken, "/usercollection/daily_spo2", range),
-    safeGet<OuraDailyStress>(accessToken, "/usercollection/daily_stress", range),
-    safeGet<OuraDailyResilience>(accessToken, "/usercollection/daily_resilience", range),
-  ]);
+  const [readiness, dailySleep, sleepPeriods, activity, spo2, stress, resilience] =
+    await Promise.all([
+      ouraGet<OuraDailyReadiness>(accessToken, "/usercollection/daily_readiness", range),
+      ouraGet<OuraDailySleep>(accessToken, "/usercollection/daily_sleep", range),
+      ouraGet<OuraSleepPeriod>(accessToken, "/usercollection/sleep", range),
+      safeGet<OuraDailyActivity>(accessToken, "/usercollection/daily_activity", range),
+      safeGet<OuraDailySpo2>(accessToken, "/usercollection/daily_spo2", range),
+      safeGet<OuraDailyStress>(accessToken, "/usercollection/daily_stress", range),
+      safeGet<OuraDailyResilience>(accessToken, "/usercollection/daily_resilience", range),
+    ]);
 
   const byDay = new Map<string, DailyMetrics>();
   const day = (date: string): DailyMetrics => {
@@ -248,7 +261,9 @@ export async function fetchOuraDailyMetrics(
     const row = day(p.day);
     row.hrv_avg = p.average_hrv;
     row.resting_hr = p.lowest_heart_rate ?? p.average_heart_rate;
-    row.sleep_duration_min = p.total_sleep_duration ? Math.round(p.total_sleep_duration / 60) : null;
+    row.sleep_duration_min = p.total_sleep_duration
+      ? Math.round(p.total_sleep_duration / 60)
+      : null;
     row.sleep_efficiency = p.efficiency;
     row.deep_sleep_min = p.deep_sleep_duration ? Math.round(p.deep_sleep_duration / 60) : null;
     row.rem_sleep_min = p.rem_sleep_duration ? Math.round(p.rem_sleep_duration / 60) : null;

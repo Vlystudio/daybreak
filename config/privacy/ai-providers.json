@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "providers": [
+    {
+      "id": "openai",
+      "providerName": "OpenAI, L.L.C.",
+      "service": "OpenAI API — Chat Completions",
+      "dataCategories": [
+        "basic",
+        "tasks",
+        "checkin",
+        "health",
+        "calendar_availability",
+        "calendar_detail",
+        "profile",
+        "uploads"
+      ],
+      "purposes": ["briefings", "planning", "coaching", "structured photo analysis"],
+      "region": "Provider/project configuration — external approval required",
+      "retention": "Default abuse-monitoring logs up to 30 days; verify approved project control before production",
+      "trainingUse": "Disabled by API default; organization must not opt in",
+      "contractStatus": "external_review_required",
+      "dpaStatus": "external_review_required",
+      "privacyPolicy": "https://openai.com/policies/privacy-policy/",
+      "dataControlsReference": "https://platform.openai.com/docs/guides/your-data",
+      "securityReviewDate": null,
+      "enabledEnvironments": ["development", "test"],
+      "emergencyDisabled": false,
+      "owner": "UNASSIGNED — release blocker",
+      "approvalStatus": "external_review_required",
+      "reviewExpiresAt": null
+    },
+    {
+      "id": "logmeal",
+      "providerName": "LogMeal",
+      "service": "LogMeal Food AI API",
+      "dataCategories": ["basic", "uploads"],
+      "purposes": ["user-initiated meal photo analysis"],
+      "region": "External confirmation required",
+      "retention": "External confirmation required",
+      "trainingUse": "External confirmation required",
+      "contractStatus": "external_review_required",
+      "dpaStatus": "external_review_required",
+      "privacyPolicy": "https://logmeal.com/privacy-policy/",
+      "dataControlsReference": "https://logmeal.com/api/",
+      "securityReviewDate": null,
+      "enabledEnvironments": ["development", "test"],
+      "emergencyDisabled": false,
+      "owner": "UNASSIGNED — release blocker",
+      "approvalStatus": "external_review_required",
+      "reviewExpiresAt": null
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import {
 import type { WeatherSnapshot } from "@/lib/integrations/weather";
 import type { WorkoutProgram, NutritionGuide } from "@/lib/planning";
 import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
+import type { AiDataCategory } from "@/lib/integrations/ai-consent";
 
 /**
  * AI morning briefing via the OpenAI API. Health data is sent to OpenAI to
@@ -111,7 +112,15 @@ export async function generateMorningBriefing(
     health?: HealthContextForPrompt | null;
   }
 ): Promise<MorningBriefing | null> {
-  const client = openaiClient(permit);
+  const requiredCategories: AiDataCategory[] = ["basic"];
+  if (input.displayName || input.weather) requiredCategories.push("profile");
+  if (input.todayMetrics || input.recentMetrics.length > 0 || input.health)
+    requiredCategories.push("health");
+  if (input.todayEvents.length > 0) requiredCategories.push("calendar_availability");
+  if (input.todayEvents.some((event) => event.title !== "Busy time"))
+    requiredCategories.push("calendar_detail");
+  if (input.subjective) requiredCategories.push("checkin");
+  const client = await openaiClient(permit, "morning_briefing", requiredCategories);
   if (!client) return null;
 
   // Sanitize all free-text the user/providers control before it reaches the model.
@@ -201,7 +210,7 @@ export interface HealthAnalysis {
 
 const HEALTH_SYSTEM_PROMPT = `You are a sharp, data-literate health analyst inside Daybreak — a knowledgeable coach who actually reads the numbers, not a generic wellness blog. You are NOT a doctor: never diagnose or name conditions, and suggest seeing a professional for anything genuinely concerning.
 
-You receive ~30 days of daily Oura metrics: readiness, sleep score, HRV in ms, resting heart rate, sleep duration/efficiency, deep/rem/light sleep minutes, skin temperature deviation, steps, active calories, activity score, average SpO2 (%), respiratory rate (breaths/min), daily stress and recovery minutes, and resilience level. Some fields may be null — use what's present, plus the pre-computed trend flags.
+You receive up to ~30 days of normalized daily metrics from sources the person chose to connect, such as Apple Health, Oura, Fitbit, or manual entry. Available fields can include readiness, sleep score, HRV in ms, resting heart rate, sleep duration/efficiency, sleep stages, skin-temperature deviation, steps, active calories, activity score, average SpO2 (%), respiratory rate, stress/recovery minutes, and resilience. Some fields may be null — use only what is present, plus the pre-computed trend flags, and never imply an unlisted source.
 
 RULES — follow strictly:
 - Be SPECIFIC and grounded in THEIR numbers. Cite actual values and concrete changes ("resting HR rose from 54 to 59 over the past week", "REM averaged 1h05m, down from ~1h35m earlier this month"). Never write advice that would apply to a random stranger.
@@ -227,7 +236,7 @@ export async function analyzeHealthTrends(
     flags: { title: string; detail: string }[];
   }
 ): Promise<HealthAnalysis | null> {
-  const client = openaiClient(permit);
+  const client = await openaiClient(permit, "health_analysis", ["basic", "health"]);
   if (!client) return null;
 
   try {
@@ -267,7 +276,7 @@ export async function analyzeHealthTrends(
 
 const FUSED_HEALTH_SYSTEM_PROMPT = `You are a careful, data-literate health analyst inside Daybreak. You are NOT a doctor and Daybreak is NOT a medical device.
 
-You are given Daybreak's DETERMINISTIC, source-aware health understanding: daily signals that have ALREADY been fused across trackers (Oura, Apple Health), tagged with a primary source and a confidence level, compared to the user's own personal baseline, plus pre-computed honest insights and any cross-tracker conflicts. Your ONLY job is to explain these findings in plain, warm language — NOT to invent new conclusions, re-derive numbers, or diagnose.
+You are given Daybreak's DETERMINISTIC, source-aware health understanding: daily signals that have ALREADY been fused across supported sources (Apple Health, Oura, Fitbit, or manual entry), tagged with a primary source and a confidence level, compared to the user's own personal baseline, plus pre-computed honest insights and any cross-source conflicts. Your ONLY job is to explain these findings in plain, warm language — NOT to invent new conclusions, re-derive numbers, or diagnose.
 
 STRICT RULES:
 - Use cautious framing: "suggests", "may indicate", "compared to your baseline", "tends to", and explicitly say "lower confidence" when a signal's confidence is low or medium.
@@ -292,7 +301,7 @@ export async function analyzeFusedHealth(
   permit: AiProcessingPermit,
   input: Record<string, unknown>
 ): Promise<HealthAnalysis | null> {
-  const client = openaiClient(permit);
+  const client = await openaiClient(permit, "health_analysis", ["basic", "health"]);
   if (!client) return null;
 
   try {
@@ -344,7 +353,7 @@ export interface CheckinReply {
   action: CheckinAction | null;
 }
 
-const CHECKIN_SYSTEM_PROMPT = `You are a thoughtful health coach inside Daybreak, having a SHORT, real back-and-forth check-in with someone about their Oura data. You are NOT a doctor: never diagnose or name conditions; suggest a professional for anything genuinely concerning.
+const CHECKIN_SYSTEM_PROMPT = `You are a thoughtful wellness coach inside Daybreak, having a SHORT, real back-and-forth check-in about the person's normalized wellness data from sources they chose. You are NOT a doctor: never diagnose or name conditions; suggest a professional for anything genuinely concerning.
 
 You're given their recent daily metrics + pre-computed trend flags + the conversation so far.
 
@@ -372,7 +381,7 @@ export async function healthCheckinReply(
     history: CheckinTurn[];
   }
 ): Promise<CheckinReply | null> {
-  const client = openaiClient(permit);
+  const client = await openaiClient(permit, "health_checkin", ["basic", "health", "checkin"]);
   if (!client) return null;
 
   // The conversation is direct user input — sanitize each turn and cap history.
@@ -506,7 +515,15 @@ export async function generateWeeklyPlan(
     health?: HealthContextForPrompt | null;
   }
 ): Promise<PlanBlock[] | null> {
-  const client = openaiClient(permit);
+  const requiredCategories: AiDataCategory[] = ["basic"];
+  if (Object.keys(input.preferences).length > 0) requiredCategories.push("tasks", "profile");
+  if (input.dayWindow || input.weather) requiredCategories.push("profile");
+  if (input.busy.length > 0) requiredCategories.push("calendar_availability");
+  if (input.busy.some((event) => event.title !== "Busy time"))
+    requiredCategories.push("calendar_detail");
+  if (input.recent.length > 0 || input.health) requiredCategories.push("health");
+  if (input.reflection || input.checkin) requiredCategories.push("checkin");
+  const client = await openaiClient(permit, "daily_plan", [...new Set(requiredCategories)]);
   if (!client) return null;
   const validDates = new Set(input.days.map((d) => d.date));
   const validTypes = new Set<string>([
@@ -639,7 +656,12 @@ export async function generateFitnessPlan(
     targets: { calories: number; protein: number; carbs: number; fat: number };
   }
 ): Promise<FitnessPlanContent | null> {
-  const client = openaiClient(permit);
+  const client = await openaiClient(permit, "fitness_plan", [
+    "basic",
+    "tasks",
+    "profile",
+    "health",
+  ]);
   if (!client) return null;
 
   const payload = {

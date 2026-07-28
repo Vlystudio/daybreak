@@ -4,6 +4,7 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { openaiClient, logUsage } from "@/lib/integrations/openai";
 import { aiErrorLog } from "@/lib/integrations/ai-boundary";
 import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
+import type { AiDataCategory } from "@/lib/integrations/ai-consent";
 
 /**
  * AI meal-plan generation via strict structured outputs. The model returns a
@@ -83,7 +84,9 @@ export async function generateMealPlanContent(
   permit: AiProcessingPermit,
   ctx: MealPlanContext
 ): Promise<MealPlanContent | null> {
-  const client = openaiClient(permit);
+  const requiredCategories: AiDataCategory[] = ["basic", "tasks", "profile"];
+  if (ctx.nutrition) requiredCategories.push("health");
+  const client = await openaiClient(permit, "meal_plan", requiredCategories);
   if (!client) return null;
 
   const user = `Create a ${ctx.durationDays}-day meal plan. Context: ${JSON.stringify(ctx)}. Provide exactly ${ctx.durationDays} day entries (day_index 0..${ctx.durationDays - 1}).`;

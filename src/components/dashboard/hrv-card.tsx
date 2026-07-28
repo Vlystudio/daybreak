@@ -6,7 +6,13 @@ import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { HealthMetric } from "@/lib/types";
 
-export function HrvCard({ today, metrics }: { today: HealthMetric | null; metrics: HealthMetric[] }) {
+export function HrvCard({
+  today,
+  metrics,
+}: {
+  today: HealthMetric | null;
+  metrics: HealthMetric[];
+}) {
   const data = metrics
     .filter((m) => m.hrv_avg != null)
     .slice(-14)
@@ -19,13 +25,13 @@ export function HrvCard({ today, metrics }: { today: HealthMetric | null; metric
     <Card className="h-full">
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <HeartPulse className="h-4 w-4 text-sage" aria-hidden />
+          <HeartPulse className="text-sage h-4 w-4" aria-hidden />
           HRV
         </CardTitle>
         {today?.hrv_avg != null && (
           <span className="text-2xl font-semibold tabular-nums">
             {Math.round(today.hrv_avg)}
-            <span className="ml-1 text-sm font-normal text-muted-foreground">ms</span>
+            <span className="text-muted-foreground ml-1 text-sm font-normal">ms</span>
           </span>
         )}
       </CardHeader>
@@ -40,8 +46,19 @@ export function HrvCard({ today, metrics }: { today: HealthMetric | null; metric
                     <stop offset="100%" stopColor="var(--sage)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={11} minTickGap={24} />
-                <YAxis tickLine={false} axisLine={false} fontSize={11} domain={["dataMin - 5", "dataMax + 5"]} />
+                <XAxis
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  minTickGap={24}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={11}
+                  domain={["dataMin - 5", "dataMax + 5"]}
+                />
                 <Tooltip
                   formatter={(value) => [`${value} ms`, "HRV"]}
                   contentStyle={{
@@ -62,12 +79,12 @@ export function HrvCard({ today, metrics }: { today: HealthMetric | null; metric
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Your HRV trend will appear after a couple of nights of Oura data.
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            Your HRV trend will appear after a supported source provides a few nights of data.
           </p>
         )}
         {today?.resting_hr != null && (
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-3 text-sm">
             Resting heart rate: {Math.round(today.resting_hr)} bpm
           </p>
         )}

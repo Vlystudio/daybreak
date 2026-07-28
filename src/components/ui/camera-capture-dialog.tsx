@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 type Status = "starting" | "live" | "captured" | "error";
 
@@ -342,7 +343,7 @@ class CameraErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: unknown) {
-    console.error("[camera] render error:", error instanceof Error ? error.message : error);
+    safeLog("error", "camera.render_error", { errorClass: errorClass(error) });
   }
 
   render() {

@@ -7,6 +7,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { generatePlanForUser, generateTodayPlanForUser } from "@/lib/planner";
 import type { ActionResult } from "@/actions/schedule";
 import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /** Remove every AI-planned block (a clean slate), leaving manual/Google events. */
 export async function clearPlan(): Promise<ActionResult> {
@@ -27,7 +28,8 @@ export async function clearPlan(): Promise<ActionResult> {
 /** Build (or rebuild) just TODAY's plan, regardless of the saved scope. */
 export async function generateTodayPlan(): Promise<ActionResult> {
   const user = await requireUser();
-  if (!(await getAiProcessingPermit(user.id))) {
+  const permit = await getAiProcessingPermit(user.id, "daily_plan");
+  if (!permit) {
     return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   }
 
@@ -37,7 +39,7 @@ export async function generateTodayPlan(): Promise<ActionResult> {
   }
 
   try {
-    const count = await generateTodayPlanForUser(user.id);
+    const count = await generateTodayPlanForUser(user.id, permit);
     if (count === null) {
       return { ok: false, error: "Fill out your plan questionnaire and save it first." };
     }
@@ -45,10 +47,7 @@ export async function generateTodayPlan(): Promise<ActionResult> {
     revalidatePath("/schedule");
     return { ok: true };
   } catch (err) {
-    console.error(
-      "[plan] today generation failed:",
-      err instanceof Error ? err.message : "unknown"
-    );
+    safeLog("error", "plan.today_generation_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "Couldn't build today's plan — please try again in a minute." };
   }
 }
@@ -56,7 +55,8 @@ export async function generateTodayPlan(): Promise<ActionResult> {
 /** Build an AI smart plan for the user's upcoming days into their schedule. */
 export async function generatePlan(): Promise<ActionResult> {
   const user = await requireUser();
-  if (!(await getAiProcessingPermit(user.id))) {
+  const permit = await getAiProcessingPermit(user.id, "daily_plan");
+  if (!permit) {
     return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   }
 
@@ -66,7 +66,7 @@ export async function generatePlan(): Promise<ActionResult> {
   }
 
   try {
-    const count = await generatePlanForUser(user.id);
+    const count = await generatePlanForUser(user.id, permit);
     if (count === null) {
       return { ok: false, error: "Fill out your plan questionnaire and save it first." };
     }
@@ -77,7 +77,7 @@ export async function generatePlan(): Promise<ActionResult> {
     revalidatePath("/schedule");
     return { ok: true };
   } catch (err) {
-    console.error("[plan] generation failed:", err instanceof Error ? err.message : "unknown");
+    safeLog("error", "plan.generation_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "Couldn't build your plan — please try again in a minute." };
   }
 }

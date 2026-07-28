@@ -7,7 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { startCheckin, replyCheckin, scheduleCheckinAction, type CheckinMessage } from "@/actions/health";
+import {
+  startCheckin,
+  replyCheckin,
+  scheduleCheckinAction,
+  type CheckinMessage,
+} from "@/actions/health";
 
 type CheckinAction = NonNullable<CheckinMessage["action"]>;
 
@@ -64,20 +69,25 @@ export function HealthCheckin({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <MessageCircle className="h-4 w-4 text-primary" aria-hidden /> Check-in
+          <MessageCircle className="text-primary h-4 w-4" aria-hidden /> Check-in
         </CardTitle>
       </CardHeader>
       <CardContent>
         {messages.length === 0 ? (
-          <div className="space-y-3 text-sm text-muted-foreground">
+          <div className="text-muted-foreground space-y-3 text-sm">
             <p>
-              A quick back-and-forth: I&apos;ll look at your recent trends, ask about whatever stands out,
-              and we&apos;ll work out what&apos;s behind it together.
+              A quick back-and-forth: I&apos;ll look at your recent trends, ask about whatever
+              stands out, and we&apos;ll work out what&apos;s behind it together.
             </p>
             <Button onClick={start} disabled={pending || !hasData}>
-              <Sparkles className="h-4 w-4" aria-hidden /> {pending ? "Starting…" : "Start a check-in"}
+              <Sparkles className="h-4 w-4" aria-hidden />{" "}
+              {pending ? "Starting…" : "Start a check-in"}
             </Button>
-            {!hasData && <p className="text-xs">Connect Oura and sync a few nights of data first.</p>}
+            {!hasData && (
+              <p className="text-xs">
+                Connect a supported health source and sync a few days first.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -97,7 +107,7 @@ export function HealthCheckin({
                   {m.role === "assistant" && m.action && (
                     <div className="flex justify-start">
                       {added.has(i) ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-sage">
+                        <span className="text-sage inline-flex items-center gap-1 text-xs font-medium">
                           <Check className="h-3.5 w-3.5" aria-hidden /> Added to your schedule
                         </span>
                       ) : (
@@ -107,7 +117,8 @@ export function HealthCheckin({
                           disabled={pending}
                           onClick={() => addToSchedule(i, m.action!)}
                         >
-                          <CalendarPlus className="h-4 w-4" aria-hidden /> Add &ldquo;{m.action.title}&rdquo; to my schedule
+                          <CalendarPlus className="h-4 w-4" aria-hidden /> Add &ldquo;
+                          {m.action.title}&rdquo; to my schedule
                         </Button>
                       )}
                     </div>
@@ -116,7 +127,9 @@ export function HealthCheckin({
               ))}
               {pending && (
                 <div className="flex justify-start">
-                  <div className="rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground">…</div>
+                  <div className="bg-muted text-muted-foreground rounded-2xl px-3 py-2 text-sm">
+                    …
+                  </div>
                 </div>
               )}
             </div>

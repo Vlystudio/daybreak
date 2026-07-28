@@ -8,7 +8,12 @@ import {
 } from "@/lib/integrations/ai-boundary";
 import { foodAnalysisSchema } from "@/lib/integrations/ai-schemas";
 import { serverEnv } from "@/env";
-import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
+import {
+  assertAiProcessingPermit,
+  authorizeAiEgress,
+  type AiProcessingPermit,
+} from "@/lib/integrations/ai-permit";
+import { assertAiProviderEnabled } from "@/lib/integrations/ai-provider-registry";
 
 /**
  * Food photo → calories. Uses LogMeal (https://logmeal.com) when
@@ -57,6 +62,9 @@ export async function analyzeFoodImage(
   if (!parsed) return null;
 
   if (serverEnv().LOGMEAL_API_KEY) {
+    assertAiProcessingPermit(permit, "food_image", ["basic", "uploads"]);
+    assertAiProviderEnabled("logmeal");
+    await authorizeAiEgress(permit, "food_image", ["basic", "uploads"]);
     const result = await analyzeWithLogMeal(parsed.mime, parsed.base64);
     if (result) return result;
     // Dedicated API failed — fall through to OpenAI so the user still gets a number.
@@ -80,6 +88,8 @@ async function analyzeWithLogMeal(mime: string, base64: string): Promise<FoodAna
       method: "POST",
       headers,
       body: form,
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!segRes.ok) return null;
     const seg = (await segRes.json()) as {
@@ -93,6 +103,8 @@ async function analyzeWithLogMeal(mime: string, base64: string): Promise<FoodAna
       method: "POST",
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({ imageId: seg.imageId }),
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!nutRes.ok) return null;
     const nut = (await nutRes.json()) as {
@@ -149,7 +161,7 @@ async function analyzeWithOpenAI(
   permit: AiProcessingPermit,
   dataUrl: string
 ): Promise<FoodAnalysis | null> {
-  const client = openaiClient(permit);
+  const client = await openaiClient(permit, "food_image", ["basic", "uploads"]);
   if (!client) return null;
 
   try {

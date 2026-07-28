@@ -22,7 +22,7 @@ export async function generateWorkoutForUser(
   userId: string,
   opts: { timeAvailableMinutes?: number; soreness?: string; date?: string } = {}
 ): Promise<WorkoutGenResult> {
-  const permit = await getAiProcessingPermit(userId);
+  const permit = await getAiProcessingPermit(userId, "workout_plan");
   if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   const admin = createAdminClient();
 

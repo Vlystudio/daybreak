@@ -6,6 +6,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { generateFitnessPlanForUser } from "@/lib/trainer";
 import type { ActionResult } from "@/actions/schedule";
 import { AI_CONSENT_REQUIRED_ERROR } from "@/lib/integrations/ai-permit";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /** Generate the user's workout + nutrition regimen. */
 export async function generateFitnessPlan(): Promise<ActionResult> {
@@ -30,7 +31,7 @@ export async function generateFitnessPlan(): Promise<ActionResult> {
     revalidatePath("/trainer");
     return { ok: true };
   } catch (err) {
-    console.error("[trainer] generation failed:", err instanceof Error ? err.message : "unknown");
+    safeLog("error", "trainer.generation_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "Couldn't build your regimen — please try again in a minute." };
   }
 }

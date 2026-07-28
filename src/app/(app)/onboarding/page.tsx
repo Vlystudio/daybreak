@@ -6,7 +6,7 @@ import type { UserPreferences } from "@/lib/planning";
 import { AiConsentFirstUse } from "@/components/onboarding/ai-consent-first-use";
 import { hasCurrentAiConsentDecision } from "@/lib/integrations/ai-consent";
 
-export const metadata = { title: "Your plan · Daybreak" };
+export const metadata = { title: "Your plan" };
 
 export default async function OnboardingPage() {
   const user = await requireUser();

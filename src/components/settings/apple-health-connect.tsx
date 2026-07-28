@@ -206,7 +206,13 @@ export function AppleHealthConnect({
             </Button>
           </div>
         ) : (
-          <Button size="sm" disabled={busy} onClick={() => setHealthDisclosureOpen(true)}>
+          <Button
+            id="apple-health-connect"
+            data-testid="apple-health-connect"
+            size="sm"
+            disabled={busy}
+            onClick={() => setHealthDisclosureOpen(true)}
+          >
             {busy ? "Connecting…" : "Connect"}
           </Button>
         )
@@ -263,6 +269,8 @@ export function AppleHealthConnect({
             </fieldset>
           </div>
           <Button
+            data-testid="apple-health-authorize"
+            id="apple-health-authorize"
             disabled={busy}
             onClick={async () => {
               await nativeSync(true);

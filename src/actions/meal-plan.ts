@@ -47,7 +47,7 @@ interface SettingsRow {
 
 export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> {
   const user = await requireUser();
-  const permit = await getAiProcessingPermit(user.id);
+  const permit = await getAiProcessingPermit(user.id, "meal_plan");
   if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   const limited = await rateLimit(`meals:${user.id}`, RATE_LIMITS.aiMeals);
   if (!limited.ok)

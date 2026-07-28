@@ -6,6 +6,7 @@ import { dispatchReminders } from "@/lib/reminders";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { verifyCronAuth } from "@/lib/security/cron-auth";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 export const maxDuration = 300;
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
       try {
         await maybeRefreshTodayPlanForUser(userId);
       } catch (err) {
-        console.error("[cron] plan refresh failed for a user:", err);
+        safeLog("error", "cron.plan_refresh_user_failed", { errorClass: errorClass(err) });
       }
     }
   );
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
     if (r.status === "fulfilled") synced++;
     else {
       failed++;
-      console.error("[cron] data sync failed for a user:", r.reason);
+      safeLog("error", "cron.data_sync_user_failed", { errorClass: errorClass(r.reason) });
     }
   }
 
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
     if (r.status === "fulfilled") {
       if (r.value !== null) autoPlanned++;
     } else {
-      console.error("[cron] auto-plan failed for a user:", r.reason);
+      safeLog("error", "cron.auto_plan_user_failed", { errorClass: errorClass(r.reason) });
     }
   }
 
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
   try {
     reminders = await dispatchReminders();
   } catch (err) {
-    console.error("[cron] reminder dispatch failed:", err);
+    safeLog("error", "cron.reminder_dispatch_failed", { errorClass: errorClass(err) });
   }
 
   await audit(null, "cron.data_sync", {

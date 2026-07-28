@@ -11,6 +11,7 @@ import { validateImageDataUrl } from "@/lib/image-upload";
 import { bodyMeasurementToObservations, upsertHealthObservations } from "@/lib/health/observations";
 import type { ActionResult } from "@/actions/schedule";
 import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /** YYYY-MM-DD for "now" in the user's timezone. */
 async function localToday(userId: string): Promise<string> {
@@ -47,7 +48,7 @@ export async function analyzeFoodPhoto(input: { imageDataUrl: string }): Promise
   const valid = validateImageDataUrl(input.imageDataUrl);
   if (!valid.ok) return { ok: false, error: valid.error };
 
-  const permit = await getAiProcessingPermit(user.id);
+  const permit = await getAiProcessingPermit(user.id, "food_image");
   if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   const analysis = await analyzeFoodImage(permit, input.imageDataUrl);
   if (!analysis) return { ok: false, error: "Couldn't read that photo — log it manually below." };
@@ -198,7 +199,7 @@ export async function logBodyMeasurement(input: z.input<typeof bodySchema>): Pro
       })
     );
   } catch (err) {
-    console.error("[intake] body observation dual-write failed:", err);
+    safeLog("error", "intake.observation_dual_write_failed", { errorClass: errorClass(err) });
   }
 
   await audit(user.id, "body.logged");

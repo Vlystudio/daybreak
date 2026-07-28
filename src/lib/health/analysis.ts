@@ -118,7 +118,7 @@ export function generateInsights(ctx: Ctx): HealthInsight[] {
         type: "recovery",
         severity: "watch",
         title: "Recovery may be dipping",
-        message: `Your resting heart rate is ${Math.round(rhrPct)}% above your ${rhr.baselineComparison?.baselineWindowDays}-day baseline while HRV is ${Math.abs(Math.round(hrvPct))}% below your usual range. This pattern can follow poor sleep, high strain, stress, alcohol, or an oncoming illness — it may be worth an easier day.`,
+        message: `Your resting heart rate is ${Math.round(rhrPct)}% above your ${rhr.baselineComparison?.baselineWindowDays}-day baseline while HRV is ${Math.abs(Math.round(hrvPct))}% below your usual range. This pattern can reflect sleep, strain, stress, alcohol, or normal variation — it may be worth an easier day if that matches how you feel.`,
         confidence: conf,
         reasons: [
           `resting HR +${Math.round(rhrPct)}% vs baseline`,
@@ -205,7 +205,7 @@ export function generateInsights(ctx: Ctx): HealthInsight[] {
       severity: Math.abs(tv) >= 0.8 ? "warning" : "watch",
       title: `Skin temperature is ${tv > 0 ? "above" : "below"} your baseline`,
       message:
-        "A notable shift may indicate an oncoming illness, or reflect your cycle, alcohol, or a warm room. This is watchlist data, not a diagnosis — keep an eye on how you feel.",
+        "A notable shift can reflect your cycle, alcohol, room temperature, measurement variation, or other factors. This is wellness trend data, not a diagnosis — keep an eye on how you feel.",
       confidence: temp.confidence,
       reasons: [`temperature deviation ${tv > 0 ? "+" : ""}${tv}°C`],
       relatedMetrics: ["body_temperature_delta"],

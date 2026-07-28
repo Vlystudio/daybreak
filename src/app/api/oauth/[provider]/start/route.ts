@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getUser } from "@/lib/auth";
+import { getUser, isAuthenticatedUserEligible } from "@/lib/auth";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { signState, randomToken } from "@/lib/crypto";
 import { OAUTH_PROVIDERS, OAUTH_PROVIDER_NAMES } from "@/lib/integrations/oauth-providers";
 import { integrationsAvailable, publicEnv } from "@/env";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 
 const providerSchema = z.enum(OAUTH_PROVIDER_NAMES);
 
@@ -25,8 +26,11 @@ export async function GET(request: NextRequest, ctx: RouteContext<"/api/oauth/[p
   if (!user) {
     return NextResponse.redirect(new URL("/login", publicEnv.NEXT_PUBLIC_APP_URL));
   }
+  if (!(await isAuthenticatedUserEligible(user.id))) {
+    return NextResponse.redirect(new URL("/eligibility", publicEnv.NEXT_PUBLIC_APP_URL));
+  }
 
-  if (!integrationsAvailable[provider]()) {
+  if (!integrationsAvailable[provider]() || !isProcessorEnabled(provider)) {
     return NextResponse.json(
       { error: `${provider} integration is not configured on this deployment` },
       { status: 503 }
