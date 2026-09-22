@@ -43,14 +43,16 @@ final class DaybreakStoreScreenshots: XCTestCase {
         checkin.tap()
         capture(app, "04-check-in")
 
-        app.webViews.buttons["Open menu"].tap()
+        // The header and mobile navigation both expose the same menu action.
+        // Use the header match instead of requiring a unique label on phones.
+        app.webViews.buttons["Open menu"].firstMatch.tap()
         let preferences = app.webViews.links["Plan preferences"]
         XCTAssertTrue(preferences.waitForExistence(timeout: 10), "Plan preferences menu item did not appear")
         preferences.tap()
         XCTAssertTrue(app.webViews.staticTexts["Plan preferences"].waitForExistence(timeout: 30), "Plan preferences page did not appear")
         capture(app, "05-routine")
 
-        app.webViews.buttons["Open menu"].tap()
+        app.webViews.buttons["Open menu"].firstMatch.tap()
         app.webViews.links["Settings"].tap()
         XCTAssertTrue(app.webViews.staticTexts["Make Daybreak feel like yours."].waitForExistence(timeout: 30), "Settings page did not appear")
         capture(app, "06-settings")
