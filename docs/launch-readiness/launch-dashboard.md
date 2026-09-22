@@ -5,17 +5,26 @@
 Candidate **1.0.0 (30)** is processed by Apple, selected in the App Store version,
 and passed the owner's final installation/relaunch/screen/licenses check. The
 owner authorized submission and automatic release after approval. The listing is
-still **Prepare for Submission**: the current Apple validator flags missing
-iPhone screenshots. Real simulator captures with a synthetic account are in progress.
+**Ready for Review**: Apple's Add for Review validator passed and build 30 is in
+the draft submission. Four inspected iPhone screenshots are saved in the correct
+order, with Apple's 6.9-inch assets supplying the required 6.5-inch slot.
 
 See the [current work record](../operations/app-store-public-launch.md),
 [build-30 device result](evidence/05-health-and-healthkit/owner-build-30-device-report.md)
 and [signed-archive evidence](evidence/08-apple-privacy/ios-archive.json).
 
-- Production web deployment `dpl_5GkcXXZJaeXf3Wu8FNC71AchQPPD` is live. Core
+- Production web deployment `dpl_DoTnoWWp81nYf1UB414wKxWxMSyy` (`c1cb521`) is live. Core
   signed-in screens, public home-address removal and notices/Privacy HTTP checks
-  are verified. Release implementation has 352 tests plus passing TypeScript,
+  are verified. Release implementation has 361 tests plus passing TypeScript,
   lint, CI, Security and CodeQL checks.
+- iPhone capture exposed native time-input overflow. Fields now stack on narrow
+  screens, and date/time input sizing is normalized. A follow-up capture is checking
+  the final sizing; the preceding attempt stopped at login, so no visual pass is
+  claimed for that attempt. The synthetic account's ordinary backend login passes.
+- Plan setup now uses the same server-side AI availability check as Settings and
+  Schedule. The live authenticated page contains daily/work-hour fields and Save,
+  with the paused automatic-planning control absent. Calendar setup is no longer
+  promised by the completion message.
 - Database hardening passed two fresh resets, two runs of 112 SQL assertions and
   eight upgrade scenarios. Production changes were verified. The timestamp
   migration ledger still needs a baseline-aware tooling follow-up; no historical

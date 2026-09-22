@@ -1,8 +1,13 @@
 # Daybreak App Store Connect submission package
 
-These are owner-reviewed drafts for the exact free V1 candidate. Nothing has
-been entered in or submitted to App Store Connect. Replace bracketed owner-only
-contact/demo values in the secure App Store Connect UI, never in Git.
+This package records the free U.S.-only V1 candidate, **1.0.0 (30)**. Metadata,
+private review access/contact, screenshots, pricing, distribution and build are
+saved in App Store Connect. App Privacy is published with owner confirmation.
+Apple's Add for Review validator passed; the final Submit for Review action is
+pending. See [the current checklist](submission-checklist.md) and
+[release record](../../operations/app-store-public-launch.md) for status updates.
+Bracketed contact/demo values are intentionally kept out of Git; actual values
+exist only in protected local storage and Apple's private fields.
 
 The drafts follow Apple’s current App Store Connect help for
 [app information](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information),
@@ -23,6 +28,9 @@ Recheck those pages at submission because Apple changes fields and rating values
 - `screenshots.md` — shot list, captions, privacy rules, and capture evidence.
 - `submission-checklist.md` — contact, ownership, build, agreements, and final consistency checks.
 
-Do not submit until legal identity, provider approvals, asset rights, production
-configuration, signed archive/privacy report, physical-device evidence, demo
-account, and owner authorization are complete.
+The owner's September 22 instruction authorizes submission and automatic release
+after approval. The current checklist distinguishes completed release evidence
+from the broader historical backlog: no attorney/private-contract signoff, Xcode
+Organizer export or exhaustive physical-device matrix is claimed. Paused
+integrations remain unavailable pending their own approvals. Published privacy,
+content-rights and distribution answers must continue to match actual behavior.

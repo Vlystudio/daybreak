@@ -21,10 +21,12 @@ require the applicable confirmation; the App Privacy confirmation is recorded.
       Mac and Vision Pro distribution are disabled.
 - [x] Owner's broader build-29 test and final build-30 installation check are
       recorded, with the exact reported device/OS and coverage limits.
-- [x] CI, CodeQL and Security passed for the runtime follow-up `7c8c958`;
+- [x] CI, CodeQL and Security passed for the runtime follow-up `c1cb521`;
       361 unit tests, isolated deletion/Auth tests and database rehearsal are recorded.
-- [ ] Actual iPhone/iPad screenshots captured, visually inspected and uploaded.
-- [ ] Apple's Add for Review validator passes and final submission is confirmed.
+- [x] Actual iPhone screenshots captured, visually inspected and uploaded.
+      V1 is iPhone-only; exploratory iPad compatibility captures are not store assets.
+- [x] Apple's Add for Review validator passes; build 30 is in the Ready for Review draft.
+- [ ] Final Submit for Review action is confirmed.
 - [ ] Apple approves the version and public U.S. availability is verified.
 
 The remaining broad evidence backlog is explicit in the

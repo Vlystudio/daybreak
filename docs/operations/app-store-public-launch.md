@@ -62,7 +62,7 @@ record: Daybreak Companion, `6784789934`, `app.daybreak.mobile`.
 - [ ] Reconcile production provider/configuration gates with the reduced V1 scope.
 - [x] Complete authentication, deletion and deployment evidence against safe fixtures.
 - [x] Verify/publish the cohesive UI candidate and create a public-distribution archive.
-- [ ] Capture actual simulator/device screenshots with synthetic data.
+- [x] Capture, inspect and upload actual iPhone screenshots with synthetic data.
 - [x] Save and publish App Privacy URL/disclosures and age rating.
 - [x] Finish applicable content-rights and distribution declarations.
 - [x] Set free pricing and United States availability; verify release settings.
@@ -94,9 +94,9 @@ archive manifest inventory and published disclosures were reconciled separately.
   the EU** option; no claim of non-trader status was required. Apple's DSA status
   is Active. Free Apps Agreement is already Active; Paid Apps Agreement unused.
 - Disabled automatic availability on Apple Silicon Macs and Apple Vision Pro.
-- Apple's Add for Review validation reports only the missing iPhone screenshot
-  set. The app remains Prepare for Submission, not submitted. Simulator capture
-  is still running after fixing product naming and Xcode v1 test-plan handling.
+- Earlier Add for Review validation reported only the missing iPhone screenshot
+  set. That blocker was subsequently resolved by the inspected uploads below.
+  Capture tooling fixes included product naming and Xcode v1 test-plan handling.
 - Real isolated deletion test: normal authentication/reauthentication, queue,
   HTTP worker, completed opaque receipt, zero database/Storage/Auth residue,
   rejected deleted-user login and unchanged control account. Provider grant
@@ -123,3 +123,47 @@ archive manifest inventory and published disclosures were reconciled separately.
   disabled providers. CI reports 361 tests in 52 files; CodeQL/Security/CI passed.
   Deployment `dpl_3gA5x2jajmKefsJXZ1oRQC45XbMm` passed its production build and
   unauthenticated callback redirect check and was promoted. Native build remains 30.
+- Actual simulator capture run `35783484716` passed both exploratory device jobs.
+  Visual inspection rejected the cropped iPad compatibility-window captures;
+  `ios-prepare.sh` has always scoped V1 to iPhone only. Four opaque 1320x2868 iPhone
+  PNGs were uploaded and ordered Today, Schedule, Check-in, Connections. Apple
+  automatically uses them for the required 6.5-inch slot. Their hashes and
+  provenance are in `evidence/08-apple-privacy/store-screenshots.json`.
+- The same visual inspection found cramped native time fields in Plan preferences.
+  Source `15fe85c` stacks these fields on small screens and retains two columns on
+  larger screens. Targeted lint/format, full CI/Security/CodeQL and the production
+  build passed. Deployment `dpl_FG2qhjk81WsUaCFPYUCDtmWf42vn` returned HTTP 200 and
+  was promoted. A limited last-20-minute error-log query returned zero records.
+- Apple's Add for Review validator passed after screenshot upload. Build 30 is in
+  a **Ready for Review** draft; the final Submit for Review action is still pending.
+- Corrected the synthetic review fixture's numeric work-day values to the weekday
+  names expected by the form, using that account's normal authenticated client and
+  a scoped readback. No personal account or authorization rule was changed.
+- Capture run `35785123384` passed six screens and strict 1320x2868 opaque-PNG
+  validation. Visual inspection confirmed stacked time fields and corrected work
+  days, but found remaining WebKit input overflow. Source `064dfce` normalizes
+  native date/time field appearance and border-box sizing; production deployment
+  `dpl_6Zpu2H6LAnGUA5H57yfjPM8ZE1qa` passed its build and was promoted. The live
+  stylesheet contains the fix. CI, Security and CodeQL passed with 361 tests.
+- Capture run `35787148705` stopped at sign-in before capturing the latest sizing
+  fix. A separate ordinary account login and preferences readback passed; a
+  limited production error-log query returned zero records, not proof that the
+  UI login succeeded. Capture diagnostics now report only safe known UI messages
+  and allow 90 seconds for navigation on slow cloud simulators. No auth control
+  or production credential was changed to make the test pass.
+- Follow-up `c1cb521` removes the remaining paused-AI planning control from Plan
+  preferences using the existing server availability helper, and removes a stale
+  calendar-setup promise. Targeted lint/format, TypeScript, six existing preference
+  action tests and the production build passed. Deployment
+  `dpl_DoTnoWWp81nYf1UB414wKxWxMSyy` was promoted before the simulator UI test began.
+  The public origin returned the actual Daybreak page with HTTP 200. An ordinary
+  synthetic-account session fetched `/onboarding` and verified daily/work-hour
+  fields, Save, no page error and no automatic-planning control. The protected
+  deployment-specific URL redirected to Vercel login and was not counted as an
+  app-content check. No database preference was changed by this read-only smoke.
+- Diagnostic run `35789645713` again stopped before app navigation. The configured
+  email-entry assertion passed; no recognized login error or pending state was
+  visible. The sampled deployment logs showed GET page loads but no login POST.
+  This suggests a UI interaction issue but does not establish its cause. A further
+  diagnostic run reports redacted static page labels, never field values or the
+  raw accessibility tree. Submission remains pending this investigation.

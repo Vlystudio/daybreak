@@ -10,6 +10,18 @@ account, real health readings, OAuth identities, tokens or private contact detai
 Do not composite or fabricate functionality. Status bar: 9:41, full battery;
 English (U.S.), light appearance. Inspect each exported image before submission.
 
+## Uploaded listing assets
+
+Four inspected iPhone images are saved in App Store Connect, in this order:
+Today, Schedule, Check-in and Connections (the Settings capture). Apple uses the
+6.9-inch images for the required 6.5-inch display slot. Hashes and exact run/source
+provenance are in the [screenshot evidence](../../launch-readiness/evidence/08-apple-privacy/store-screenshots.json).
+The Health overview and Plan preferences captures were not selected for the
+listing. Later layout checks do not silently replace the provenance of these
+uploaded files.
+
+## Automated six-screen verification set
+
 | Order | Actual screen    | Purpose                                                  |
 | ----- | ---------------- | -------------------------------------------------------- |
 | 1     | Today            | A readable daily plan with sample habits and schedule    |

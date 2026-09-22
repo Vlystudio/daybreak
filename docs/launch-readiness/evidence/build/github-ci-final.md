@@ -2,16 +2,17 @@
 
 ## Current runtime — September 22, 2026
 
-Source `7c8c958` passed all required checks after the OAuth state-check follow-up:
+Source `c1cb521` passed all required checks after the time-field sizing and
+Plan preferences availability follow-ups:
 
 | Workflow/job                 | Run / job                      | Result                                                                         |
 | ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
-| CI / verify                  | `35779263528` / `106920239633` | PASS: 361 tests in 52 files, TypeScript, lint, compliance and production build |
-| CodeQL analysis              | `35779263506` / `106920240730` | PASS                                                                           |
-| CodeQL PR assessment         | `106920839368`                 | PASS; prior conditional state-verification finding resolved                    |
-| Security / audit             | `35779263652` / `106920240308` | PASS                                                                           |
-| Security / dependency-review | `35779263652` / `106920240310` | PASS                                                                           |
-| Security / gitleaks          | `35779263652` / `106920239873` | PASS                                                                           |
+| CI / verify                  | `35789988383` / `106955902129` | PASS: 361 tests in 52 files, TypeScript, lint, compliance and production build |
+| CodeQL analysis              | `35789988324` / `106955901676` | PASS                                                                           |
+| CodeQL PR assessment         | `106956367879`                 | PASS; prior conditional state-verification finding resolved                    |
+| Security / audit             | `35789988312` / `106955902205` | PASS                                                                           |
+| Security / dependency-review | `35789988312` / `106955901999` | PASS                                                                           |
+| Security / gitleaks          | `35789988312` / `106955902174` | PASS                                                                           |
 
 The repository dependency graph is now enabled. No check was disabled or bypassed.
 The broad compliance inventory reports 26 passes, zero failures, nine external
@@ -46,9 +47,9 @@ difference. Authenticated logs identified missing `@emnapi/core` and
 with the runner's exact npm 10.9.8 version; the subsequent CI and audit jobs above
 passed. The dependency-review job was not weakened or marked successful.
 
-## Owner action for the remaining GitHub gate
+## Historical owner action — resolved September 22
 
-In repository **Settings → Security → Code security and analysis**, enable the
-Dependency graph, then rerun the failed `dependency-review` job/workflow for the
-current pull-request commit. Confirm it completes without high-severity findings.
-Do not make the workflow non-blocking as a substitute.
+The dependency graph was enabled in repository **Settings → Security → Code
+security and analysis**. The dependency-review workflow now passes without making
+it non-blocking or overriding a failed check. No further owner action is pending
+for this historical gate.

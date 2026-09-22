@@ -147,3 +147,30 @@ The subsequent hosted callback hardening (`7c8c958`, deployment
 OAuth boundary tests and resolves the security scanner's conditional state-check
 finding; 361 tests, CI, CodeQL and Security pass. This changes a paused integration
 callback, not the core UI or the signed build-30 package.
+
+## September 22 — iPhone form sizing follow-up
+
+**7.2/10**, retaining the weighted dimension scores above. Web source `064dfce`,
+deployment `dpl_6Zpu2H6LAnGUA5H57yfjPM8ZE1qa`; native build remains 30. Actual
+iPhone simulator inspection exposed overlapping time fields in Plan preferences.
+`15fe85c` stacked the fields on phones; `064dfce` also normalizes native date/time
+input sizing after a second capture revealed remaining WebKit overflow.
+
+Verification: 361 tests in 52 files, TypeScript, lint, CI/Security/CodeQL and the
+production build passed. Six simulator screens passed before the final sizing
+correction; its visual verification is still in progress after a capture login
+failure. The owner's build-30 test remains recorded separately. No new physical
+device test or native performance measurement is claimed for this hosted update.
+
+The improvement addresses a concrete small-screen layout defect. The score stays
+unchanged because limited first-time-user research, the long Today screen and
+product differentiation remain the larger weaknesses. Confidence is moderate for
+the inspected core UI and lower for unmeasured performance and market outcomes.
+
+The subsequent Plan preferences availability correction (`c1cb521`, deployment
+`dpl_DoTnoWWp81nYf1UB414wKxWxMSyy`) remains **7.2/10**. It hides paused automatic
+AI planning through the shared server availability check and removes stale
+calendar-setup copy. TypeScript, targeted lint, the six existing preference action
+tests, production build and authenticated live-page content checks passed. It
+improves consistency of expectations without adding a new native binary or new
+evidence of product differentiation.
