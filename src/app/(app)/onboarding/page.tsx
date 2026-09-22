@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 import { PlanPreferencesForm } from "@/components/onboarding/plan-preferences-form";
 import { COACH_ENABLED, GROCERY_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
+import { availableIntegrations } from "@/lib/integrations/availability";
 import type { UserPreferences } from "@/lib/planning";
 
 export const metadata = { title: "Plan preferences" };
@@ -27,7 +28,7 @@ export default async function OnboardingPage() {
       {COACH_ENABLED || GROCERY_ENABLED || NUTRITION_ENABLED ? (
         <OnboardingForm initial={data ?? null} />
       ) : (
-        <PlanPreferencesForm initial={data ?? null} />
+        <PlanPreferencesForm initial={data ?? null} aiAvailable={availableIntegrations.openai()} />
       )}
     </div>
   );

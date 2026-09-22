@@ -19,7 +19,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export function PlanPreferencesForm({ initial }: { initial: UserPreferences | null }) {
+export function PlanPreferencesForm({
+  initial,
+  aiAvailable = false,
+}: {
+  initial: UserPreferences | null;
+  aiAvailable?: boolean;
+}) {
   const router = useRouter();
   const isNew = !initial?.onboarding_completed;
   const [step, setStep] = useState(0);
@@ -45,7 +51,7 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
       wakeTime,
       sleepTime,
       planningScope,
-      autoPlanCadence,
+      autoPlanCadence: aiAvailable ? autoPlanCadence : "off",
     };
     const parsed = planPreferencesSchema.safeParse(input);
     if (!parsed.success) {
@@ -218,29 +224,31 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
                 ))}
               </select>
             </div>
-            <details className="text-sm">
-              <summary className="min-h-11 cursor-pointer py-3 font-medium">
-                Automatic planning
-              </summary>
-              <p id="plan-auto-hint" className="text-muted-foreground mb-3">
-                Optional. Requires your AI data-sharing permission. You can always edit your
-                schedule yourself.
-              </p>
-              <Label htmlFor="plan-auto">Refresh my plan</Label>
-              <select
-                id="plan-auto"
-                aria-describedby="plan-auto-hint"
-                value={autoPlanCadence}
-                onChange={(e) => setAutoPlanCadence(e.target.value)}
-                className="border-input bg-background mt-2 min-h-11 w-full rounded-md border px-3 text-sm"
-              >
-                {AUTO_PLAN_CADENCES.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </details>
+            {aiAvailable && (
+              <details className="text-sm">
+                <summary className="min-h-11 cursor-pointer py-3 font-medium">
+                  Automatic planning
+                </summary>
+                <p id="plan-auto-hint" className="text-muted-foreground mb-3">
+                  Optional. Requires your AI data-sharing permission. You can always edit your
+                  schedule yourself.
+                </p>
+                <Label htmlFor="plan-auto">Refresh my plan</Label>
+                <select
+                  id="plan-auto"
+                  aria-describedby="plan-auto-hint"
+                  value={autoPlanCadence}
+                  onChange={(e) => setAutoPlanCadence(e.target.value)}
+                  className="border-input bg-background mt-2 min-h-11 w-full rounded-md border px-3 text-sm"
+                >
+                  {AUTO_PLAN_CADENCES.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </details>
+            )}
           </CardContent>
         </Card>
       )}
@@ -251,8 +259,7 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
       )}
       {isNew && step === 2 && (
         <p className="text-muted-foreground text-sm">
-          You’re ready to start. Connecting Apple Health or a calendar is optional and available
-          later in Settings.
+          You’re ready to start. You can edit your routine anytime.
         </p>
       )}
       <div className="flex gap-2">
