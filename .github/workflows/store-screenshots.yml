@@ -8,6 +8,8 @@ on:
       - .github/workflows/store-screenshots.yml
       - scripts/ios-install-store-screenshots.rb
       - scripts/run-store-screenshots.py
+      - scripts/build-third-party-notices.mjs
+      - config/legal/license-notices/**
       - native/ios/StoreScreenshots/**
 
 permissions:
@@ -20,7 +22,7 @@ concurrency:
 jobs:
   capture:
     if: github.repository == 'Vlystudio/daybreak'
-    runs-on: macos-15-arm64
+    runs-on: macos-15
     timeout-minutes: 30
     strategy:
       fail-fast: false
