@@ -70,6 +70,7 @@ workflows:
         name: Generate and verify deterministic iOS assets
         script: |
           set -euo pipefail
+          npm run licenses:build
           npm run ios:assets
           git diff --exit-code -- native/ios
       - &generate_platform

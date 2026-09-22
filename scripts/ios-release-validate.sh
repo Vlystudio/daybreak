@@ -13,6 +13,9 @@ has_plist_key() { plist_value "$PLIST" "$1" >/dev/null; }
 [ -f "$PLIST" ] || fail "Info.plist missing"
 [ -f "$APP_DIR/PrivacyInfo.xcprivacy" ] || fail "PrivacyInfo.xcprivacy missing"
 plutil -lint "$APP_DIR/PrivacyInfo.xcprivacy" >/dev/null || fail "PrivacyInfo.xcprivacy is invalid"
+grep -q 'NSPrivacyAccessedAPICategoryUserDefaults' "$APP_DIR/PrivacyInfo.xcprivacy" || fail "Preferences UserDefaults declaration missing"
+grep -q 'CA92.1' "$APP_DIR/PrivacyInfo.xcprivacy" || fail "Preferences required reason missing"
+[ -s "$APP_DIR/public/third-party-licenses.txt" ] || fail "bundled open-source notices missing"
 [ -f "$APP_DIR/App.entitlements" ] || fail "App.entitlements missing"
 grep -q "com.apple.developer.healthkit" "$APP_DIR/App.entitlements" || fail "HealthKit entitlement missing"
 grep -q "PRODUCT_BUNDLE_IDENTIFIER = $EXPECTED_BUNDLE" "$PROJECT" || fail "bundle identifier mismatch"
@@ -56,6 +59,7 @@ if [ -n "${IPA_PATH:-}" ]; then
   archive_plist="$app/Info.plist"
   [ -f "$archive_plist" ] || fail "archive Info.plist missing"
   [ -f "$app/PrivacyInfo.xcprivacy" ] || fail "privacy manifest missing from archive"
+  [ -s "$app/public/third-party-licenses.txt" ] || fail "open-source notices missing from archive"
   [ -f "$app/embedded.mobileprovision" ] || fail "embedded provisioning profile missing"
 
   archive_bundle=$(plist_value "$archive_plist" CFBundleIdentifier)

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "http_ece",
+    "version": "1.2.0",
+    "file": "http_ece-1.2.0.txt",
+    "source": "https://github.com/web-push-libs/encrypted-content-encoding/blob/0562510a30819f52424724a6fd5504becacd98a1/LICENSE",
+    "commit": "0562510a30819f52424724a6fd5504becacd98a1"
+  },
+  {
+    "name": "react-remove-scroll-bar",
+    "version": "2.3.8",
+    "file": "react-remove-scroll-bar-2.3.8.txt",
+    "source": "https://github.com/theKashey/react-remove-scroll-bar/blob/master/LICENSE",
+    "sourceBlob": "7c08c3990396ecefd90f99ff5d9a34f26f5b5616",
+    "scope": "Current upstream repository notice; published package SPDX must match. Published gitHead is not available upstream."
+  },
+  {
+    "name": "standardwebhooks",
+    "version": "1.0.0",
+    "file": "standardwebhooks-1.0.0.txt",
+    "source": "https://github.com/standard-webhooks/standard-webhooks/blob/929bf0c1928b188287eaf88d0a9f0a4e87df6499/LICENSE",
+    "commit": "929bf0c1928b188287eaf88d0a9f0a4e87df6499"
+  },
+  {
+    "name": "tr46",
+    "version": "0.0.3",
+    "file": "tr46-0.0.3.txt",
+    "source": "https://github.com/jsdom/tr46/blob/main/LICENSE.md",
+    "sourceBlob": "62c0de28a830d3ae3a006c9e1e7df19067e409a7",
+    "scope": "Current upstream repository notice; published package SPDX must match. Published gitHead is not available upstream."
+  },
+  {
+    "name": "victory-vendor",
+    "version": "37.3.6",
+    "file": "victory-vendor-37.3.6.txt",
+    "source": "https://github.com/FormidableLabs/victory/blob/v37.3.6/LICENSE.txt",
+    "sourceBlob": "4d33f1aba85636b665016cabb1b991209177c606",
+    "scope": "Release-tag root license; bundled D3 licenses are included separately."
+  },
+  {
+    "name": "@apm-js-collab/code-transformer-bundler-plugins",
+    "version": "0.5.0",
+    "file": "@apm-js-collab__code-transformer-bundler-plugins-0.5.0.txt",
+    "source": "https://registry.npmjs.org/%40apm-js-collab%2Fcode-transformer-bundler-plugins/0.5.0",
+    "licenseTextSource": "https://spdx.org/licenses/MIT.html",
+    "scope": "Published MIT declaration; upstream supplies no separate copyright notice."
+  },
+  {
+    "name": "client-only",
+    "version": "0.0.1",
+    "file": "client-only-0.0.1.txt",
+    "source": "https://registry.npmjs.org/client-only/0.0.1",
+    "licenseTextSource": "https://spdx.org/licenses/MIT.html",
+    "scope": "Published MIT declaration; upstream supplies no separate copyright notice."
+  },
+  {
+    "name": "is-reference",
+    "version": "1.2.1",
+    "file": "is-reference-1.2.1.txt",
+    "source": "https://registry.npmjs.org/is-reference/1.2.1",
+    "licenseTextSource": "https://spdx.org/licenses/MIT.html",
+    "scope": "Published MIT declaration; upstream supplies no separate copyright notice."
+  },
+  {
+    "name": "server-only",
+    "version": "0.0.1",
+    "file": "server-only-0.0.1.txt",
+    "source": "https://registry.npmjs.org/server-only/0.0.1",
+    "licenseTextSource": "https://spdx.org/licenses/MIT.html",
+    "scope": "Published MIT declaration; upstream supplies no separate copyright notice."
+  }
+]

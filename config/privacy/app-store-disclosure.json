@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-09-22",
+  "scope": "Free U.S. V1; optional AI, cloud integrations and app notifications disabled in production.",
+  "tracking": false,
+  "dataTypes": [
+    {
+      "type": "Name",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality", "ProductPersonalization"],
+      "evidence": "Profile name and greeting"
+    },
+    {
+      "type": "EmailAddress",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "Account authentication and support"
+    },
+    {
+      "type": "Health",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality", "ProductPersonalization"],
+      "evidence": "Optional Apple Health summaries and manual check-ins"
+    },
+    {
+      "type": "Fitness",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality", "ProductPersonalization"],
+      "evidence": "Optional activity and workout summaries"
+    },
+    {
+      "type": "CoarseLocation",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality", "ProductPersonalization"],
+      "evidence": "Previously saved city; operational IP-derived location"
+    },
+    {
+      "type": "PhotosorVideos",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "User-selected avatar"
+    },
+    {
+      "type": "CustomerSupport",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "User support and privacy requests"
+    },
+    {
+      "type": "OtherUserContent",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality", "ProductPersonalization"],
+      "evidence": "Schedule, routine, goals and notes"
+    },
+    {
+      "type": "UserID",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "Account-linked records and authentication"
+    },
+    {
+      "type": "ProductInteraction",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "Operational route requests and account/security actions"
+    },
+    {
+      "type": "PerformanceData",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "Hosting request timing and availability diagnostics"
+    },
+    {
+      "type": "OtherDiagnosticData",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "Hosting and authentication error/security logs"
+    },
+    {
+      "type": "OtherDataTypes",
+      "linkedToIdentity": true,
+      "tracking": false,
+      "purposes": ["AppFunctionality"],
+      "evidence": "Adult attestation, legal acceptance and preferences"
+    }
+  ],
+  "excluded": [
+    {
+      "type": "SensitiveInfo",
+      "reason": "No dedicated sensitive-information fields; wellness measurements and check-ins are disclosed under Health/Fitness."
+    },
+    {
+      "type": "DeviceID",
+      "reason": "No device identifier or native push registration in the iOS launch flow."
+    },
+    {
+      "type": "CrashData",
+      "reason": "Sentry is disabled for production. Hosting request errors are covered by OtherDiagnosticData."
+    }
+  ],
+  "requiredReasonApis": [
+    {
+      "type": "UserDefaults",
+      "reasons": ["CA92.1"],
+      "evidence": "Capacitor Preferences reads and writes only this app's connection and last-sync preferences."
+    }
+  ]
+}

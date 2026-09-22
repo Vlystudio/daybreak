@@ -507,39 +507,30 @@ add(
 );
 
 const privacyManifest = text("native/ios/PrivacyInfo.xcprivacy");
-const manifestTypes = [
-  "Health",
-  "Fitness",
-  "Name",
-  "EmailAddress",
-  "UserID",
-  "CoarseLocation",
-  "PhotosorVideos",
-  "OtherUserContent",
-  "SensitiveInfo",
-  "OtherDataTypes",
-  "DeviceID",
-  "ProductInteraction",
-  "CrashData",
-  "PerformanceData",
-];
+const launchPrivacy = json("config/privacy/app-store-disclosure.json");
+const manifestTypes = launchPrivacy.dataTypes.map((item) => item.type);
 const missingManifestTypes = manifestTypes.filter(
   (type) => !privacyManifest.includes(`NSPrivacyCollectedDataType${type}`)
 );
 const manifestOk =
   missingManifestTypes.length === 0 &&
   /<key>NSPrivacyTracking<\/key><false\/>/.test(privacyManifest) &&
-  /<key>NSPrivacyAccessedAPITypes<\/key><array\/>/.test(privacyManifest) &&
+  privacyManifest.includes("NSPrivacyAccessedAPICategoryUserDefaults") &&
+  privacyManifest.includes("<string>CA92.1</string>") &&
+  launchPrivacy.excluded.every(
+    (item) => !privacyManifest.includes(`NSPrivacyCollectedDataType${item.type}</string>`)
+  ) &&
   !privacyManifest.includes("NSPrivacyCollectedDataTypePreciseLocation");
 add(
   "APPLE-PRIVACY-MANIFEST",
   manifestOk ? "pass" : "fail",
   manifestOk
-    ? "Source manifest declares the inventoried data classes, no tracking, and no direct required-reason APIs."
+    ? "Source manifest matches the launch disclosure, declares no tracking, and covers Preferences UserDefaults with CA92.1."
     : `Privacy manifest mismatch: ${missingManifestTypes.join(", ") || "tracking/location/required-reason declaration"}`,
   [
     "native/ios/PrivacyInfo.xcprivacy",
     "config/privacy/data-inventory.json",
+    "config/privacy/app-store-disclosure.json",
     "config/privacy/ios-sdk-inventory.json",
   ]
 );

@@ -135,15 +135,10 @@ generated.set(
   `# Daybreak data-flow inventory\n\nGenerated from \`config/privacy/data-inventory.json\`.\n\n| ID | Apple category | Source | Destination | Purpose | Stored | Linked | Tracking | Health/sensitive | Consent | Processor |\n|---|---|---|---|---|---:|---:|---:|---:|---|---|\n${dataInventory.dataTypes.map((d) => `| ${d.id} | ${d.appleCategory} | ${d.source.join(", ")} | ${d.destination.join(", ")} | ${d.purpose.join(", ")} | ${d.stored ? "Yes" : "No"} | ${d.linkedToIdentity ? "Yes" : "No"} | ${d.tracking ? "Yes" : "No"} | ${d.sensitiveHealth ? "Yes" : "No"} | ${d.consent} | ${d.processor.join(", ")} |`).join("\n")}\n`
 );
 
-const appleGroups = new Map();
-for (const item of dataInventory.dataTypes) {
-  const list = appleGroups.get(item.appleCategory) ?? [];
-  list.push(item);
-  appleGroups.set(item.appleCategory, list);
-}
+const launchDisclosure = readJson("config/privacy/app-store-disclosure.json");
 generated.set(
   "docs/app-store/app-privacy-answers.md",
-  `# App Store privacy-answer evidence\n\nThis is a technical evidence draft, not an App Store Connect submission. Business/legal review is required. Daybreak declares no tracking and no sale.\n\n${[...appleGroups].map(([category, items]) => `## ${category}\n\n- Collected: Yes\n- Linked to the user: ${items.some((i) => i.linkedToIdentity) ? "Yes" : "No"}\n- Used for tracking: ${items.some((i) => i.tracking) ? "Yes" : "No"}\n- Purposes: ${[...new Set(items.flatMap((i) => i.purpose))].join(", ")}\n- Evidence records: ${items.map((i) => i.id).join(", ")}\n`).join("\n")}\n## Purchases\n\nNot collected in free V1. No StoreKit, billing SDK, or paid digital feature is configured. Re-review before enabling subscriptions.\n\n## Required business review\n\nConfirm Apple questionnaire category mapping, production processor approvals, diagnostics settings, and final archived SDK privacy report before submission.\n`
+  `# App Store privacy-answer evidence\n\nGenerated from \`config/privacy/app-store-disclosure.json\`. Reviewed ${launchDisclosure.reviewedAt}. ${launchDisclosure.scope} This technical record does not claim App Store submission or publication.\n\n| Apple type | Linked | Tracking | Purposes | Evidence |\n|---|---|---|---|---|\n${launchDisclosure.dataTypes.map((item) => `| ${item.type} | ${item.linkedToIdentity ? "Yes" : "No"} | ${item.tracking ? "Yes" : "No"} | ${item.purposes.join(", ")} | ${item.evidence} |`).join("\n")}\n\n## Excluded from the launch disclosure\n\n${launchDisclosure.excluded.map((item) => `- ${item.type}: ${item.reason}`).join("\n")}\n\n## Required-reason APIs\n\n${launchDisclosure.requiredReasonApis.map((item) => `- ${item.type}: ${item.reasons.join(", ")}. ${item.evidence}`).join("\n")}\n\nNo tracking, advertising, purchases, or paid digital features are configured. Re-review this record, the native manifest and App Store Connect whenever a provider or feature is enabled. Final archive evidence remains required.\n`
 );
 
 generated.set(

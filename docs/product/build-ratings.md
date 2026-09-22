@@ -92,3 +92,24 @@ and task-flow weaknesses remain. Confidence is moderate for browser behavior and
 low for native performance and market outcomes. UI polish remains local at
 **7.2/10**; TestFlight remains build 28. No physical-device testing was performed
 for this web update.
+
+## September 22 — TestFlight 29 and polished live web release
+
+**7.2/10**, retaining the dimension scores of the UI candidate above. Native build
+29 is from `23d246f`; the live web runtime is `e1db3e4`, deployment
+`dpl_AksUGuBGxJopXQ45sBUzwQxqURBu`. This release now delivers the polish and removes
+controls for unavailable integrations across the core screens. Profile edits no
+longer depend on geocoding an unchanged city.
+
+Verification: 352 tests, TypeScript, lint, compliance freshness, GitHub CI/Security/
+CodeQL, a successful Vercel production build, signed-in live Today/Schedule/Health/
+Settings checks, and a successful App Store-eligible archive. The owner reports
+the supplied physical-device checklist passed on iPhone 16 Pro Max / iOS 27
+developer beta; see the [device report](../launch-readiness/evidence/05-health-and-healthkit/owner-build-29-device-report.md).
+
+Confidence in basic native operation improves, but this does not justify a higher
+market score by itself. Stable-iOS coverage, first-time-user validation, complete
+deletion/recovery evidence and store readiness remain open. The strongest gain is
+a cohesive core without dead-end integration prompts. Product differentiation and
+the long Today screen remain weaknesses. This is an editorial readiness rating,
+not a predicted App Store rating or commercial outcome.

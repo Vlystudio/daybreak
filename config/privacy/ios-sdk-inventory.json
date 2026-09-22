@@ -23,7 +23,7 @@
           "versionSource": "package-lock.json",
           "necessary": true,
           "manifestRequiredByAppleList": false,
-          "manifestLocation": "dependency archive; verify required-reason declaration",
+          "manifestLocation": "native/ios/PrivacyInfo.xcprivacy: UserDefaults / CA92.1",
           "signatureRequired": false,
           "signatureStatus": "not_applicable",
           "data": ["local Apple Health connection and last-sync state"],
@@ -43,6 +43,19 @@
           "domains": ["daybreak-one.vercel.app"],
           "tracking": false,
           "healthTransmission": true
+        },
+        {
+          "name": "CapacitorHaptics",
+          "versionSource": "package-lock.json",
+          "necessary": true,
+          "manifestRequiredByAppleList": false,
+          "manifestLocation": "No collected data or required-reason APIs in installed plugin source",
+          "signatureRequired": false,
+          "signatureStatus": "source_plugin_compiled_with_app",
+          "data": [],
+          "domains": [],
+          "tracking": false,
+          "healthTransmission": false
         }
       ]
     }
@@ -53,7 +66,7 @@
       {
         "api": "UserDefaults",
         "owner": "Capacitor Preferences dependency",
-        "status": "must be reconciled from final Xcode privacy report and dependency manifest"
+        "status": "Declared in app manifest as CA92.1; verify inclusion in final archive"
       }
     ]
   }

@@ -34,6 +34,8 @@ function run(command, args, options = {}) {
     encoding: "utf8",
     stdio: options.capture ? "pipe" : "inherit",
     shell: false,
+    // Keep optional CLI telemetry delivery out of the database test result.
+    env: { ...process.env, SUPABASE_TELEMETRY_DISABLED: "1" },
   });
   if (result.error) return { ok: false, detail: result.error.message };
   return {

@@ -185,6 +185,9 @@ export default async function SettingsPage() {
           <Link className="text-primary block underline" href="/terms">
             Terms of Service
           </Link>
+          <a className="text-primary block underline" href="/third-party-licenses.txt">
+            Open-source licenses
+          </a>
           <a
             className="text-primary flex items-center gap-2 underline"
             href={`mailto:${legalIdentity.supportEmail}`}

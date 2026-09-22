@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+__pycache__/
 
 # next.js
 /.next/
@@ -39,6 +40,10 @@ yarn-error.log*
 # provider tokens (management/API) — never commit
 .supabase-token
 .supabase/.temp/
+supabase/.temp/
+
+# Generated from the dependencies installed for each web/native build.
+/public/third-party-licenses.txt
 .resend-token
 .secrets/
 
