@@ -12,40 +12,45 @@ final class DaybreakStoreScreenshots: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
 
+        // A fresh install opens the public landing page before login.
+        let signInLink = app.webViews.links["Sign in"].firstMatch
+        XCTAssertTrue(signInLink.waitForExistence(timeout: 60), "Landing Sign in link did not appear")
+        signInLink.tap()
+
         let emailField = app.webViews.textFields["Account email"]
-        XCTAssertTrue(emailField.waitForExistence(timeout: 45))
+        XCTAssertTrue(emailField.waitForExistence(timeout: 45), "Login email field did not appear")
         emailField.tap()
         emailField.typeText(email)
         let passwordField = app.webViews.secureTextFields["Account password"]
         passwordField.tap()
         passwordField.typeText(password)
         app.webViews.buttons["Sign in"].tap()
-        XCTAssertTrue(app.webViews.links["Schedule"].firstMatch.waitForExistence(timeout: 45))
+        XCTAssertTrue(app.webViews.links["Schedule"].firstMatch.waitForExistence(timeout: 45), "Sign-in did not reach the app navigation")
         capture(app, "01-today")
 
         app.webViews.links["Schedule"].firstMatch.tap()
-        XCTAssertTrue(app.webViews.staticTexts["Your routine"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.webViews.staticTexts["Your routine"].waitForExistence(timeout: 30), "Schedule routine section did not appear")
         capture(app, "02-schedule")
 
         app.webViews.links["Health"].firstMatch.tap()
-        XCTAssertTrue(app.webViews.staticTexts["Your health at a glance"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.webViews.staticTexts["Your health at a glance"].waitForExistence(timeout: 30), "Health overview did not appear")
         capture(app, "03-health")
 
         let checkin = app.webViews.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Check-in")).firstMatch
-        XCTAssertTrue(checkin.exists)
+        XCTAssertTrue(checkin.exists, "Health Check-in control did not appear")
         checkin.tap()
         capture(app, "04-check-in")
 
         app.webViews.buttons["Open menu"].tap()
         let preferences = app.webViews.links["Plan preferences"]
-        XCTAssertTrue(preferences.waitForExistence(timeout: 10))
+        XCTAssertTrue(preferences.waitForExistence(timeout: 10), "Plan preferences menu item did not appear")
         preferences.tap()
-        XCTAssertTrue(app.webViews.staticTexts["Plan preferences"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.webViews.staticTexts["Plan preferences"].waitForExistence(timeout: 30), "Plan preferences page did not appear")
         capture(app, "05-routine")
 
         app.webViews.buttons["Open menu"].tap()
         app.webViews.links["Settings"].tap()
-        XCTAssertTrue(app.webViews.staticTexts["Make Daybreak feel like yours."].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.webViews.staticTexts["Make Daybreak feel like yours."].waitForExistence(timeout: 30), "Settings page did not appear")
         capture(app, "06-settings")
     }
 
