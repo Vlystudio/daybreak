@@ -16,13 +16,13 @@ const features = [
   },
   {
     icon: Sparkles,
-    title: "AI morning briefing",
-    body: "An optional personal briefing using only the information you allow.",
+    title: "Daily check-ins",
+    body: "Notice how you feel with a quick mood and energy check-in.",
   },
   {
     icon: CalendarDays,
     title: "Your day, in one place",
-    body: "Google Calendar sync plus a calm manual planner for shaping your own day.",
+    body: "Build a flexible schedule, edit events, and keep your next step in view.",
   },
 ];
 
@@ -49,8 +49,8 @@ export default function LandingPage() {
             <span className="text-primary">Here&apos;s how you&apos;re doing today.</span>
           </h1>
           <p className="text-muted-foreground mt-6 max-w-xl text-lg text-balance">
-            Daybreak gathers your sleep, readiness, HRV, weather, and schedule into one calm morning
-            briefing — so you can shape your day around how you actually feel.
+            Bring your daily plan, habits, and wellness check-ins together. Add Apple Health
+            summaries when you choose, and shape your day around how you feel.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg">
