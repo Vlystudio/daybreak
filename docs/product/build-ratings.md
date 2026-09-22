@@ -113,3 +113,22 @@ deletion/recovery evidence and store readiness remain open. The strongest gain i
 a cohesive core without dead-end integration prompts. Product differentiation and
 the long Today screen remain weaknesses. This is an editorial readiness rating,
 not a predicted App Store rating or commercial outcome.
+
+## September 22 — signed build 30 and launch compliance update
+
+**7.2/10**, unchanged. Source `8dcefe9`, Codemagic
+`6ab2d9aa7d9842ce8feacad5`; the production web deployment is
+`dpl_5GkcXXZJaeXf3Wu8FNC71AchQPPD`. Apple processed build 30 and assigned it to
+both existing internal groups. The native privacy manifest now includes the
+Capacitor Preferences UserDefaults reason and matches the published disclosures.
+Full dependency and font notices are delivered with the web app and native bundle.
+
+Verification adds signed-archive checks, actual isolated local deletion through
+the app's HTTP worker (zero database/Storage residue, Auth removed, control user
+unchanged), and local recovery/global logout checks. The owner confirms build 30
+installed and passed the focused final screen/relaunch/licenses check; see the
+[device report](../launch-readiness/evidence/05-health-and-healthkit/owner-build-30-device-report.md).
+Store screenshots are pending. No score increase: this reduces launch
+risk, while the long Today screen, limited first-time-user research and product
+differentiation remain the main competitive weaknesses. This is a subjective
+product assessment, not a prediction of downloads, retention or App Store stars.

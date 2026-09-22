@@ -1,26 +1,31 @@
-# Screenshot shot list and captions
+﻿# App Store screenshot capture
 
-Capture only the exact signed release on an Apple-required simulator/device size
-using synthetic data. Remove status-bar personal details, notifications, email,
-calendar names, health values tied to a person, OAuth identity, tokens, and debug
-UI. Do not composite functionality that the app does not provide.
+Capture the real Capacitor shell from the release source against the production
+web origin. The automated capture is an ad-hoc-signed simulator build of the same UI,
+not a screenshot of the signed TestFlight binary. Its separate XCUITest target
+signs in through the ordinary UI and is never included in the shipping archive.
 
-| Order | Screen                       | Draft caption                           | Required state                                                           |
-| ----: | ---------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
-|     1 | Dashboard/day plan           | Plan a day that fits your life          | Synthetic schedule and neutral wellness summary                          |
-|     2 | Schedule                     | Keep routines and time in one view      | Synthetic tasks/events; no real calendar detail                          |
-|     3 | Health overview              | Understand your wellness sources        | Synthetic/manual or approved demo data with provenance; no medical claim |
-|     4 | Check-in                     | Add context in a few taps               | Synthetic mood/energy response                                           |
-|     5 | Plan preferences             | Set a rhythm that works for you         | Daily rhythm and optional work hours                                     |
-|     6 | Habits on Today              | Build small everyday habits             | Synthetic habits and completion state                                    |
-|     7 | AI consent                   | You choose what AI may use              | Seven launch categories visible and initially off                        |
-|     8 | Privacy settings             | Export, disconnect, or delete           | Export/rights/deletion controls visible                                  |
-|     9 | HealthKit permission context | Health access is optional and read-only | Pre-permission explanation; never fabricate Apple’s system dialog        |
-|    10 | Adult signup                 | Built for adults 18 and older           | Unchecked attestation and legal links                                    |
+Use only the dedicated synthetic App Review account. Never use the owner's
+account, real health readings, OAuth identities, tokens or private contact details.
+Do not composite or fabricate functionality. Status bar: 9:41, full battery;
+English (U.S.), light appearance. Inspect each exported image before submission.
 
-Apple currently accepts one to ten screenshots and can scale the highest required
-resolution when the UI is identical. Confirm current size/localization rules in
-App Store Connect at capture time. For each exported image, record filename,
-SHA-256, build number, commit, device/simulator, iOS version, locale, capture date,
-operator, synthetic account, and approval/evidence reference. Screenshots are
-assets and remain blocked until provenance and commercial-use approval is recorded.
+| Order | Actual screen    | Purpose                                                  |
+| ----- | ---------------- | -------------------------------------------------------- |
+| 1     | Today            | A readable daily plan with sample habits and schedule    |
+| 2     | Schedule         | Routines and time in one view                            |
+| 3     | Health           | Manual wellness context and optional native data sources |
+| 4     | Check-in         | A brief mood and energy check-in                         |
+| 5     | Plan preferences | Daily rhythm and optional working hours                  |
+| 6     | Settings         | Appearance, security and account controls                |
+
+Capture iPhone 16 Pro Max and iPad Pro 13-inch (M4) using the installed Xcode 26
+simulator runtime. App Store Connect determines the accepted slots and dimensions.
+The workflow writes a manifest containing the source commit, run ID, device,
+runtime, origin, capture method and SHA-256 of every image. Only successful
+captures are uploaded as workflow artifacts; test plans and result bundles can
+contain credentials and must stay private to the temporary runner.
+
+Cloud AI, Grocery, Coach, Nutrition and paused external connections must not be
+advertised in screenshots. The capture workflow and artifact manifest are evidence
+of real UI; they do not replace physical-device HealthKit or accessibility tests.

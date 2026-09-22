@@ -27,18 +27,16 @@ physical-device HealthKit example if requested.
 
 1. Sign in with the supplied email/password. The account is already a valid
    adult self-attestation with current Terms/Privacy acceptance.
-2. Dashboard and Schedule show synthetic planning data. Settings contains
-   profile, integrations, AI choices, privacy requests/export, MFA/global logout,
-   and deletion.
+2. Today and Schedule show synthetic planning data. Settings contains profile,
+   privacy requests/export, MFA/global logout, legal links and deletion.
 3. Open Plan preferences to set daily rhythm and optional work hours; save to return to Schedule.
-   AI: Settings > AI data use. All categories default off for new
-   users. Enable Basic only, save, and invoke a briefing/plan; health and calendar
-   detail remain excluded. Enable those separately to test; revoke and verify the
-   next request is blocked or minimized. Output is labeled as AI/general wellness.
+   Cloud AI and external calendar/wearable connections are paused for this release.
+   The normal planner, manual schedule, habits and daily check-in remain usable.
 4. HealthKit: Health > Apple Health > Connect. The OS permission sheet requests
    read access only. Deny or grant any subset; the app handles denial, partial,
-   empty, and sparse data. AI does not receive health context without separate
-   health AI consent.
+   empty, and sparse data. Imported readings are shown with their source. No health
+   data is sent to AI in this release. The synthetic account has no Apple Health
+   readings; test the import using a physical device's own permitted data.
 5. Account deletion: Settings > Data & privacy > Delete account. Enter the
    current password and type `DELETE`. The account becomes unavailable
    immediately and redirects to an opaque receipt status while the durable
@@ -46,10 +44,9 @@ physical-device HealthKit example if requested.
 6. Password recovery is available on Login. Global logout and optional TOTP are
    under Settings > Account security.
 
-Google Calendar, Oura, and Fitbit are post-login optional connectors, not account
-login methods. Sign in with Apple is therefore not applicable to this
-email/password-only release. If the reviewer needs a connector demonstration,
-provide a separate synthetic provider account and exact steps securely.
+The only account sign-in method is email/password. Google Calendar, Oura and Fitbit
+are paused post-login connectors, not account login methods. Apple Health is a
+native, optional data connection and does not create a Daybreak account.
 
 ## Deferred features
 

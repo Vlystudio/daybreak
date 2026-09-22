@@ -25,11 +25,11 @@
   ],
   "prohibitedPatterns": ["AGPL", "SSPL", "(^|[^L])GPL-"],
   "manualReviewEvidence": {
-    "LGPL-3.0-or-later": null,
-    "Apache-2.0 AND LGPL-3.0-or-later AND MIT": null,
-    "Apache-2.0 AND LGPL-3.0-or-later": null,
-    "FSL-1.1-MIT": null,
-    "MPL-2.0": null,
-    "CC-BY-4.0": null
+    "LGPL-3.0-or-later": "docs/launch-readiness/evidence/02-ownership-and-licenses/dependency-license-assessment-2026-09-22.md",
+    "Apache-2.0 AND LGPL-3.0-or-later AND MIT": "docs/launch-readiness/evidence/02-ownership-and-licenses/dependency-license-assessment-2026-09-22.md",
+    "Apache-2.0 AND LGPL-3.0-or-later": "docs/launch-readiness/evidence/02-ownership-and-licenses/dependency-license-assessment-2026-09-22.md",
+    "FSL-1.1-MIT": "docs/launch-readiness/evidence/02-ownership-and-licenses/dependency-license-assessment-2026-09-22.md",
+    "MPL-2.0": "docs/launch-readiness/evidence/02-ownership-and-licenses/dependency-license-assessment-2026-09-22.md",
+    "CC-BY-4.0": "docs/launch-readiness/evidence/02-ownership-and-licenses/dependency-license-assessment-2026-09-22.md"
   }
 }

@@ -55,7 +55,13 @@ try {
 } catch {
   fail("staging URLs are invalid.");
 }
-if (supabaseUrl.protocol !== "https:" || appUrl.protocol !== "https:") {
+// The named disposable Docker project uses a loopback-only HTTP network. Keep
+// production and arbitrary remote HTTP endpoints forbidden in this test mode.
+const localFixture =
+  process.env.STAGING_LOCAL_PROJECT === "daybreak-local" &&
+  supabaseUrl.origin === "http://127.0.0.1:56321" &&
+  appUrl.origin === "http://127.0.0.1:3002";
+if (!localFixture && (supabaseUrl.protocol !== "https:" || appUrl.protocol !== "https:")) {
   fail("staging endpoints must use HTTPS.");
 }
 const stagingRef = supabaseUrl.hostname.split(".")[0];
@@ -521,7 +527,7 @@ async function verify() {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     commit: spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim(),
-    environment: "isolated staging",
+    environment: localFixture ? "isolated local staging (daybreak-local)" : "isolated staging",
     targetFingerprint: state.stagingRefFingerprint,
     syntheticSubjectFingerprint: fingerprint(state.userId),
     containsRealUserData: false,

@@ -60,17 +60,53 @@ record: Daybreak Companion, `6784789934`, `app.daybreak.mobile`.
 
 - [x] Repair and verify Linux/macOS dependency installation and all release CI.
 - [ ] Reconcile production provider/configuration gates with the reduced V1 scope.
-- [ ] Complete authentication, deletion and deployment evidence against safe fixtures.
+- [x] Complete authentication, deletion and deployment evidence against safe fixtures.
 - [x] Verify/publish the cohesive UI candidate and create a public-distribution archive.
 - [ ] Capture actual simulator/device screenshots with synthetic data.
 - [x] Save and publish App Privacy URL/disclosures and age rating.
-- [ ] Finish applicable content-rights and distribution declarations.
+- [x] Finish applicable content-rights and distribution declarations.
 - [x] Set free pricing and United States availability; verify release settings.
-- [ ] Confirm artwork/content rights with the owner and review shipped licenses.
-- [ ] Provision review access without exposing credentials or using personal health data.
+- [x] Confirm artwork/content rights with the owner and review shipped licenses.
+- [x] Provision review access without exposing credentials or using personal health data.
 - [ ] Complete final privacy-manifest/report reconciliation and physical-iPhone checks.
 - [ ] Submit to Apple, handle review feedback, and verify public availability after approval.
 
 Build 28 is internal-only and cannot be submitted to the App Store. Build 29 has
-owner-reported device results. The corrected privacy manifest still requires a
-new signed archive. No version has been submitted to Apple review or published.
+owner-reported device results. Build 30 contains the corrected privacy manifest
+and notices, and its final installation check passed. No version has been
+submitted to Apple review or published. The Organizer report remains unavailable;
+archive manifest inventory and published disclosures were reconciled separately.
+
+## September 22 — build 30 and final listing preparation
+
+- Promoted web deployment `dpl_5GkcXXZJaeXf3Wu8FNC71AchQPPD` after Linux build,
+  CI/Security/CodeQL, and HTTP checks of notices and Privacy. No home address found.
+- Codemagic `6ab2d9aa7d9842ce8feacad5` built source `8dcefe9` successfully in
+  4m17s. Build 1.0.0 (30) passed archive/signing/HealthKit/privacy checks and Apple
+  processing. Both existing internal groups have access. Focused What to Test
+  notes are saved. The owner reports successful installation and all final smoke
+  checks passed; the exact evidence and limits are in the build-30 device report.
+- App Store draft selects build 30 and saves the synthetic review credentials,
+  private review contact and accurate instructions for the paused-integration scope.
+  Do not copy those credentials/contact fields into this public repository.
+- Saved content-rights information after owner artwork attestation and dependency
+  assessment. Completed DSA using the explicit **not planning to distribute in
+  the EU** option; no claim of non-trader status was required. Apple's DSA status
+  is Active. Free Apps Agreement is already Active; Paid Apps Agreement unused.
+- Disabled automatic availability on Apple Silicon Macs and Apple Vision Pro.
+- Apple's Add for Review validation reports only the missing iPhone screenshot
+  set. The app remains Prepare for Submission, not submitted. Simulator capture
+  is still running after fixing product naming and Xcode v1 test-plan handling.
+- Real isolated deletion test: normal authentication/reauthentication, queue,
+  HTTP worker, completed opaque receipt, zero database/Storage/Auth residue,
+  rejected deleted-user login and unchanged control account. Provider grant
+  invalidation was not exercised (connections are paused for new V1 users).
+- Fourteen local Auth checks pass, including invalid adult/legal payload rejection,
+  normal signup, global logout, recovery-token reuse rejection, password recovery,
+  valid TOTP/AAL2 and invalid TOTP rejection. Local SMTP/confirmation settings
+  differ from production; production configuration is recorded separately.
+- Technical license assessment is documented with package versions, actual use,
+  notices and scope limits. No attorney or executed-contract approval is invented.
+- The production migration ledger contains the applied 0047–0054 bundle and 0055
+  under timestamp versions. The legacy numeric-ledger verifier still reports a
+  history-evidence gap; no production history was rewritten to satisfy it.

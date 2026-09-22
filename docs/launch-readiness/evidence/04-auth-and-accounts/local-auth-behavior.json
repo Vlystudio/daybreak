@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-09-22T19:52:08.648Z",
+  "environment": "Disposable daybreak-local loopback fixture",
+  "productionAccessed": false,
+  "containsRealUserData": false,
+  "status": "pass",
+  "checks": [
+    {
+      "name": "Auth creation without adult/legal metadata rejected",
+      "pass": true
+    },
+    {
+      "name": "Normal signup with adult/legal metadata succeeds",
+      "pass": true
+    },
+    {
+      "name": "Signed-in user can read own eligibility",
+      "pass": true
+    },
+    {
+      "name": "Second password session succeeds",
+      "pass": true
+    },
+    {
+      "name": "Global logout prevents refresh in second session",
+      "pass": true
+    },
+    {
+      "name": "Recovery token establishes recovery session",
+      "pass": true
+    },
+    {
+      "name": "Recovery session can change password",
+      "pass": true
+    },
+    {
+      "name": "Used recovery token cannot be reused",
+      "pass": true
+    },
+    {
+      "name": "Old password rejected after recovery",
+      "pass": true
+    },
+    {
+      "name": "New password authenticates",
+      "pass": true
+    },
+    {
+      "name": "Valid TOTP upgrades session",
+      "pass": true
+    },
+    {
+      "name": "Verified TOTP session is AAL2",
+      "pass": true
+    },
+    {
+      "name": "Password-only login requires AAL2 after MFA enrollment",
+      "pass": true
+    },
+    {
+      "name": "Incorrect TOTP rejected",
+      "pass": true
+    }
+  ],
+  "limits": [
+    "Local email confirmation is disabled; actual production SMTP delivery not exercised",
+    "Recovery link generated through Admin API; expiry duration read separately from production configuration",
+    "AAL state verified through Auth API; full browser challenge navigation covered by repository code checks, not this harness"
+  ]
+}
