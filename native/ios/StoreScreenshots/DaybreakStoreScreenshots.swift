@@ -40,7 +40,13 @@ final class DaybreakStoreScreenshots: XCTestCase {
             ]
             let visibleMessages = knownMessages.filter { app.webViews.staticTexts[$0].exists }
             let stillPending = app.webViews.buttons["One moment…"].exists
-            XCTFail("Sign-in did not reach the app navigation; pending=\(stillPending); known messages=\(visibleMessages.joined(separator: "; "))")
+            // Only static UI labels from this synthetic account, never the
+            // accessibility debug tree or editable/secure field values.
+            let pageText = app.staticTexts.allElementsBoundByIndex.prefix(30).map {
+                $0.label.replacingOccurrences(of: email, with: "[review account]")
+                    .replacingOccurrences(of: password, with: "[redacted]")
+            }.joined(separator: " | ")
+            XCTFail("Sign-in did not reach the app navigation; webViews=\(app.webViews.count); alerts=\(app.alerts.count); pending=\(stillPending); known messages=\(visibleMessages.joined(separator: "; ")); page=\(pageText)")
         }
         capture(app, "01-today")
 
