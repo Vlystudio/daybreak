@@ -8,6 +8,7 @@ import { setAiConsentPreferences } from "@/actions/settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { GROCERY_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
 import { DEFAULT_AI_CONSENT, type AiConsent } from "@/lib/integrations/ai-consent";
 
 const OPTIONS: Array<{ key: keyof AiConsent; label: string; description: string }> = [
@@ -19,7 +20,7 @@ const OPTIONS: Array<{ key: keyof AiConsent; label: string; description: string 
   {
     key: "tasks",
     label: "Tasks and plan context",
-    description: "Planning dates, task context, workouts, and meal-plan constraints.",
+    description: "Planning dates and daily task context.",
   },
   {
     key: "checkin",
@@ -44,7 +45,7 @@ const OPTIONS: Array<{ key: keyof AiConsent; label: string; description: string 
   {
     key: "profile",
     label: "Profile and preferences",
-    description: "Name, routines, goals, equipment, dietary preferences, and local weather.",
+    description: "Name, routines, planning preferences, and local weather.",
   },
   {
     key: "uploads",
@@ -88,9 +89,8 @@ export function AiConsentFirstUse() {
         </CardTitle>
         <CardDescription className="space-y-2">
           <span className="block">
-            Daybreak uses OpenAI as an external AI processor for briefings, coaching, and plans;
-            LogMeal may process a meal photo when configured. Choose each category that may leave
-            Daybreak for a feature you start.
+            Daybreak uses OpenAI as an external AI processor for briefings, health insights and
+            plans. Choose each category that may leave Daybreak for a feature you start.
           </span>
           <span className="block">
             Declining is allowed and non-AI features remain available. AI output may be inaccurate
@@ -98,14 +98,15 @@ export function AiConsentFirstUse() {
             existing permits are invalidated immediately.
           </span>
           <span className="block">
-            Daybreak does not retain meal or receipt images after analysis. Providers may retain
-            limited API data under configured abuse-monitoring and service terms; Daybreak does not
-            permit advertising or model training with health data.
+            Providers may retain limited API data under configured abuse-monitoring and service
+            terms; Daybreak does not permit advertising or model training with health data.
           </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {OPTIONS.map((option) => (
+        {OPTIONS.filter(
+          (option) => option.key !== "uploads" || GROCERY_ENABLED || NUTRITION_ENABLED
+        ).map((option) => (
           <div key={option.key} className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-medium">{option.label}</p>

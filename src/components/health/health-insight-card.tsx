@@ -40,7 +40,7 @@ export function HealthInsightCard({ insight }: { insight: HealthInsight }) {
 
           {insight.relatedMetrics.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {insight.relatedMetrics.map((m) => (
+              {[...new Set(insight.relatedMetrics)].map((m) => (
                 <span
                   key={m}
                   className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-medium"

@@ -1,3 +1,5 @@
+import { GROCERY_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -8,6 +10,7 @@ import type { PantryItem } from "@/lib/grocery";
 export const metadata = { title: "Pantry" };
 
 export default async function PantryPage() {
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

@@ -4,6 +4,7 @@ import { buildDailyHealthUnderstanding } from "@/lib/health/understanding";
 import { HealthCommandCenter } from "@/components/health/health-command-center";
 import type { CheckinMessage } from "@/actions/health";
 import type { SubjectiveCheckin } from "@/lib/types";
+import { NUTRITION_ENABLED } from "@/lib/features";
 
 const KG_PER_LB = 0.45359237;
 const RANGE_DAYS = 120;
@@ -51,19 +52,23 @@ export default async function HealthPage() {
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle<SubjectiveCheckin>(),
-    supabase
-      .from("body_measurements")
-      .select("date, weight_kg, body_fat_pct")
-      .eq("user_id", user.id)
-      .gte("date", since)
-      .order("date", { ascending: true })
-      .returns<{ date: string; weight_kg: number | null; body_fat_pct: number | null }[]>(),
-    supabase
-      .from("food_logs")
-      .select("date, calories, protein_g")
-      .eq("user_id", user.id)
-      .gte("date", since)
-      .returns<{ date: string; calories: number | null; protein_g: number | null }[]>(),
+    NUTRITION_ENABLED
+      ? supabase
+          .from("body_measurements")
+          .select("date, weight_kg, body_fat_pct")
+          .eq("user_id", user.id)
+          .gte("date", since)
+          .order("date", { ascending: true })
+          .returns<{ date: string; weight_kg: number | null; body_fat_pct: number | null }[]>()
+      : Promise.resolve({ data: null }),
+    NUTRITION_ENABLED
+      ? supabase
+          .from("food_logs")
+          .select("date, calories, protein_g")
+          .eq("user_id", user.id)
+          .gte("date", since)
+          .returns<{ date: string; calories: number | null; protein_g: number | null }[]>()
+      : Promise.resolve({ data: null }),
     supabase
       .from("subjective_checkins")
       .select("date, mood, energy, stress")

@@ -11,9 +11,9 @@ UI. Do not composite functionality that the app does not provide.
 |     2 | Schedule                     | Keep routines and time in one view      | Synthetic tasks/events; no real calendar detail                          |
 |     3 | Health overview              | Understand your wellness sources        | Synthetic/manual or approved demo data with provenance; no medical claim |
 |     4 | Check-in                     | Add context in a few taps               | Synthetic mood/energy response                                           |
-|     5 | Coach/plans                  | Turn goals into practical next steps    | Clearly labeled general-wellness plan                                    |
-|     6 | Meals/grocery                | Plan meals and groceries together       | Synthetic foods and prices                                               |
-|     7 | AI consent                   | You choose what AI may use              | All eight switches visible and initially off                             |
+|     5 | Plan preferences             | Set a rhythm that works for you         | Daily rhythm and optional work hours                                     |
+|     6 | Habits on Today              | Build small everyday habits             | Synthetic habits and completion state                                    |
+|     7 | AI consent                   | You choose what AI may use              | Seven launch categories visible and initially off                        |
 |     8 | Privacy settings             | Export, disconnect, or delete           | Export/rights/deletion controls visible                                  |
 |     9 | HealthKit permission context | Health access is optional and read-only | Pre-permission explanation; never fabricate Apple’s system dialog        |
 |    10 | Adult signup                 | Built for adults 18 and older           | Unchecked attestation and legal links                                    |

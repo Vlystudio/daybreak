@@ -1,3 +1,5 @@
+import { NUTRITION_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { NutritionView } from "@/components/nutrition/nutrition-view";
@@ -23,6 +25,7 @@ function localDate(timeZone: string): string {
 }
 
 export default async function NutritionPage() {
+  if (!NUTRITION_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

@@ -41,7 +41,7 @@ export async function generateTodayPlan(): Promise<ActionResult> {
   try {
     const count = await generateTodayPlanForUser(user.id, permit);
     if (count === null) {
-      return { ok: false, error: "Fill out your plan questionnaire and save it first." };
+      return { ok: false, error: "Save your plan preferences first." };
     }
     revalidatePath("/dashboard");
     revalidatePath("/schedule");
@@ -68,7 +68,7 @@ export async function generatePlan(): Promise<ActionResult> {
   try {
     const count = await generatePlanForUser(user.id, permit);
     if (count === null) {
-      return { ok: false, error: "Fill out your plan questionnaire and save it first." };
+      return { ok: false, error: "Save your plan preferences first." };
     }
     if (count === 0) {
       return { ok: false, error: "The planner came back empty — try again in a moment." };

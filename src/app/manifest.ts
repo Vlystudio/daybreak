@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { NUTRITION_ENABLED } from "@/lib/features";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -11,11 +12,15 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#fdf9f0",
     icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" }],
     // Accept a shared photo from the OS share sheet → log it as food.
-    share_target: {
-      action: "/nutrition/share",
-      method: "POST",
-      enctype: "multipart/form-data",
-      params: { files: [{ name: "image", accept: ["image/*"] }] },
-    },
+    ...(NUTRITION_ENABLED
+      ? {
+          share_target: {
+            action: "/nutrition/share",
+            method: "POST",
+            enctype: "multipart/form-data",
+            params: { files: [{ name: "image", accept: ["image/*"] }] },
+          },
+        }
+      : {}),
   } as MetadataRoute.Manifest;
 }

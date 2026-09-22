@@ -26,6 +26,8 @@ Use Node.js 22 (the same major used by GitHub Actions and Codemagic).
 3. Run `npm run check:migrations` before any database operation. Production migration discovery
    and the duplicate-`0021` reconciliation procedure are documented in
    `docs/migration-reconciliation.md`.
+   Portable local/isolated-remote runtime verification and its destructive safeguards are
+   documented in `docs/database-runtime-testing.md`.
 4. In **Authentication → Providers**, enable Email. For local dev you may want to disable
    "Confirm email" so sign-ups are instant.
 

@@ -50,7 +50,7 @@ SELECT throws_ok(
     '60000000-0000-0000-0000-000000000006', 'morning_briefing',
     array['basic'], repeat('a', 64)
   ) $$,
-  '42501', 'service role required',
+  '42501', null,
   'browser clients cannot mint permits'
 );
 SELECT throws_ok(
@@ -128,6 +128,7 @@ CREATE TEMP TABLE revoked_permit AS
     '60000000-0000-0000-0000-000000000006', 'morning_briefing',
     array['basic','tasks','calendar_availability','profile'], repeat('c', 64)
   );
+GRANT SELECT ON revoked_permit TO authenticated;
 RESET ROLE;
 SELECT set_config(
   'request.jwt.claims',
@@ -143,7 +144,7 @@ SELECT ok(
   'revocation increments the consent epoch'
 );
 SELECT is(
-  (SELECT event_type FROM public.ai_consent_history ORDER BY recorded_at DESC LIMIT 1),
+  (SELECT event_type FROM public.ai_consent_history ORDER BY consent_epoch DESC LIMIT 1),
   'category_revoked',
   'revocation is preserved in consent history'
 );

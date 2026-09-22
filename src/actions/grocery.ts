@@ -1,5 +1,7 @@
 "use server";
 
+import { GROCERY_ENABLED, GROCERY_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -34,6 +36,7 @@ async function householdId(supabase: SupabaseClient, userId: string): Promise<st
 }
 
 export async function saveGrocerySettings(input: GrocerySettingsInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
@@ -65,6 +68,7 @@ export async function saveGrocerySettings(input: GrocerySettingsInput): Promise<
 }
 
 export async function addPantryItem(input: PantryItemInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = pantryItemSchema.safeParse(input);
   if (!parsed.success)
@@ -90,6 +94,7 @@ export async function addPantryItem(input: PantryItemInput): Promise<ActionResul
 }
 
 export async function removePantryItem(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid item" };
 
@@ -110,6 +115,7 @@ export async function removePantryItem(id: string): Promise<ActionResult> {
 export async function refreshGroceryDeals(): Promise<
   { ok: true; prices: number } | { ok: false; error: string }
 > {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!integrationsAvailable.groceryDeals()) {
     return { ok: false, error: "The deals feed isn't connected on this deployment." };
@@ -140,6 +146,7 @@ export type ReceiptResult = { ok: true; receipt: ReceiptAnalysis } | { ok: false
 
 /** Read a grocery receipt photo into a structured purchase (no save yet). */
 export async function analyzeReceiptPhoto(input: { imageDataUrl: string }): Promise<ReceiptResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
   if (!limited.ok)
@@ -169,6 +176,7 @@ const purchaseSchema = z.object({
 });
 
 export async function logPurchase(input: z.input<typeof purchaseSchema>): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many updates — try again shortly." };
@@ -198,6 +206,7 @@ export async function logPurchase(input: z.input<typeof purchaseSchema>): Promis
 }
 
 export async function deletePurchase(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Unknown purchase" };
   const supabase = await createClient();
@@ -214,6 +223,7 @@ export async function deletePurchase(id: string): Promise<ActionResult> {
 
 /** Toggle a store on/off in the user's preferred-store list. */
 export async function toggleStore(storeId: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(storeId).success) return { ok: false, error: "Invalid store" };
 

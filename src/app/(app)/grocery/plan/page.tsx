@@ -1,3 +1,5 @@
+import { GROCERY_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { format } from "date-fns";
@@ -16,6 +18,7 @@ interface RecipeRow {
 }
 
 export default async function MealPlanPage() {
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

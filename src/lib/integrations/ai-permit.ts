@@ -13,6 +13,7 @@ import {
   type AiPurpose,
 } from "@/lib/integrations/ai-consent";
 import { securityRateLimit } from "@/lib/rate-limit";
+import { isAiPurposeEnabled } from "@/lib/features";
 
 const PERMIT = Symbol("daybreak-ai-processing-permit");
 
@@ -52,6 +53,7 @@ export async function getAiProcessingPermit(
   userId: string,
   purpose: AiPurpose
 ): Promise<AiProcessingPermit | null> {
+  if (!isAiPurposeEnabled(purpose)) return null;
   const admin = createAdminClient();
   const { data: preferences, error: preferencesError } = await admin
     .from("user_preferences")
@@ -98,6 +100,9 @@ export function assertAiProcessingPermit(
 ): asserts permit is AiProcessingPermit {
   if (!permit || permit[PERMIT] !== true) {
     throw new Error("A current server-issued AI processing consent permit is required.");
+  }
+  if (!isAiPurposeEnabled(permit.purpose)) {
+    throw new Error("This AI feature is not available in this release.");
   }
   if (purpose && permit.purpose !== purpose) {
     throw new Error("The AI processing permit is not valid for this purpose.");

@@ -1,4 +1,5 @@
 import "server-only";
+import { NUTRITION_ENABLED } from "@/lib/features";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { integrationsAvailable } from "@/env";
 import { sendPushToUser } from "@/lib/push";
@@ -21,7 +22,7 @@ export const REMINDER_PRESETS: Record<
     label: "Hydration",
     title: "💧 Hydration",
     body: "Time for a glass of water.",
-    url: "/nutrition",
+    url: NUTRITION_ENABLED ? "/nutrition" : "/dashboard",
   },
   wind_down: {
     label: "Wind-down",
@@ -102,6 +103,7 @@ export async function dispatchReminders(): Promise<number> {
   // Only the reminders due this hour do any work; fan those out concurrently
   // (was sequential) so a busy hour can't serialize into a timeout.
   const results = await mapWithConcurrency(reminders, 10, async (r) => {
+    if (!NUTRITION_ENABLED && r.kind === "log_food") return false;
     if (!(await isUserEligible(r.user_id))) return false;
     const { hour, date } = localParts(tzById.get(r.user_id) ?? "UTC");
     if (hour !== r.hour) return false;

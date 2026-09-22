@@ -1,4 +1,5 @@
 import "server-only";
+import { COACH_ENABLED, COACH_DISABLED_ERROR } from "@/lib/features";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWorkoutPlan, type WorkoutContext } from "@/lib/integrations/fitness-ai";
 import { detectRedFlags, redFlagGuidance } from "@/lib/fitness-safety";
@@ -22,6 +23,7 @@ export async function generateWorkoutForUser(
   userId: string,
   opts: { timeAvailableMinutes?: number; soreness?: string; date?: string } = {}
 ): Promise<WorkoutGenResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const permit = await getAiProcessingPermit(userId, "workout_plan");
   if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
   const admin = createAdminClient();

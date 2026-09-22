@@ -1,5 +1,7 @@
 "use server";
 
+import { GROCERY_ENABLED, GROCERY_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { addDays, format, parseISO } from "date-fns";
 import { requireUser } from "@/lib/auth";
@@ -46,6 +48,7 @@ interface SettingsRow {
 }
 
 export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const permit = await getAiProcessingPermit(user.id, "meal_plan");
   if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
@@ -196,6 +199,7 @@ export async function generateMealPlan(input: MealPlanInput): Promise<IdResult> 
 }
 
 export async function deleteMealPlan(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid plan" };
 
@@ -209,6 +213,7 @@ export async function deleteMealPlan(id: string): Promise<ActionResult> {
 
 /** Roll a meal plan's recipe ingredients up into a new shopping list. */
 export async function createListFromMealPlan(planId: string): Promise<IdResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(planId).success) return { ok: false, error: "Invalid plan" };
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);

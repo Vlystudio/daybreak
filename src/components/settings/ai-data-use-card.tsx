@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { setAiContextPreference } from "@/actions/settings";
 import type { AiConsent } from "@/lib/integrations/ai-consent";
+import { GROCERY_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
 
 const ROWS: { key: keyof AiConsent; label: string; desc: string }[] = [
   {
@@ -15,7 +16,7 @@ const ROWS: { key: keyof AiConsent; label: string; desc: string }[] = [
     label: "Basic AI processing",
     desc: "Direct feature requests; required for any external AI call",
   },
-  { key: "tasks", label: "Tasks & plan context", desc: "Planning, workout, and meal-plan context" },
+  { key: "tasks", label: "Tasks & plan context", desc: "Planning dates and daily task context" },
   { key: "checkin", label: "Daily check-ins", desc: "Ratings, reflections, and free-text notes" },
   {
     key: "health",
@@ -31,7 +32,7 @@ const ROWS: { key: keyof AiConsent; label: string; desc: string }[] = [
   {
     key: "profile",
     label: "Profile & preferences",
-    desc: "Routines, goals, equipment, diet, and local weather",
+    desc: "Routines, planning preferences, and local weather",
   },
   {
     key: "uploads",
@@ -70,15 +71,15 @@ export function AiDataUseCard({
   }
 
   return (
-    <Card>
+    <Card id="ai-data-use" className="scroll-mt-20">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="text-honey h-4 w-4" aria-hidden /> AI data use
         </CardTitle>
         <CardDescription>
-          OpenAI processes authorized categories only for the feature you start; LogMeal may process
-          an authorized meal photo. AI may be inaccurate and is not medical advice. Turning a
-          category off invalidates outstanding permits and future retries. Learn more in the{" "}
+          OpenAI processes only the categories you allow for briefings, plans and health insights.
+          AI may be inaccurate and is not medical advice. Turning a category off invalidates
+          outstanding permits and future retries. Learn more in the{" "}
           <Link href="/legal/ai" className="underline">
             AI disclosure
           </Link>
@@ -86,7 +87,9 @@ export function AiDataUseCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {ROWS.map((row) => (
+        {ROWS.filter(
+          (row) => row.key !== "uploads" || GROCERY_ENABLED || NUTRITION_ENABLED || state.uploads
+        ).map((row) => (
           <div key={row.key} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-medium">{row.label}</p>

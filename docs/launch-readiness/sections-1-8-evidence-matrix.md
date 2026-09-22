@@ -1,6 +1,6 @@
 # Sections 1–8 launch-readiness evidence matrix
 
-Verified: 2026-07-28 (America/New_York)
+Verified: 2026-07-29 (America/New_York)
 
 This matrix distinguishes repository proof from external evidence. `PASS` means the cited automatic
 check ran successfully against the current working tree. `BLOCKED` never means pass. The canonical
@@ -48,7 +48,7 @@ truthfully embed its own final hash in its tracked contents.
 | Codemagic release automation       | PASS           | The pinned workflow runs clean install, source/build checks, fail-closed production verification, native preparation, archive/signing/privacy validation, artifact retention, and TestFlight upload only with protected credentials.                                 |
 | Native automated-test preparation  | PASS           | Stable accessibility identifiers and an explicitly nonproduction XCUITest target cover launch, adult gate, optional staging auth, screenshots, and accessibility audit without a release reset/backdoor.                                                             |
 | Physical-device test package       | PASS           | A structured 70-scenario matrix, owner form generator, and fail-closed validator require an exact commit/build/IPA hash/device record and reject blank, failed, or incomplete evidence.                                                                              |
-| Unit/static/build suite            | PASS           | `typecheck`, `lint`, 39 test files / 252 tests, full and production dependency audits, clean lockfile install, secret scans, and Next.js 16.2.12 production build pass.                                                                                              |
+| Unit/static/build suite            | PASS           | Candidate `typecheck`, `lint`, 42 test files / 268 tests, full moderate dependency audit, deterministic compliance check, release verifier, and Next.js 16.2.12 production build pass. Exact pushed-commit secret/CodeQL checks remain below.                        |
 | Rendered public surface            | PASS           | Built-server checks cover home, login, unchecked signup attestations, under-18 path, Privacy, Terms, legal index and six legal policies, Security, and `security.txt`; content, navigation, titles, overlays, browser errors, console, and screenshots were checked. |
 | Sign in with Apple                 | NOT APPLICABLE | V1 authentication is email/password. Google is a post-login Calendar connector, not account authentication; see `docs/architecture/sign-in-with-apple-decision.md`. Reassess before adding social login.                                                             |
 
@@ -63,7 +63,7 @@ truthfully embed its own final hash in its tracked contents.
 | Manual license obligations   | BLOCKED | Counsel/license owner must resolve the enumerated LGPL, compound, FSL, MPL, and CC-BY obligations and add evidence referenced by `config/legal/license-policy.json`.                                                                                                             | Distribution without satisfying source, notice, attribution, or commercial-use conditions.      |
 | Asset ownership              | BLOCKED | IP owner must provide assignment/license/provenance records for the bird collection and app icon/launch artwork at the configured evidence paths.                                                                                                                                | Copyright/trademark dispute or takedown.                                                        |
 | Production migration history | BLOCKED | Authorized database operator must take/verify a backup, run `scripts/discover-migration-state.mjs` read-only against production, review the legacy `0021` fingerprint, and save sanitized JSON at `docs/launch-readiness/evidence/database/production-migration-discovery.json`. | Applying the wrong reconciliation to an unknown production history.                             |
-| Clean database integration   | BLOCKED | Docker Desktop or an isolated Supabase/Postgres runner must execute `npm run test:db` for fresh and representative legacy-upgrade fixtures plus pgTAP/RLS; store the generated success JSON at the expected database evidence path.                                              | SQL syntax, ordering, RLS, or upgrade defects could remain undiscovered.                        |
+| Clean database integration   | BLOCKED | Run `npm run test:db:local` with Docker or `npm run test:db:remote` with the guarded allowlisted disposable Supabase project described in `docs/database-runtime-testing.md`; store schema-v3 success JSON only after both resets, all upgrades, and both pgTAP passes complete. | SQL syntax, ordering, RLS, or upgrade defects could remain undiscovered.                        |
 | Staging deletion proof       | BLOCKED | Authorized staging operator must create a representative account with OAuth grants, storage, notifications, and relational data; delete it, confirm provider revocation and no residue, test retry, and store sanitized evidence at the expected path.                           | Account or provider data may survive a real deletion request.                                   |
 | Auth provider configuration  | BLOCKED | Supabase project administrator must verify confirmation, recovery, breached-password/password policy, rate limits, redirect allowlist, session rotation, global logout, and staged TOTP AAL behavior; store sanitized configuration/test evidence.                               | Dashboard settings could undermine code-level auth controls.                                    |
 | Signed iOS archive           | BLOCKED | Codemagic/macOS with Apple credentials must build the exact tree, validate team/profile/HealthKit/signature/version/dSYM, and retain the sanitized archive JSON plus artifact hashes.                                                                                            | Unsigned, mis-entitled, unreproducible, or crash-symbol-free candidate.                         |
@@ -74,7 +74,12 @@ truthfully embed its own final hash in its tracked contents.
 
 - `npm run test:db:preflight` exits blocked because Windows `WSLService` is disabled/stopped and
   Docker Engine is unreachable; no database success evidence was written and no remote command ran.
+- Isolated-remote preflight fails before linking because no authorized project identity, marker,
+  allowlists, acknowledgements, or protected credentials are supplied. The portable guard/parser
+  tests pass; this is not database runtime evidence.
 - `npm run ios:validate` cannot start Windows Subsystem for Linux in this environment. Repository
   source checks pass, but the actual validator remains a macOS/Codemagic candidate gate.
-- CodeQL, dependency review, and Gitleaks are blocking GitHub workflows. Local pinned Gitleaks and
-  Secretlint scans passed; CI completion for the final pushed commit is still required.
+- At pushed commit `957efd3`, CI, audit, Gitleaks, and the explicit JavaScript/TypeScript analysis job
+  pass. The aggregate CodeQL check reports four high URL-regex findings; exact-token fixes pass on the
+  local candidate but need exact-commit CodeQL verification. Dependency review remains blocked because
+  the repository Dependency graph is unavailable. Do not bypass either check.

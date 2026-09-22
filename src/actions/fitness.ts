@@ -1,5 +1,7 @@
 "use server";
 
+import { COACH_ENABLED, COACH_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -16,6 +18,7 @@ import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrat
 
 // ── Equipment & limitations ─────────────────────────────────────────────────
 export async function addEquipment(name: string): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = z.string().trim().min(1).max(60).safeParse(name);
   if (!parsed.success) return { ok: false, error: "Enter a valid item." };
@@ -31,6 +34,7 @@ export async function addEquipment(name: string): Promise<ActionResult> {
 }
 
 export async function removeEquipment(id: string): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
   const supabase = await createClient();
   const { error } = await supabase
@@ -44,6 +48,7 @@ export async function removeEquipment(id: string): Promise<ActionResult> {
 }
 
 export async function addLimitation(description: string): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = z.string().trim().min(1).max(200).safeParse(description);
   if (!parsed.success) return { ok: false, error: "Enter a valid limitation." };
@@ -58,6 +63,7 @@ export async function addLimitation(description: string): Promise<ActionResult> 
 }
 
 export async function removeLimitation(id: string): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
   const supabase = await createClient();
   const { error } = await supabase
@@ -76,6 +82,7 @@ export type ExerciseSearchResult =
   | { ok: false; error: string };
 
 export async function searchExercises(filters: ExerciseFilters): Promise<ExerciseSearchResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -163,6 +170,7 @@ export async function generateWorkout(input: {
   timeAvailableMinutes?: number;
   soreness?: string;
 }): Promise<WorkoutResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`fitness:${user.id}`, RATE_LIMITS.aiFitness);
@@ -184,6 +192,7 @@ export async function logWorkout(input: {
   perceivedEffort?: number;
   notes?: string;
 }): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(input.workoutId).success)
     return { ok: false, error: "Invalid workout" };

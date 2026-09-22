@@ -1,3 +1,5 @@
+import { GROCERY_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -18,6 +20,7 @@ interface ListRow {
 }
 
 export default async function ShoppingListsPage() {
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

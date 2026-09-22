@@ -16,6 +16,8 @@ function safeNotificationUrl(url) {
   return u;
 }
 
+// Keep in sync with the source-locked nutrition release gate in src/lib/features.ts.
+var NUTRITION_ENABLED = false;
 var SHARED_CACHE = "daybreak-shared";
 var MAX_SHARE_BYTES = 12 * 1024 * 1024; // 12 MB — a generous phone-photo ceiling.
 
@@ -55,6 +57,9 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method === "POST" && url.pathname === "/nutrition/share") {
     event.respondWith(
       (async () => {
+        if (!NUTRITION_ENABLED) {
+          return Response.redirect(new URL("/dashboard", url.origin).href, 303);
+        }
         try {
           const form = await event.request.formData();
           const file = form.get("image");

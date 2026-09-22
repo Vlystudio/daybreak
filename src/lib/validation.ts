@@ -123,3 +123,35 @@ export const onboardingSchema = z.object({
 });
 
 export type OnboardingInput = z.input<typeof onboardingSchema>;
+
+/** V1 only writes scheduling preferences; deferred profile fields stay untouched. */
+export const planPreferencesSchema = onboardingSchema
+  .pick({
+    workDays: true,
+    workStartTime: true,
+    workEndTime: true,
+    wakeTime: true,
+    sleepTime: true,
+    planningScope: true,
+    autoPlanCadence: true,
+  })
+  .extend({
+    workDays: z
+      .array(z.enum(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]))
+      .max(7)
+      .default([]),
+  })
+  .refine(
+    (value) =>
+      value.workDays.length === 0 || (Boolean(value.workStartTime) && Boolean(value.workEndTime)),
+    {
+      message: "Add both work times, or leave work days unselected.",
+      path: ["workStartTime"],
+    }
+  )
+  .refine((value) => value.workDays.length === 0 || value.workStartTime !== value.workEndTime, {
+    message: "Work start and end must be different.",
+    path: ["workEndTime"],
+  });
+
+export type PlanPreferencesInput = z.input<typeof planPreferencesSchema>;

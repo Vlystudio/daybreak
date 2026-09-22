@@ -1,4 +1,5 @@
 import "server-only";
+import { GROCERY_ENABLED } from "@/lib/features";
 import { serverEnv, integrationsAvailable } from "@/env";
 import { errorClass, safeLog } from "@/lib/security/safe-logger";
 import { isProcessorEnabled } from "@/lib/privacy/processors";
@@ -31,6 +32,7 @@ interface DealRow {
 }
 
 export async function fetchActiveDeals(limit = 5000): Promise<GroceryDeal[] | null> {
+  if (!GROCERY_ENABLED) return null;
   if (!integrationsAvailable.groceryDeals() || !isProcessorEnabled("grocerytracker")) return null;
   const base = serverEnv().GROCERYTRACKER_URL!.replace(/\/$/, "");
   const key = serverEnv().GROCERYTRACKER_ANON_KEY!;

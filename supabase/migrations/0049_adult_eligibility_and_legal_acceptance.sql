@@ -222,6 +222,7 @@ as $$
 declare
   current_user_id uuid := (select auth.uid());
   accepted_at timestamptz := now();
+  previous_status text;
 begin
   if current_user_id is null then
     raise exception using errcode = '28000', message = 'authentication required';
@@ -236,6 +237,16 @@ begin
     or char_length(p_locale) not between 2 and 20
   then
     raise exception using errcode = '22023', message = 'current explicit adult and legal acceptance is required';
+  end if;
+
+  -- A fresh attestation must not undo a minor restriction, suspension or an
+  -- account deletion. Lock the current state so a concurrent restriction wins
+  -- either before this check or after this transaction completes.
+  select status into previous_status from public.account_eligibility
+    where user_id = current_user_id for update;
+  if previous_status is not null
+    and previous_status not in ('pending_adult_attestation', 'eligible') then
+    raise exception using errcode = '42501', message = 'account restriction cannot be cleared by attestation';
   end if;
 
   insert into public.account_eligibility (

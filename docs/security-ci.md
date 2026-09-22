@@ -14,10 +14,12 @@ This describes the automated security checks for Daybreak.
 | Dependency review               | `security.yml`           | yes\* (PRs) | `actions/dependency-review-action` flags newly-added high-severity / denied deps.                                                 |
 | Typecheck / lint / test / build | `ci.yml`                 | yes         | The existing quality gates.                                                                                                       |
 
-\* CodeQL result upload and dependency-review require either a **public repo** or
-**GitHub Advanced Security** (the dependency graph + code scanning). On a private
-repo without GHAS these jobs cannot upload/evaluate; the `npm audit`, lockfile,
-and gitleaks gates are unconditional and protect every push/PR regardless.
+\* Dependency review requires GitHub's repository Dependency graph to be
+enabled. For a public repository, enable it under **Settings -> Security -> Code
+security and analysis -> Dependency graph**. Do not bypass or make the workflow
+non-blocking when this repository setting is disabled. CodeQL availability for
+private repositories depends on the repository's GitHub security plan. The
+`npm audit`, lockfile, and gitleaks gates remain unconditional.
 
 ## Patched transitive compatibility overrides
 

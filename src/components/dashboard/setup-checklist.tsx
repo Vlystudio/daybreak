@@ -14,19 +14,18 @@ interface Step {
 export function SetupChecklist({
   onboardingCompleted,
   hasCity,
-  hasOura,
-  hasGoogle,
 }: {
   onboardingCompleted: boolean;
   hasCity: boolean;
-  hasOura: boolean;
-  hasGoogle: boolean;
 }) {
   const steps: Step[] = [
-    { label: "Build your plan profile", done: onboardingCompleted, href: "/onboarding", cta: "Start" },
+    {
+      label: "Set your daily rhythm",
+      done: onboardingCompleted,
+      href: "/onboarding",
+      cta: "Start",
+    },
     { label: "Set your city for weather", done: hasCity, href: "/settings", cta: "Add" },
-    { label: "Connect Oura", done: hasOura, href: "/settings", cta: "Connect" },
-    { label: "Connect Google Calendar", done: hasGoogle, href: "/settings", cta: "Connect" },
   ];
 
   const doneCount = steps.filter((s) => s.done).length;
@@ -35,18 +34,18 @@ export function SetupChecklist({
   return (
     <Card className="border-primary/30 bg-honey-soft/40">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-base">Finish setting up Daybreak</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {doneCount} of {steps.length} done — a few steps to unlock everything.
+        <CardTitle className="text-base">Make it your day</CardTitle>
+        <p className="text-muted-foreground text-sm">
+          Optional setup for better suggestions. Health and calendar connections are in Settings.
         </p>
       </CardHeader>
       <CardContent className="space-y-1">
         {steps.map((s) => (
           <div key={s.label} className="flex items-center gap-3 rounded-lg p-2">
             {s.done ? (
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <CheckCircle2 className="text-primary h-5 w-5 shrink-0" aria-hidden />
             ) : (
-              <Circle className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+              <Circle className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
             )}
             <span className={cn("flex-1 text-sm", s.done && "text-muted-foreground line-through")}>
               {s.label}

@@ -11,7 +11,7 @@
 # Then: push to main → Codemagic builds, signs, and ships to TestFlight.
 
 workflows:
-  ios-healthkit:
+  ios-healthkit: &ios_release
     name: Daybreak iOS (HealthKit) → TestFlight
     instance_type: mac_mini_m2
     max_build_duration: 60
@@ -39,6 +39,8 @@ workflows:
         - appstore # must define APPLE_TEAM_ID
       vars:
         BUNDLE_ID: "app.daybreak.mobile"
+        # Existing Daybreak Companion record, verified against prior ASC upload.
+        APP_STORE_APPLE_ID: "6784789934"
         APP_VERSION: "1.0.0"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
@@ -46,9 +48,11 @@ workflows:
       xcode: 26.0
       cocoapods: default
     scripts:
-      - name: Install JS dependencies
+      - &install_dependencies
+        name: Install JS dependencies
         script: npm ci --no-audit --no-fund
-      - name: Verify repository release controls
+      - &verify_repository
+        name: Verify repository release controls
         script: |
           set -euo pipefail
           npm run typecheck
@@ -60,31 +64,39 @@ workflows:
           npm run check:migrations
           npm run migration:discover:static
           npm run verify:app-store-sections-1-8 -- --allow-external-blockers --no-write-evidence
-          npm run release:verify-production
-      - name: Generate and verify deterministic iOS assets
+      - name: Verify public release approvals and runtime configuration
+        script: npm run release:verify-production
+      - &generate_assets
+        name: Generate and verify deterministic iOS assets
         script: |
           set -euo pipefail
           npm run ios:assets
           git diff --exit-code -- native/ios
-      - name: Generate iOS platform
+      - &generate_platform
+        name: Generate iOS platform
         script: |
           if [ ! -d ios ]; then
             npx cap add ios
           fi
-      - name: Inject HealthKit plugin, entitlements, Info.plist
+      - &prepare_native
+        name: Inject HealthKit plugin, entitlements, Info.plist
         script: |
           chmod +x scripts/ios-prepare.sh
           HEALTH_DOMAIN="daybreak-one.vercel.app" bash scripts/ios-prepare.sh
-      - name: Capacitor sync
+      - &sync_capacitor
+        name: Capacitor sync
         script: npx cap sync ios
-      - name: Install CocoaPods
+      - &install_pods
+        name: Install CocoaPods
         script: |
           cd ios/App && pod install
-      - name: Validate generated iOS project
+      - &validate_project
+        name: Validate generated iOS project
         script: |
           chmod +x scripts/ios-release-validate.sh
           bash scripts/ios-release-validate.sh
-      - name: Set up code signing (manual — distribution cert + HealthKit profile)
+      - &setup_signing
+        name: Set up code signing (manual — distribution cert + HealthKit profile)
         script: |
           set -euo pipefail
           : "${APPLE_TEAM_ID:?Missing APPLE_TEAM_ID in appstore environment group}"
@@ -121,13 +133,14 @@ workflows:
           xcode-project use-profiles
           cleanup_signing_files
           trap - EXIT
-      - name: Bump build number
+      - &bump_build_number
+        name: Bump build number
         script: |
           set -euo pipefail
           : "${APP_STORE_APPLE_ID:?Missing numeric APP_STORE_APPLE_ID in appstore environment group}"
           : "${CM_ENV:?Codemagic CM_ENV file is unavailable}"
           [[ "$APP_STORE_APPLE_ID" =~ ^[0-9]+$ ]] || { echo "error: APP_STORE_APPLE_ID must be numeric" >&2; exit 1; }
-          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" --version-string "$APP_VERSION")"
           [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo "error: App Store Connect did not return a numeric build number" >&2; exit 1; }
           CANDIDATE_BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
           printf 'CANDIDATE_BUILD_NUMBER=%s\n' "$CANDIDATE_BUILD_NUMBER" >> "$CM_ENV"
@@ -136,12 +149,14 @@ workflows:
           # Select the next value from the existing App Store record so it stays
           # monotonic even if Codemagic's project counter is reset.
           agvtool new-version -all "$CANDIDATE_BUILD_NUMBER"
-      - name: Build IPA
+      - &build_ipa
+        name: Build IPA
         script: |
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
             --scheme "$XCODE_SCHEME"
-      - name: Validate release archive
+      - &validate_archive
+        name: Validate release archive
         script: |
           set -euo pipefail
           IPA_PATH="$(find build/ios/ipa -name '*.ipa' -type f | head -1)"
@@ -164,3 +179,37 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
+
+  # Device testing must precede public release approval. This manual workflow
+  # exports an Apple-enforced INTERNAL-ONLY binary. It cannot reach external
+  # testers or the App Store, and does not alter the public release gate above.
+  ios-testflight-internal:
+    <<: *ios_release
+    name: Daybreak iOS — Internal TestFlight candidate
+    triggering:
+      events: []
+    scripts:
+      - *install_dependencies
+      - *verify_repository
+      - name: Verify live web app and record outstanding launch approvals
+        script: node scripts/verify-testflight-runtime.mjs
+      - *generate_assets
+      - *generate_platform
+      - *prepare_native
+      - *sync_capacitor
+      - *install_pods
+      - *validate_project
+      - *setup_signing
+      - name: Restrict this candidate to internal TestFlight testing
+        script: |
+          set -euo pipefail
+          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :testFlightInternalTestingOnly' "$HOME/export_options.plist")" = "true" ]
+      - *bump_build_number
+      - *build_ipa
+      - *validate_archive
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false

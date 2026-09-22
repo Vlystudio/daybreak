@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AgendaView } from "@/components/schedule/agenda-view";
@@ -43,10 +43,12 @@ export function ScheduleView({
   events,
   currentUserId,
   hasHousehold,
+  planningControls,
 }: {
   events: ScheduleEvent[];
   currentUserId: string;
   hasHousehold: boolean;
+  planningControls?: ReactNode;
 }) {
   const today = useMemo(() => dayStart(new Date()), []);
 
@@ -146,6 +148,8 @@ export function ScheduleView({
           Add
         </button>
       </div>
+
+      {planningControls}
 
       {/* Date range + navigation */}
       <div className="flex items-center justify-between gap-3">

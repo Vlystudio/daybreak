@@ -27,9 +27,10 @@ Optional permissions:
   Calendar availability is separate from permission to use titles/descriptions
   as AI context.
 - Notifications: neutral “content is ready” wording; denial leaves in-app use.
-- Photos/camera: only user-initiated avatar, meal, or receipt flows. Analysis
-  images are normalized and transient; avatars persist until changed/deleted.
-- AI: all eight data categories default off, are purpose-specific, expire, and
+- Photos/camera: only user-initiated avatar flows in V1; avatars persist until
+  changed/deleted. Meal and receipt analysis are disabled. Historical retained
+  data remains covered by the data inventory and export/deletion controls.
+- AI: all seven visible launch data categories default off, are purpose-specific, expire, and
   can be revoked. HealthKit authorization and legal acceptance do not grant AI
   consent.
 

@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-09-22T14:50:40.992Z",
+  "commit": "957efd3f7a5243d236956c5f221f50d308521f84",
+  "mode": "local",
+  "databaseIdentity": {
+    "kind": "disposable local Supabase",
+    "projectRefFingerprint": null,
+    "databaseName": "postgres",
+    "applicationOrigin": "local",
+    "credentialSource": "local Supabase defaults"
+  },
+  "supabaseCli": "2.108.0",
+  "status": "pass",
+  "freshInitialization": {
+    "status": "pass",
+    "resets": 2
+  },
+  "duplicate0021AndRepresentativeUpgrades": {
+    "status": "pass",
+    "results": [
+      {
+        "scenario": "neither",
+        "status": "pass"
+      },
+      {
+        "scenario": "ai-cache-only",
+        "status": "pass"
+      },
+      {
+        "scenario": "subjective-only",
+        "status": "pass"
+      },
+      {
+        "scenario": "both",
+        "status": "pass"
+      },
+      {
+        "scenario": "partial-subjective",
+        "status": "pass"
+      },
+      {
+        "scenario": "canonical-already-applied",
+        "status": "pass"
+      },
+      {
+        "scenario": "representative-pre-eligibility",
+        "status": "pass"
+      },
+      {
+        "scenario": "pre-durable-deletion-job",
+        "status": "pass"
+      }
+    ],
+    "historicalHashes": {
+      "0021_ai_cache.sql": "035e2248d136837511175bc18421aabc1f5482dcefe00ece79eec34f50f17312",
+      "0021_subjective_checkins.sql": "81d5e33bfb16ac22c17e5129321ca020606f16b2570b18df6105fd7ce3f447fb"
+    }
+  },
+  "pgTapAndRuntimeSecurity": {
+    "status": "pass",
+    "executions": 2,
+    "suites": [
+      "RLS and cross-user isolation",
+      "adult eligibility and existing-user legal gating",
+      "AI consent, permit replay, and health authorization",
+      "privacy rights and retention",
+      "account deletion database behavior",
+      "runtime trigger, RPC, Storage metadata, and privilege surface"
+    ]
+  },
+  "verificationBoundaries": {
+    "postgresql": "pass - migrations, fixtures, pgTAP, RLS, triggers, and RPCs",
+    "supabaseAuth": "pass for auth-schema triggers and synthetic Auth rows; Auth HTTP/provider configuration not exercised",
+    "supabaseStorage": "pass for storage metadata, bucket migration, and SQL authorization; Storage HTTP/object-provider cleanup not exercised",
+    "stagingApplication": "not exercised - end-to-end deletion retries, session rejection, and application orchestration require isolated staging execution",
+    "externalProviders": "not exercised - OAuth/provider invalidation requires dedicated non-production credentials"
+  },
+  "productionAccessed": false,
+  "sensitiveData": false,
+  "sourceState": {
+    "workingTree": true,
+    "exactCommitCi": false,
+    "migrationChecksums": [
+      {
+        "file": "0047_launch_privacy_controls.sql",
+        "sha256": "90bd9e8a9511422acc507e261b621499e3234eeb5a80a7d647d05724234d23d9"
+      },
+      {
+        "file": "0048_reconcile_0021.sql",
+        "sha256": "ec1afbf213255e5abdd1b8df821fc17e24795705c5055826440ac3357859fae1"
+      },
+      {
+        "file": "0049_adult_eligibility_and_legal_acceptance.sql",
+        "sha256": "491c6a290272d04ccfbe51117bbd00ff9e20250fc094edc205c505d8d78641b3"
+      },
+      {
+        "file": "0050_durable_account_deletion.sql",
+        "sha256": "e8d1b0e4307f3445c372b17ceab561e16b25c5676b4e7d304b675d2c4bea9ac9"
+      },
+      {
+        "file": "0051_ai_consent_and_permits.sql",
+        "sha256": "8fdc4de5b42fa211590fe478c6bcab7db8e132b775ef2ba90a43309abc45b41e"
+      },
+      {
+        "file": "0052_privacy_rights_and_retention.sql",
+        "sha256": "61698cd11c763c271d053f28341a84191756c6913f8c8c740e9a84b6bce76ea3"
+      },
+      {
+        "file": "0053_birth_year_data_minimization.sql",
+        "sha256": "6b26bb5b97c5a4d0a47c07e35e2a47430aff74b06d515ce80905a4009dd085a1"
+      },
+      {
+        "file": "0054_explicit_api_table_privileges.sql",
+        "sha256": "7bdc8055e0387772bf7cdb7df5c1c507a42926dcab1988203fb9a598f7ff77df"
+      }
+    ],
+    "isolatedWorkspacePorts": [56320, 56321, 56322],
+    "note": "Identical source migrations/tests; optional local services disabled; SUPABASE_TELEMETRY_DISABLED=1."
+  }
+}

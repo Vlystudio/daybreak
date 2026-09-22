@@ -292,6 +292,7 @@ export async function setAiContextPreference(input: {
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  revalidatePath("/schedule");
   return { ok: true };
 }
 
@@ -311,8 +312,10 @@ export async function setAiConsentPreferences(input: AiConsent): Promise<ActionR
     metadata: { version: AI_CONSENT_VERSION },
   });
   revalidatePath("/onboarding");
+  revalidatePath("/schedule");
   revalidatePath("/settings");
   revalidatePath("/dashboard");
+  revalidatePath("/schedule");
   return { ok: true };
 }
 

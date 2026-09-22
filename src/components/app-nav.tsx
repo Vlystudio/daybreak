@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -17,12 +17,18 @@ import {
   UserRound,
   Settings,
   Menu,
-  X,
   LogOut,
 } from "lucide-react";
 import { signOut } from "@/actions/auth";
 import { cn } from "@/lib/utils";
-import { NEST_ENABLED, SOCIAL_FEATURES_ENABLED } from "@/lib/features";
+import {
+  NEST_ENABLED,
+  SOCIAL_FEATURES_ENABLED,
+  GROCERY_ENABLED,
+  COACH_ENABLED,
+  NUTRITION_ENABLED,
+} from "@/lib/features";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -30,8 +36,8 @@ type Item = { href: string; label: string; icon: typeof Sun };
 
 const PRIMARY: Item[] = [
   { href: "/dashboard", label: "Today", icon: Sun },
+  { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/health", label: "Health", icon: HeartPulse },
-  { href: "/onboarding", label: "Plan", icon: ClipboardList },
   ...(NEST_ENABLED ? [{ href: "/nest", label: "Nest", icon: Bird }] : []),
 ];
 
@@ -42,17 +48,23 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/dashboard", label: "Today", icon: Sun },
       { href: "/health", label: "Health", icon: HeartPulse },
       { href: "/schedule", label: "Schedule", icon: CalendarDays },
-      { href: "/onboarding", label: "Plan", icon: ClipboardList },
-      { href: "/coach", label: "Coach", icon: Dumbbell },
+      { href: "/onboarding", label: "Plan preferences", icon: ClipboardList },
+      ...(COACH_ENABLED ? [{ href: "/coach", label: "Coach", icon: Dumbbell }] : []),
     ],
   },
-  {
-    title: "Nourish",
-    items: [
-      { href: "/nutrition", label: "Nutrition", icon: Apple },
-      { href: "/grocery", label: "Grocery", icon: ShoppingBasket },
-    ],
-  },
+  ...(NUTRITION_ENABLED || GROCERY_ENABLED
+    ? [
+        {
+          title: "Nourish",
+          items: [
+            ...(NUTRITION_ENABLED ? [{ href: "/nutrition", label: "Nutrition", icon: Apple }] : []),
+            ...(GROCERY_ENABLED
+              ? [{ href: "/grocery", label: "Grocery", icon: ShoppingBasket }]
+              : []),
+          ],
+        },
+      ]
+    : []),
   ...(NEST_ENABLED || SOCIAL_FEATURES_ENABLED
     ? [
         {
@@ -78,20 +90,19 @@ const GROUPS: { title: string; items: Item[] }[] = [
 export function AppNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const firstMenuLink = useRef<HTMLAnchorElement | null>(null);
+
+  function openMenu(event: MouseEvent<HTMLButtonElement>) {
+    opener.current = event.currentTarget;
+    setOpen(true);
+  }
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === href : pathname.startsWith(href);
 
-  // Lock body scroll while the drawer is open.
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   return (
-    <>
+    <Dialog open={open} onOpenChange={setOpen}>
       {/* Top bar */}
       <header className="glass border-border/60 sticky top-0 z-40 border-b pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -122,7 +133,7 @@ export function AppNav() {
 
           <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={() => setOpen(true)} aria-label="Open menu">
+            <Button variant="ghost" size="sm" onClick={openMenu} aria-label="Open menu">
               <Menu aria-hidden />
               <span className="hidden sm:inline">Menu</span>
             </Button>
@@ -130,80 +141,70 @@ export function AppNav() {
         </div>
       </header>
 
-      {/* Drawer */}
-      {open && (
-        <div className="fixed inset-0 z-50">
-          <div
-            className="drawer-overlay absolute inset-0 bg-black/40"
-            onClick={() => setOpen(false)}
-            aria-hidden
-          />
-          <div className="drawer-panel bg-card absolute top-0 right-0 flex h-full w-[82%] max-w-sm flex-col shadow-xl">
-            <div className="border-border/60 flex items-center justify-between border-b px-5 py-4">
-              <span className="font-semibold">Menu</span>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Close menu"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" aria-hidden />
-              </button>
-            </div>
-
-            <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="All sections">
-              {GROUPS.map((group) => (
-                <div key={group.title}>
-                  <p className="text-muted-foreground px-3 pb-1.5 text-xs font-semibold tracking-wide uppercase">
-                    {group.title}
-                  </p>
-                  <div className="space-y-0.5">
-                    {group.items.map((link) => {
-                      const active = isActive(link.href);
-                      return (
-                        <Link
-                          key={link.href}
-                          href={link.href}
-                          onClick={() => setOpen(false)}
-                          className={cn(
-                            "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                            active
-                              ? "bg-primary/10 text-primary"
-                              : "text-foreground hover:bg-accent"
-                          )}
-                          aria-current={active ? "page" : undefined}
-                        >
-                          <link.icon
-                            className={cn(
-                              "h-5 w-5",
-                              active ? "text-primary" : "text-muted-foreground"
-                            )}
-                            aria-hidden
-                          />
-                          {link.label}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </nav>
-
-            <div className="border-border/60 border-t p-3">
-              <form action={signOut}>
-                <Button
-                  type="submit"
-                  variant="ghost"
-                  className="text-muted-foreground w-full justify-start gap-3"
-                >
-                  <LogOut className="h-5 w-5" aria-hidden />
-                  Sign out
-                </Button>
-              </form>
-            </div>
-          </div>
+      {/* Radix traps focus, handles Escape and restores focus to the opener. */}
+      <DialogContent
+        aria-describedby={undefined}
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          firstMenuLink.current?.focus();
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          opener.current?.focus();
+        }}
+        className="top-0 right-0 left-auto flex h-dvh w-[82%] max-w-sm translate-x-0 translate-y-0 flex-col gap-0 rounded-none p-0 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] [&>button]:top-[calc(env(safe-area-inset-top)+0.5rem)] [&>button]:flex [&>button]:min-h-11 [&>button]:min-w-11 [&>button]:items-center [&>button]:justify-center"
+      >
+        <div className="border-border/60 border-b px-5 py-5">
+          <DialogTitle className="font-semibold">Menu</DialogTitle>
         </div>
-      )}
+
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="All sections">
+          {GROUPS.map((group) => (
+            <div key={group.title}>
+              <p className="text-muted-foreground px-3 pb-1.5 text-xs font-semibold tracking-wide uppercase">
+                {group.title}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((link) => {
+                  const active = isActive(link.href);
+                  return (
+                    <Link
+                      key={link.href}
+                      ref={link.href === "/dashboard" ? firstMenuLink : undefined}
+                      href={link.href}
+                      onClick={() => setOpen(false)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
+                      )}
+                      aria-current={active ? "page" : undefined}
+                    >
+                      <link.icon
+                        className={cn("h-5 w-5", active ? "text-primary" : "text-muted-foreground")}
+                        aria-hidden
+                      />
+                      {link.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        <div className="border-border/60 border-t p-3">
+          <form action={signOut}>
+            <Button
+              type="submit"
+              variant="ghost"
+              className="text-muted-foreground w-full justify-start gap-3"
+            >
+              <LogOut className="h-5 w-5" aria-hidden />
+              Sign out
+            </Button>
+          </form>
+        </div>
+      </DialogContent>
 
       {/* Mobile bottom bar */}
       <nav
@@ -230,7 +231,7 @@ export function AppNav() {
           })}
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={openMenu}
             className="text-muted-foreground flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-xs font-medium"
             aria-label="Open menu"
           >
@@ -239,6 +240,6 @@ export function AppNav() {
           </button>
         </div>
       </nav>
-    </>
+    </Dialog>
   );
 }

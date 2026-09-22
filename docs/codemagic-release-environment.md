@@ -42,13 +42,32 @@ Repository access and the webhook must also be active for `Vlystudio/daybreak`. 
 
 The workflow validates presence, certificate password, profile team, bundle identifier, and HealthKit entitlement without echoing secret values. It deliberately fails before archive on any mismatch.
 
+## Internal TestFlight testing
+
+Use `ios-testflight-internal` for device testing before public launch approval.
+It shares dependency, type, lint, test, compliance, migration, asset, signing,
+and archive checks with `ios-healthkit`. It checks the live public login/legal
+pages and reduced-scope manifest without copying Vercel server secrets into
+Codemagic. Outstanding vendor approvals are retained in its evidence, and are
+not marked approved. Runtime consent and provider restrictions remain active.
+
+The export has Apple's `testFlightInternalTestingOnly` option enabled and verified.
+Publishing uploads to App Store Connect but does not submit for external beta
+review or App Store review. This binary can only be assigned to internal testers;
+it cannot be promoted to a public release. `ios-healthkit` retains the mandatory
+`release:verify-production` gate for a later public-release candidate.
+
+The existing App Store record is Daybreak Companion (`6784789934`), bundle ID
+`app.daybreak.mobile`, confirmed from Codemagic build 27's App Store Connect log.
+This public numeric identifier is set in YAML; signing secrets remain in `appstore`.
+
 ## Triggering the candidate branch
 
 Automatic push builds are intentionally limited to `main`; this prevents every review-branch push from publishing to TestFlight. To build the current candidate before merge:
 
 1. Open **Codemagic → Applications → Daybreak**.
 2. Choose **Start new build**.
-3. Select branch `codex/app-store-launch-readiness` and workflow `ios-healthkit`.
+3. Select branch `codex/app-store-launch-readiness` and workflow `ios-testflight-internal` for internal testing (`ios-healthkit` requires completed public release approvals).
 4. Confirm the displayed commit equals the reviewed/pushed branch tip.
 5. Confirm environment group `appstore` and integration `Daybreak ASC Key` are available to the workflow.
 6. Start the build. This workflow is configured to publish a successful IPA to TestFlight; do not start it against an unintended App Store Connect account.
@@ -139,4 +158,4 @@ npm run ios:validate
 
 For the candidate tied to a commit hash, retain the Codemagic build URL and ID, workflow name, Xcode version, marketing and build number, certificate/profile expiration confirmation, generated-project validation log, archive validation log, IPA artifact checksum, App Store Connect upload result, and TestFlight build number. Fill in `docs/ios-release-evidence-template.md` without copying secrets or raw profiles into the document.
 
-Do not release if any required variable or integration is missing; the team, bundle, or HealthKit profile differs; the production URL is not the reviewed HTTPS deployment; the Vercel production environment is invalid; the signed IPA lacks HealthKit; App Store Connect rejects the upload; or a physical-device camera, HealthKit, or deletion gate remains unverified.
+Do not upload if required signing configuration is missing, the team/bundle/HealthKit profile differs, the production URL is unhealthy, the signed IPA lacks HealthKit, or App Store Connect rejects the upload. Do not release publicly while runtime approvals or physical-device camera, HealthKit, or deletion gates remain unverified. An internal-only TestFlight build enables completion of those device checks; uploading it does not clear them.

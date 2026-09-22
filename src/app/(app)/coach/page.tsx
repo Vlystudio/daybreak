@@ -1,3 +1,5 @@
+import { COACH_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CoachTabs } from "@/components/coach/coach-tabs";
@@ -7,6 +9,7 @@ import type { UserWorkout } from "@/lib/fitness";
 export const metadata = { title: "Coach" };
 
 export default async function CoachPage() {
+  if (!COACH_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

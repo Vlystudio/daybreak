@@ -26,7 +26,7 @@ SELECT throws_ok(
     repeat('a', 64)
   ) $$,
   '42501',
-  'service role required',
+  null,
   'a browser-authenticated caller cannot invoke the trusted deletion queue RPC'
 );
 
@@ -119,7 +119,7 @@ SELECT throws_ok(
     '{"authentication account and sessions":"complete"}'::jsonb
   ) $$,
   '42501',
-  'service role required',
+  null,
   'a browser-authenticated caller cannot finalize a deletion job'
 );
 

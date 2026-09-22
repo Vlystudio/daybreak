@@ -114,18 +114,22 @@ declare
 begin
   for item in
     select * from (values
-      ('mood', 'subjective_checkins_mood_check', 'mood between 1 and 5'),
-      ('energy', 'subjective_checkins_energy_check', 'energy between 1 and 5'),
-      ('stress', 'subjective_checkins_stress_check', 'stress between 1 and 5'),
-      ('soreness', 'subjective_checkins_soreness_check', 'soreness between 1 and 5'),
-      ('note', 'subjective_checkins_note_check', 'char_length(note) <= 500')
-    ) as expected(column_name, constraint_name, expression)
+      ('mood', 'subjective_checkins_mood_check', 'mood between 1 and 5', 'checkmood>=1andmood<=5'),
+      ('energy', 'subjective_checkins_energy_check', 'energy between 1 and 5', 'checkenergy>=1andenergy<=5'),
+      ('stress', 'subjective_checkins_stress_check', 'stress between 1 and 5', 'checkstress>=1andstress<=5'),
+      ('soreness', 'subjective_checkins_soreness_check', 'soreness between 1 and 5', 'checksoreness>=1andsoreness<=5'),
+      ('note', 'subjective_checkins_note_check', 'char_length(note) <= 500', 'checkchar_lengthnote<=500')
+    ) as expected(column_name, constraint_name, expression, normalized_definition)
   loop
     if not exists (
       select 1 from pg_constraint
       where conrelid = 'public.subjective_checkins'::regclass
         and contype = 'c'
-        and pg_get_constraintdef(oid) ilike '%' || item.expression || '%'
+        -- PostgreSQL decompiles BETWEEN into >= AND <= and adds parentheses.
+        -- Compare that representation so a fresh install or repeated upgrade
+        -- recognizes the existing check instead of adding its name twice.
+        and lower(regexp_replace(pg_get_constraintdef(oid), '[()[:space:]]', '', 'g'))
+          = item.normalized_definition
     ) then
       execute format(
         'alter table public.subjective_checkins add constraint %I check (%s) not valid',

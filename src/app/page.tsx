@@ -7,17 +7,17 @@ const features = [
   {
     icon: Moon,
     title: "Sleep & readiness",
-    body: "Your Oura ring data, distilled into a calm picture of how recovered you are today.",
+    body: "See recent sleep and recovery summaries from the health sources you choose.",
   },
   {
     icon: HeartPulse,
     title: "HRV trends",
-    body: "Watch your nervous system find its rhythm with gentle week-over-week trends.",
+    body: "See how your recent HRV compares with your own history, with clear source labels.",
   },
   {
     icon: Sparkles,
     title: "AI morning briefing",
-    body: "A warm, personal note each morning on how to make the most of your energy.",
+    body: "An optional personal briefing using only the information you allow.",
   },
   {
     icon: CalendarDays,

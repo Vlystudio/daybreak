@@ -1,5 +1,7 @@
 # Product-surface audit
 
+September 22, 2026 scope update: Grocery, Coach and Nutrition are now deferred, alongside the existing Nest/social/subscription exclusions. Today, Schedule and Health are the primary sections. See [focused V1 scope and verification](launch-scope-2026-09-22.md) for the current behavior and checks; the audit below records the earlier hardening work.
+
 Audited: 2026-07-28 (America/New_York)
 
 The audit covered tracked application, native, script, configuration, migration, workflow, and

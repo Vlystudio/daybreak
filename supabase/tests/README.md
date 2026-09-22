@@ -1,62 +1,82 @@
 # Database tests and upgrade matrix
 
-The pgTAP suite verifies ownership isolation, restricted-account enforcement,
-service-only RPC grants, storage write isolation, deletion durability, privacy
-rights, AI consent permits, and retention. It is self-contained: fixtures are
-created inside transactions and rolled back, so no third-party test-helper SQL
-or production credential is required.
+The same logical migration, upgrade, pgTAP, RLS, consent, eligibility, privacy,
+and deletion suite supports two modes:
 
-## Run
+- `local` uses the existing disposable Supabase CLI/Docker stack.
+- `isolated-remote` uses a dedicated disposable Supabase project, a durable
+  database identity marker, secure environment credentials, and a direct
+  PostgreSQL pgTAP executor. It does not require Docker.
+
+Remote mode is never inferred from credentials or linked CLI state. Omitting a
+mode preserves the historical local default. Select remote mode explicitly with
+`--mode isolated-remote` or `DAYBREAK_DB_TEST_MODE=isolated-remote`.
+
+## Commands
 
 ```bash
-npm run test:db:preflight  # CLI, config, duplicate-version, and Docker checks
-npm run test:db            # pinned CLI; local start/reset/test only
-npm run test:db:upgrades   # matrix only; requires the disposable stack running
+npm run test:db:preflight       # backwards-compatible local preflight
+npm run test:db:local           # explicit local complete suite
+npm run test:db:preflight:remote
+npm run test:db:remote          # explicit isolated-remote complete suite
+npm run test:db:upgrades -- --mode local
 ```
 
-The wrapper:
+See `docs/database-runtime-testing.md` for remote-project provisioning,
+database-marker SQL, required environment variables, CI configuration, and
+recovery steps.
 
-- accepts only `--preflight-only` and rejects all remote/unknown arguments;
-- pins Supabase CLI `2.108.0` through npm's cache rather than requiring a global install;
-- requires `project_id = "daybreak-local"` and rejects the production ref in local config;
-- verifies a unique, gap-free active migration sequence, the exact archived
-  historical `0021` checksums, and both canonical/forward reconciliation files;
-- reports Docker availability;
-- runs six local-only legacy `0021` upgrade shapes plus representative
-  pre-eligibility and pre-durable-deletion upgrades;
-- forces two clean-head `db reset --local` and `test db --local` passes;
-- stops and removes only the disposable local services it started; and
-- never runs a linked reset or `db push`. The upgrade matrix uses
-  `migration repair --local` only inside the disposable project to model
-  historical production ledger shapes; it never accepts a project ref or
-  database URL.
+Both paths pin Supabase CLI `2.108.0`, validate migration integrity, run six
+duplicate-`0021` shapes, representative pre-eligibility/privacy/AI and durable
+deletion upgrades, perform two clean head initializations, and execute every
+file in this directory twice. Success writes the same schema-v3 evidence shape
+to `docs/launch-readiness/evidence/database/fresh-and-upgrade-test.json` only
+after the complete selected-mode suite passes.
 
-The two historical `0021` bodies are preserved byte-for-byte in
-`supabase/legacy-migrations/`. Fresh installs use one canonical active `0021`,
-and `0048_reconcile_0021.sql` converges already-deployed states without editing
-remote history.
+## Safeguards
 
-## Coverage
+Local mode forces `--local`, requires `project_id = "daybreak-local"`, and does
+not use checked-in or workstation Supabase link metadata.
 
-`rls_isolation_test.sql` creates two synthetic `auth.users`, seeds Alice's rows
-as the database owner, switches to the local `authenticated` role with explicit
-JWT claims, and verifies Bob sees zero while Alice sees exactly one row in:
+Isolated-remote mode creates a temporary workdir, links it to an explicit
+allowlisted project, and removes it on exit. Before every remote reset,
+migration mutation, fixture operation, and pgTAP file it verifies:
 
-- `health_metrics`
-- `daily_summaries`
-- `schedule_events`
-- `subjective_checkins`
+- exact mode, project and database allowlists, destructive acknowledgement,
+  and credential approval;
+- the hard denial for production ref `cybpuscssilbguypptxi` and production
+  origin `https://daybreak-one.vercel.app`;
+- a non-expired database-level marker binding project ref, origin, database,
+  approved role, zero-user baseline, and destructive-test authorization;
+- the managed Supabase Auth `site_url`, which must equal that same approved
+  non-production origin;
+- absence of a database production marker;
+- that every Auth row and Storage object is either absent or an exact,
+  recognized synthetic fixture from this suite.
 
-All fixtures roll back. Extend the suite whenever a new user-owned table or RLS
-policy is added.
+Remote credentials are read only from the process environment. They are never
+passed in command arguments or evidence. Child output and exceptions redact
+tokens, passwords, database URLs, and the raw project ref.
+The password is withheld from `supabase link` to prevent native credential-store
+persistence, and generic PostgreSQL target variables are removed from CLI child
+processes.
 
-`runtime_security_surface_test.sql` additionally asserts every public table has
-RLS, exercises cross-user SELECT/INSERT/UPDATE/DELETE behavior, rejects forged
-provider health data, validates service-only function grants, checks that no
-protected table is accidentally in the realtime publication, verifies the
-server-owned avatar storage boundary, and proves each restricted eligibility
-state loses protected access.
+## Coverage and boundaries
 
-Successful upgrade execution writes a sanitized, commit-bound artifact to
-`docs/launch-readiness/evidence/database/fresh-and-upgrade-test.json`. The file
-is written only after every scenario passes.
+`rls_isolation_test.sql` creates two synthetic Auth users, seeds Alice's rows,
+switches to `authenticated` with explicit JWT claims, and proves Bob sees none
+of Alice's health, summary, schedule, or check-in data.
+
+The remaining suites cover adult eligibility and existing-user legal gating,
+granular AI consent and request-bound permit replay, privacy rights and
+retention, durable account-deletion database behavior, catalog-wide RLS,
+service-only RPC grants, restricted-account states, realtime publication, and
+Storage metadata authorization.
+
+These are PostgreSQL and Supabase database-schema tests. They prove Auth trigger
+behavior against `auth.users` and Storage metadata/policies against
+`storage.buckets` and `storage.objects`. They do not claim to test GoTrue HTTP
+configuration, Storage HTTP/object-provider deletion, application session
+invalidation, or external OAuth provider revocation. Those remain isolated
+staging/application evidence and are identified separately in generated
+evidence.

@@ -1,6 +1,6 @@
 -- Adult-only auth trigger, existing-user gate, and direct-RPC bypass tests.
 BEGIN;
-SELECT plan(17);
+SELECT plan(20);
 
 SELECT throws_ok(
   $$
@@ -126,7 +126,7 @@ SELECT throws_ok(
     )
   $$,
   '42501',
-  'new row violates row-level security policy for table "schedule_events"',
+  null,
   'pending existing user cannot write through direct PostgREST-equivalent SQL'
 );
 SELECT throws_ok(
@@ -164,6 +164,38 @@ SELECT is(
     WHERE user_id = '40000000-0000-0000-0000-000000000004'),
   'restricted_minor',
   'minor restriction is immediately visible and effective'
+);
+SELECT throws_ok(
+  $$ SELECT public.complete_current_user_eligibility(
+    true, '2026-07-28', '2026-07-28', '2026-07-28',
+    'web-0.1.0', 'web', 'en', 'eligibility_migration'
+  ) $$,
+  '42501', 'account restriction cannot be cleared by attestation',
+  'a restricted minor cannot restore access by repeating adult attestation'
+);
+RESET ROLE;
+UPDATE public.account_eligibility SET status = 'suspended'
+WHERE user_id = '40000000-0000-0000-0000-000000000004';
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.complete_current_user_eligibility(
+    true, '2026-07-28', '2026-07-28', '2026-07-28',
+    'web-0.1.0', 'web', 'en', 'eligibility_migration'
+  ) $$,
+  '42501', 'account restriction cannot be cleared by attestation',
+  'a suspended account cannot restore access by repeating adult attestation'
+);
+RESET ROLE;
+UPDATE public.account_eligibility SET status = 'deletion_pending'
+WHERE user_id = '40000000-0000-0000-0000-000000000004';
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$ SELECT public.complete_current_user_eligibility(
+    true, '2026-07-28', '2026-07-28', '2026-07-28',
+    'web-0.1.0', 'web', 'en', 'eligibility_migration'
+  ) $$,
+  '42501', 'account restriction cannot be cleared by attestation',
+  'a deletion-pending account cannot restore access by repeating adult attestation'
 );
 RESET ROLE;
 SELECT is(

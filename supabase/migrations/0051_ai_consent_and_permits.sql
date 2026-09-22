@@ -233,7 +233,7 @@ begin
     or cardinality(p_categories) not between 1 and 8
     or not ('basic' = any(p_categories))
     or (select count(*) from unnest(p_categories) as category_rows(category)) <>
-       (select count(distinct category) from unnest(p_categories) as category_rows(category))
+       (select count(distinct category_rows.category) from unnest(p_categories) as category_rows(category))
   then
     raise exception using errcode = '22023', message = 'invalid AI permit request';
   end if;

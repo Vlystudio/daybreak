@@ -25,11 +25,13 @@ function googleFetch(input: string, init: RequestInit = {}): Promise<Response> {
 
 /** True if a granted scope string allows writing events (not just read-only). */
 export function scopeAllowsWrite(scope: string | null | undefined): boolean {
-  const s = scope ?? "";
-  return (
-    /https:\/\/www\.googleapis\.com\/auth\/calendar(?![.\w])/.test(s) ||
-    s.includes("auth/calendar.events")
-  );
+  const granted = new Set((scope ?? "").split(/\s+/).filter(Boolean));
+  return [
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.events",
+    "https://www.googleapis.com/auth/calendar.events.owned",
+    "https://www.googleapis.com/auth/calendar.app.created",
+  ].some((writeScope) => granted.has(writeScope));
 }
 
 export function googleAuthorizeUrl(state: string): string {

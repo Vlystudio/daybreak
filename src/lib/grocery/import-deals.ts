@@ -1,4 +1,5 @@
 import "server-only";
+import { GROCERY_ENABLED } from "@/lib/features";
 import { randomUUID } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchActiveDeals } from "@/lib/integrations/grocery-deals";
@@ -40,6 +41,7 @@ async function insertChunked(
 }
 
 export async function importGroceryDeals(): Promise<ImportResult | null> {
+  if (!GROCERY_ENABLED) return null;
   const deals = await fetchActiveDeals();
   if (!deals) return null;
   if (deals.length === 0) return { stores: 0, products: 0, prices: 0 };
@@ -75,7 +77,9 @@ export async function importGroceryDeals(): Promise<ImportResult | null> {
     .select("id, store_id, postal_code")
     .returns<{ id: string; store_id: string; postal_code: string | null }[]>();
   const locIdByKey = new Map(
-    (existingLocs ?? []).filter((l) => l.postal_code).map((l) => [locKey(l.store_id, l.postal_code!), l.id])
+    (existingLocs ?? [])
+      .filter((l) => l.postal_code)
+      .map((l) => [locKey(l.store_id, l.postal_code!), l.id])
   );
 
   const neededLocs = new Map<string, { store_id: string; postal_code: string; label: string }>();
@@ -83,7 +87,8 @@ export async function importGroceryDeals(): Promise<ImportResult | null> {
     const sid = storeIdFor(d.storeName);
     if (!sid || !d.postalCode) continue;
     const k = locKey(sid, d.postalCode);
-    if (!locIdByKey.has(k)) neededLocs.set(k, { store_id: sid, postal_code: d.postalCode, label: d.postalCode });
+    if (!locIdByKey.has(k))
+      neededLocs.set(k, { store_id: sid, postal_code: d.postalCode, label: d.postalCode });
   }
   if (neededLocs.size) {
     const { data: createdLocs, error } = await admin
@@ -92,15 +97,20 @@ export async function importGroceryDeals(): Promise<ImportResult | null> {
       .select("id, store_id, postal_code")
       .returns<{ id: string; store_id: string; postal_code: string | null }[]>();
     if (error) throw new Error(`Failed to create store locations: ${error.message}`);
-    for (const l of createdLocs ?? []) if (l.postal_code) locIdByKey.set(locKey(l.store_id, l.postal_code), l.id);
+    for (const l of createdLocs ?? [])
+      if (l.postal_code) locIdByKey.set(locKey(l.store_id, l.postal_code), l.id);
   }
 
   // 3. Wipe the previous import (cascades to its product_prices).
-  const { error: delErr } = await admin.from("products").delete().eq("external_source", EXTERNAL_SOURCE);
+  const { error: delErr } = await admin
+    .from("products")
+    .delete()
+    .eq("external_source", EXTERNAL_SOURCE);
   if (delErr) throw new Error(`Failed to clear previous import: ${delErr.message}`);
 
   // 4. Build fresh products + prices with client-generated ids for linkage.
-  const productRows: { id: string; name: string; brand: string | null; external_source: string }[] = [];
+  const productRows: { id: string; name: string; brand: string | null; external_source: string }[] =
+    [];
   const priceRows: {
     product_id: string;
     store_id: string;
@@ -124,7 +134,7 @@ export async function importGroceryDeals(): Promise<ImportResult | null> {
     priceRows.push({
       product_id: id,
       store_id: sid,
-      store_location_id: d.postalCode ? locIdByKey.get(locKey(sid, d.postalCode)) ?? null : null,
+      store_location_id: d.postalCode ? (locIdByKey.get(locKey(sid, d.postalCode)) ?? null) : null,
       price: d.price,
       sale_expires: d.validTo ? d.validTo.slice(0, 10) : null,
       source_key: "web",

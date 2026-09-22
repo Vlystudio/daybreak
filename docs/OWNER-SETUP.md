@@ -297,19 +297,21 @@ for unauthenticated traffic (login, signup, OAuth start).
 
 **Why**: proves no user can read another user's health data. This is the single most
 important safety check.
-**Steps** (one-time setup):
+**Steps**:
 
-1. Install the Supabase test helpers (https://github.com/usebasejump/supabase-test-helpers)
-   into your local/test DB (see `supabase/tests/README.md`).
-2. Run them:
+1. Choose the disposable local mode or provision the guarded isolated-remote
+   project in `docs/database-runtime-testing.md`. The SQL fixtures are
+   self-contained; do not install third-party test helpers.
+2. Run the selected mode:
 
    ```bash
-   supabase start
-   npm run test:db          # runs supabase/tests/*.sql via pgTAP
+   npm run test:db:local    # Docker/local Supabase
+   npm run test:db:remote   # explicitly authorized isolated Supabase project
    ```
 
-3. Confirm all isolation assertions pass. The CI workflow already runs typecheck/lint/unit
-   tests; add `npm run test:db` to CI once you have a DB step in the pipeline.
+3. Confirm both clean initializations, every upgrade fixture, and both complete
+   pgTAP passes succeed. The manual protected GitHub workflow is
+   `.github/workflows/database-runtime.yml`.
 
 - [ ] RLS tests pass locally. Wired into CI.
 

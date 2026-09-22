@@ -1,5 +1,7 @@
 "use server";
 
+import { GROCERY_ENABLED, GROCERY_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -14,9 +16,11 @@ const grocerySchema = z.string().trim().min(1, "Enter an item").max(80);
 export async function addGrocery(
   name: string
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = grocerySchema.safeParse(name);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid item" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid item" };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -31,9 +35,14 @@ export async function addGrocery(
 }
 
 export async function removeGrocery(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const supabase = await createClient();
-  const { error } = await supabase.from("grocery_items").delete().eq("id", id).eq("user_id", user.id);
+  const { error } = await supabase
+    .from("grocery_items")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) return { ok: false, error: "Couldn't remove that item." };
 
   revalidatePath("/coach");
@@ -45,14 +54,20 @@ export type SuggestionsResult =
   | { ok: false; error: string };
 
 export async function getRecipeSuggestions(): Promise<SuggestionsResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`sync:${user.id}`, RATE_LIMITS.sync);
-  if (!limited.ok) return { ok: false, error: "You've searched a lot recently — try again shortly." };
+  if (!limited.ok)
+    return { ok: false, error: "You've searched a lot recently — try again shortly." };
 
   const supabase = await createClient();
   const [{ data: groceries }, { data: prefs }, { data: feedback }] = await Promise.all([
-    supabase.from("grocery_items").select("name").eq("user_id", user.id).returns<{ name: string }[]>(),
+    supabase
+      .from("grocery_items")
+      .select("name")
+      .eq("user_id", user.id)
+      .returns<{ name: string }[]>(),
     supabase
       .from("user_preferences")
       .select("dietary_restrictions")
@@ -92,6 +107,7 @@ export async function rateRecipe(input: {
   title: string;
   liked: boolean;
 }): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = ratingSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Invalid rating" };
@@ -126,12 +142,15 @@ export async function addMealToSchedule(input: {
     steps?: string[];
   };
 }): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment — too many changes at once." };
 
-  const title = String(input.title || "").trim().slice(0, 180);
+  const title = String(input.title || "")
+    .trim()
+    .slice(0, 180);
   if (!title) return { ok: false, error: "Invalid recipe." };
 
   const ready =
@@ -188,9 +207,12 @@ export async function addMealToSchedule(input: {
 
 /** Add several grocery items at once (e.g. a recipe's missing ingredients). */
 export async function addGroceries(names: string[]): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const clean = Array.from(
-    new Set((names ?? []).map((n) => String(n).trim()).filter((n) => n.length > 0 && n.length <= 80))
+    new Set(
+      (names ?? []).map((n) => String(n).trim()).filter((n) => n.length > 0 && n.length <= 80)
+    )
   ).slice(0, 30);
   if (clean.length === 0) return { ok: false, error: "Nothing to add." };
 

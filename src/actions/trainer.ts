@@ -1,5 +1,7 @@
 "use server";
 
+import { COACH_ENABLED, COACH_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -10,6 +12,7 @@ import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /** Generate the user's workout + nutrition regimen. */
 export async function generateFitnessPlan(): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`ai:${user.id}`, RATE_LIMITS.aiSummary);

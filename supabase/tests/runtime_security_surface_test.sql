@@ -90,19 +90,21 @@ SELECT set_config(
   true
 );
 SELECT is((SELECT count(*) FROM public.schedule_events)::int, 0, 'Bob cannot select Alice event');
-SELECT is(
-  (WITH changed AS (
+WITH changed AS (
     UPDATE public.schedule_events SET title = 'forged update'
     WHERE id = '61100000-0000-0000-0000-000000000061' RETURNING 1
-  ) SELECT count(*)::int FROM changed),
+  )
+SELECT is(
+  (SELECT count(*)::int FROM changed),
   0,
   'Bob cannot update Alice event'
 );
-SELECT is(
-  (WITH removed AS (
+WITH removed AS (
     DELETE FROM public.schedule_events
     WHERE id = '61100000-0000-0000-0000-000000000061' RETURNING 1
-  ) SELECT count(*)::int FROM removed),
+  )
+SELECT is(
+  (SELECT count(*)::int FROM removed),
   0,
   'Bob cannot delete Alice event'
 );

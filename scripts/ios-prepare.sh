@@ -60,8 +60,8 @@ plist_set "NSHealthShareUsageDescription string" \
 plist_set "NSHealthUpdateUsageDescription string" \
   "Daybreak requests no Apple Health write access and never writes measured or AI-generated data to HealthKit."
 # Camera + microphone + photo library purpose strings. The web app opens the
-# system camera / photo picker via <input type="file" accept="image/*"> (meal
-# photos for calorie estimates, grocery receipts, profile picture). The picker's
+# system camera / photo picker via <input type="file" accept="image/*"> for
+# profile pictures. Meal and receipt capture are disabled for launch. The picker's
 # "Take Photo" option presents an IN-PROCESS UIImagePickerController(.camera), so
 # iOS TCC HARD-CRASHES the WKWebView host app (SIGABRT, drops to home screen, no
 # JS-catchable error) the moment it touches the camera device if the matching key
@@ -74,11 +74,11 @@ plist_set "NSHealthUpdateUsageDescription string" \
 # opens. THESE ONLY PROTECT THE DEVICE ONCE A BUILD CARRYING THEM SHIPS TO
 # TestFlight — TCC reads the plist baked into the installed .app, not the source.
 plist_set "NSCameraUsageDescription string" \
-  "Daybreak uses the camera to take photos of meals and grocery receipts so it can estimate calories and log items, and to set your profile photo."
+  "Daybreak uses the camera to take your profile photo."
 plist_set "NSMicrophoneUsageDescription string" \
-  "The in-app camera initializes the microphone when you take a photo of a meal or receipt. Daybreak does not record audio."
+  "The in-app camera may initialize the microphone when you take your profile photo. Daybreak does not record audio."
 plist_set "NSPhotoLibraryUsageDescription string" \
-  "Daybreak accesses your photos so you can upload a meal or receipt photo, or choose a profile picture."
+  "Daybreak accesses your photos so you can choose a profile picture."
 # WKAppBoundDomains (array) for limitsNavigationsToAppBoundDomains.
 /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" "$INFO_PLIST" 2>/dev/null || true
 /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" "$INFO_PLIST"

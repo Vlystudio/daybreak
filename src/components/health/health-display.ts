@@ -73,6 +73,9 @@ export const METRIC_DISPLAY: Partial<Record<HealthMetricName, MetricDisplay>> = 
   },
   sleep_efficiency: { label: "Sleep efficiency", color: "var(--sage)", unit: "%" },
   sleep_score: { label: "Sleep score", color: "var(--sky)" },
+  deep_sleep_min: { label: "Deep sleep", color: "var(--sky)", unit: "min" },
+  rem_sleep_min: { label: "REM sleep", color: "var(--sky)", unit: "min" },
+  light_sleep_min: { label: "Light sleep", color: "var(--sky)", unit: "min" },
   respiratory_rate: {
     label: "Respiratory rate",
     color: "var(--sage)",

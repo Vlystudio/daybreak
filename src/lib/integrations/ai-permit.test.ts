@@ -26,6 +26,14 @@ import {
 } from "@/lib/integrations/ai-permit";
 
 describe("durable AI permits", () => {
+  it.each(["workout_plan", "fitness_plan", "meal_plan", "food_image", "receipt_image"] as const)(
+    "never issues a permit for disabled %s, even with previous consent",
+    async (purpose) => {
+      expect(await getAiProcessingPermit("user-1", purpose)).toBeNull();
+      expect(maybeSingle).not.toHaveBeenCalled();
+      expect(rpc).not.toHaveBeenCalled();
+    }
+  );
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-28T12:00:00.000Z"));

@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.mjs"],
     // The validated env layer (@/env) parses these at import time, so any module
     // that pulls it in needs them present. Real secrets are never used in tests.
     env: {

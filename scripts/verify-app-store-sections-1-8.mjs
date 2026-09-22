@@ -230,9 +230,9 @@ const deletionChecks = [
   /provider grant revocation/.test(deletionCode),
   /authentication account and sessions/.test(deletionCode),
   /name:\s*"provider grant revocation"[\s\S]*\.\.\.buildAccountDeletionSteps/.test(deletionCode),
-  /oauth2\.googleapis\.com\/revoke/.test(tokenCode),
-  /api\.fitbit\.com\/oauth2\/revoke/.test(tokenCode),
-  /api\.ouraring\.com\/oauth\/revoke/.test(tokenCode),
+  tokenCode.includes('"https://oauth2.googleapis.com/revoke"'),
+  tokenCode.includes('"https://api.fitbit.com/oauth2/revoke"'),
+  tokenCode.includes("https://api.ouraring.com/oauth/revoke?"),
   /complete_account_deletion_job/.test(deletionCode),
   /complete_account_deletion_job/.test(deletionMigration),
   /drop constraint account_deletion_jobs_user_id_fkey/.test(deletionMigration),
@@ -318,13 +318,16 @@ const productionSurfaceChecks = [
   /NEST_ENABLED:\s*boolean\s*=\s*false/.test(featureSource),
   /SOCIAL_FEATURES_ENABLED:\s*boolean\s*=\s*false/.test(featureSource),
   /SUBSCRIPTIONS_ENABLED:\s*boolean\s*=\s*false/.test(featureSource),
+  /GROCERY_ENABLED:\s*boolean\s*=\s*false/.test(featureSource),
+  /COACH_ENABLED:\s*boolean\s*=\s*false/.test(featureSource),
+  /NUTRITION_ENABLED:\s*boolean\s*=\s*false/.test(featureSource),
   (gameActions.match(/if \(!NEST_ENABLED\) return/g) ?? []).length === 6,
 ];
 add(
   "PRODUCTION-SURFACE",
   productionSurfaceChecks.every(Boolean) ? "pass" : "fail",
   productionSurfaceChecks.every(Boolean)
-    ? "Nest, social/household, subscription UI, and disabled game mutations are source-locked off for V1."
+    ? "Grocery, Coach, Nutrition, Nest, social/household and subscriptions are source-locked off for V1; disabled game mutations are guarded."
     : "One or more non-V1 surfaces can be enabled or mutated in the release source.",
   ["src/lib/features.ts", "src/actions/game.ts", "docs/launch-readiness/product-surface-audit.md"]
 );
@@ -429,7 +432,7 @@ add(
   missingCodemagic.length ? "fail" : "pass",
   missingCodemagic.length
     ? `Codemagic release controls missing: ${missingCodemagic.join(", ")}`
-    : "Codemagic pins the toolchain, runs deterministic validation, fails closed on production approvals/configuration, signs, validates, retains artifacts/evidence, and uploads to TestFlight.",
+    : "The public-release workflow pins the toolchain, validates production approvals/configuration, signs and retains evidence. A separate manual internal-only TestFlight workflow supports pre-release device testing without asserting public approval.",
   ["codemagic.yaml", "scripts/verify-production-environment.mjs", "scripts/ios-release-validate.sh"]
 );
 

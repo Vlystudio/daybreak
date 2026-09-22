@@ -1,5 +1,7 @@
 "use server";
 
+import { NUTRITION_ENABLED, NUTRITION_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -39,6 +41,7 @@ async function localToday(userId: string): Promise<string> {
 export type AnalyzeResult = { ok: true; analysis: FoodAnalysis } | { ok: false; error: string };
 
 export async function analyzeFoodPhoto(input: { imageDataUrl: string }): Promise<AnalyzeResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
@@ -70,6 +73,7 @@ const foodSchema = z.object({
 });
 
 export async function logFood(input: z.input<typeof foodSchema>): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -93,6 +97,7 @@ export async function logFood(input: z.input<typeof foodSchema>): Promise<Action
 }
 
 export async function deleteFoodLog(id: string): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "Unknown entry" };
 
@@ -108,6 +113,7 @@ export async function deleteFoodLog(id: string): Promise<ActionResult> {
 // ── water ──────────────────────────────────────────────────────────────────
 
 export async function logWater(input: { amountMl: number }): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -136,6 +142,7 @@ const goalsSchema = z.object({
 });
 
 export async function setNutritionGoals(input: z.input<typeof goalsSchema>): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -164,6 +171,7 @@ const bodySchema = z.object({
 });
 
 export async function logBodyMeasurement(input: z.input<typeof bodySchema>): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);

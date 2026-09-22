@@ -1,3 +1,5 @@
+import { GROCERY_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Refrigerator, CalendarRange, ListChecks, Tag, ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -42,6 +44,7 @@ const SECTIONS = [
 export const metadata = { title: "Grocery" };
 
 export default async function GroceryPage() {
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

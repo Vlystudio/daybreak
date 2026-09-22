@@ -5,10 +5,12 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
-import { onboardingSchema, type OnboardingInput } from "@/lib/validation";
+import { onboardingSchema, planPreferencesSchema, type OnboardingInput } from "@/lib/validation";
+import { COACH_ENABLED, GROCERY_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
 import type { ActionResult } from "@/actions/schedule";
 
 export async function saveOnboarding(input: OnboardingInput): Promise<ActionResult> {
+  if (!COACH_ENABLED && !GROCERY_ENABLED && !NUTRITION_ENABLED) return savePlanPreferences(input);
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -55,5 +57,36 @@ export async function saveOnboarding(input: OnboardingInput): Promise<ActionResu
   await audit(user.id, "preferences.updated");
   revalidatePath("/dashboard");
   revalidatePath("/onboarding");
+  return { ok: true };
+}
+
+export async function savePlanPreferences(input: unknown): Promise<ActionResult> {
+  const user = await requireUser();
+  const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
+  if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
+  const parsed = planPreferencesSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Please check your answers." };
+  const d = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.from("user_preferences").upsert(
+    {
+      user_id: user.id,
+      work_days: d.workDays,
+      work_start_time: d.workDays.length ? d.workStartTime : null,
+      work_end_time: d.workDays.length ? d.workEndTime : null,
+      wake_time: d.wakeTime || null,
+      sleep_time: d.sleepTime || null,
+      planning_scope: d.planningScope,
+      auto_plan_cadence: d.autoPlanCadence ?? "off",
+      onboarding_completed: true,
+    },
+    { onConflict: "user_id" }
+  );
+  if (error) return { ok: false, error: "Couldn't save your preferences. Please try again." };
+  await audit(user.id, "preferences.updated");
+  revalidatePath("/onboarding");
+  revalidatePath("/schedule");
+  revalidatePath("/dashboard");
   return { ok: true };
 }

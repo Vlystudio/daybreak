@@ -1,5 +1,7 @@
 "use server";
 
+import { GROCERY_ENABLED, GROCERY_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -30,6 +32,7 @@ async function householdId(supabase: SupabaseClient, userId: string): Promise<st
 
 // ── Community price entry ────────────────────────────────────────────────────
 export async function addProductPrice(input: ProductPriceInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many entries — try again shortly." };
@@ -85,6 +88,7 @@ export async function addProductPrice(input: ProductPriceInput): Promise<ActionR
 export async function createShoppingList(
   title?: string
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
@@ -106,6 +110,7 @@ export async function createShoppingList(
 }
 
 export async function deleteShoppingList(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid list" };
 
@@ -122,6 +127,7 @@ export async function deleteShoppingList(id: string): Promise<ActionResult> {
 }
 
 export async function addShoppingListItem(input: ShoppingListItemInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   await requireUser();
   const parsed = shoppingListItemSchema.safeParse(input);
   if (!parsed.success)
@@ -146,6 +152,7 @@ export async function setShoppingItemStatus(
   id: string,
   status: ShoppingItemStatus
 ): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid item" };
   if (!SHOPPING_ITEM_STATUSES.includes(status)) return { ok: false, error: "Invalid status" };
@@ -164,6 +171,7 @@ export async function setShoppingItemStatus(
 }
 
 export async function removeShoppingListItem(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid item" };
 

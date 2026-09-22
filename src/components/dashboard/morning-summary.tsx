@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import Link from "next/link";
 import { Sparkles, RefreshCw, Target, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,7 +10,17 @@ import { Badge } from "@/components/ui/badge";
 import { regenerateBriefing } from "@/actions/settings";
 import type { DailySummary } from "@/lib/types";
 
-export function MorningSummary({ summary }: { summary: DailySummary | null }) {
+export function MorningSummary({
+  summary,
+  eventCount = 0,
+  habitCount = 0,
+  canGenerate = false,
+}: {
+  summary: DailySummary | null;
+  eventCount?: number;
+  habitCount?: number;
+  canGenerate?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
 
   function regenerate() {
@@ -26,18 +37,20 @@ export function MorningSummary({ summary }: { summary: DailySummary | null }) {
         <div className="flex items-start justify-between gap-4">
           <Badge variant="honey" className="mb-3">
             <Sparkles className="h-3 w-3" aria-hidden />
-            Morning briefing
+            {summary ? "Morning briefing" : "Your morning"}
           </Badge>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={regenerate}
-            disabled={pending}
-            aria-label="Regenerate briefing"
-          >
-            <RefreshCw className={pending ? "animate-spin" : undefined} aria-hidden />
-            <span className="hidden sm:inline">{pending ? "Thinking…" : "Refresh"}</span>
-          </Button>
+          {canGenerate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={regenerate}
+              disabled={pending}
+              aria-label="Regenerate briefing"
+            >
+              <RefreshCw className={pending ? "animate-spin" : undefined} aria-hidden />
+              <span className="hidden sm:inline">{pending ? "Thinking…" : "Refresh"}</span>
+            </Button>
+          )}
         </div>
 
         {summary ? (
@@ -66,10 +79,35 @@ export function MorningSummary({ summary }: { summary: DailySummary | null }) {
             )}
           </>
         ) : (
-          <p className="text-muted-foreground">
-            Your personal morning briefing appears here. Add schedule or wellness context and set
-            your city, then tap Refresh.
-          </p>
+          <div className="space-y-3">
+            <p className="text-lg leading-relaxed">
+              {eventCount > 0
+                ? `You have ${eventCount} scheduled ${eventCount === 1 ? "block" : "blocks"} today. Start with a quick check-in, then make room for what matters.`
+                : "Start with how you feel. Add one thing you want to make time for today."}
+            </p>
+            {habitCount > 0 && (
+              <p className="text-muted-foreground text-sm">
+                Your {habitCount === 1 ? "habit is" : `${habitCount} habits are`} ready below. Small
+                steps count.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-4 text-sm">
+              <Link
+                href="/schedule"
+                className="text-primary font-medium underline underline-offset-4"
+              >
+                View your schedule
+              </Link>
+              {!canGenerate && (
+                <Link
+                  href="/settings#ai-data-use"
+                  className="text-muted-foreground underline underline-offset-4"
+                >
+                  Optional AI briefing settings
+                </Link>
+              )}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

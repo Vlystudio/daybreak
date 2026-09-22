@@ -1,3 +1,4 @@
+import { GROCERY_ENABLED } from "@/lib/features";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -40,6 +41,7 @@ export default async function ShoppingListPage({ params }: { params: Promise<{ i
   const { id } = await params;
   if (!uuidSchema.safeParse(id).success) notFound();
 
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 

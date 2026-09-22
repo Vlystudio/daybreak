@@ -1,9 +1,19 @@
 "use client";
 
+import { COACH_ENABLED } from "@/lib/features";
+
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { CalendarDays, Plus, MapPin, ArrowRight, Circle, CheckCircle2, Dumbbell } from "lucide-react";
+import {
+  CalendarDays,
+  Plus,
+  MapPin,
+  ArrowRight,
+  Circle,
+  CheckCircle2,
+  Dumbbell,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,8 +42,8 @@ export function ScheduleTimeline({
   const [editing, setEditing] = useState<ScheduleEvent | null>(null);
   const [, startTransition] = useTransition();
   const [burst, setBurst] = useState(0);
-  const [done, setDone] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(events.map((e) => [e.id, e.completed_at != null]))
+  const [done, setDone] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(events.map((e) => [e.id, e.completed_at != null]))
   );
   // Mount-time clock, refreshed each minute, so the "now" highlight stays pure.
   const [now, setNow] = useState(() => Date.now());
@@ -66,7 +76,8 @@ export function ScheduleTimeline({
 
   // Highlight the event happening now, or the next upcoming one if none is.
   const currentId = events.find(
-    (e) => !e.all_day && new Date(e.starts_at).getTime() <= now && new Date(e.ends_at).getTime() > now
+    (e) =>
+      !e.all_day && new Date(e.starts_at).getTime() <= now && new Date(e.ends_at).getTime() > now
   )?.id;
   const nextId = currentId
     ? undefined
@@ -77,7 +88,7 @@ export function ScheduleTimeline({
       {burst > 0 && <ConfettiBurst key={burst} />}
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-4 w-4 text-primary" aria-hidden />
+          <CalendarDays className="text-primary h-4 w-4" aria-hidden />
           Today&apos;s schedule
         </CardTitle>
         <div className="flex items-center gap-1.5">
@@ -113,22 +124,22 @@ export function ScheduleTimeline({
                   <div
                     className={cn(
                       "group flex items-start gap-2 rounded-xl p-2.5 transition-colors",
-                      isCurrent ? "bg-primary/10 ring-1 ring-primary/25" : "hover:bg-accent"
+                      isCurrent ? "bg-primary/10 ring-primary/25 ring-1" : "hover:bg-accent"
                     )}
                   >
                     <button
                       type="button"
                       onClick={() => toggle(event)}
                       aria-label={isDone ? "Mark not done" : "Mark done"}
-                      className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-primary"
+                      className="text-muted-foreground hover:text-primary mt-0.5 shrink-0 transition-colors"
                     >
                       {isDone ? (
-                        <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
+                        <CheckCircle2 className="text-primary h-5 w-5" aria-hidden />
                       ) : (
                         <Circle className="h-5 w-5" aria-hidden />
                       )}
                     </button>
-                    <div className="w-14 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">
+                    <div className="text-muted-foreground w-14 shrink-0 pt-0.5 text-sm tabular-nums">
                       {event.all_day ? "All day" : format(new Date(event.starts_at), "h:mm a")}
                     </div>
                     <div
@@ -143,10 +154,15 @@ export function ScheduleTimeline({
                       onClick={() => openEdit(event)}
                       className="min-w-0 flex-1 text-left focus-visible:outline-none"
                     >
-                      <p className={cn("truncate font-medium", isDone && "text-muted-foreground line-through")}>
+                      <p
+                        className={cn(
+                          "truncate font-medium",
+                          isDone && "text-muted-foreground line-through"
+                        )}
+                      >
                         {event.title}
                       </p>
-                      <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                      <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-sm">
                         {!event.all_day && (
                           <span>
                             {format(new Date(event.starts_at), "h:mm")}–
@@ -161,7 +177,7 @@ export function ScheduleTimeline({
                         )}
                       </p>
                       {event.description && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">
+                        <p className="text-muted-foreground/80 mt-0.5 line-clamp-2 text-xs">
                           {event.description}
                         </p>
                       )}
@@ -171,10 +187,10 @@ export function ScheduleTimeline({
                       {isNext && <Badge variant="outline">Next</Badge>}
                       {event.source === "google" && <Badge variant="sky">Google</Badge>}
                       {event.household_id && <Badge variant="sage">Shared</Badge>}
-                      {event.plan_type === "workout" && (
+                      {COACH_ENABLED && event.plan_type === "workout" && (
                         <Link
                           href="/coach"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          className="text-primary inline-flex items-center gap-1 text-xs font-medium hover:underline"
                         >
                           <Dumbbell className="h-3 w-3" aria-hidden /> Workout
                         </Link>

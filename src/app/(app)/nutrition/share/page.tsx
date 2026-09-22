@@ -1,9 +1,12 @@
+import { NUTRITION_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import { SharedFoodLogger } from "@/components/nutrition/shared-food-logger";
 
 export const metadata = { title: "Log shared photo" };
 export const dynamic = "force-dynamic";
 
 export default function ShareTargetPage() {
+  if (!NUTRITION_ENABLED) notFound();
   return (
     <div className="mx-auto w-full max-w-md space-y-4">
       <div>

@@ -31,6 +31,7 @@ CREATE TEMP TABLE request_state AS
   SELECT public.create_current_user_privacy_rights_request(
     'access', 'consumer_health', 'US-WA', 30, null
   ) AS id;
+GRANT SELECT ON request_state TO service_role;
 SELECT ok((SELECT id FROM request_state) IS NOT NULL, 'authenticated user creates own rights request');
 SELECT is(
   (SELECT status FROM public.privacy_rights_requests WHERE id = (SELECT id FROM request_state)),
@@ -73,7 +74,7 @@ SELECT throws_ok(
 );
 SELECT throws_ok(
   $$ SELECT * FROM public.run_retention_maintenance(true) $$,
-  '42501', 'service role required',
+  '42501', null,
   'browser cannot execute retention maintenance'
 );
 

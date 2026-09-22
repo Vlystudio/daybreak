@@ -24,4 +24,8 @@ npm run check:migrations
 npm run test:db
 ```
 
-The second command performs two disposable local resets and both pgTAP passes. It must never be pointed at a remote project. Production commands and expected evidence are in `docs/migration-reconciliation.md`.
+The second command defaults to two disposable local resets and both pgTAP
+passes. `--mode isolated-remote` is permitted only through the guarded,
+allowlisted disposable-project path in `docs/database-runtime-testing.md`.
+Production remains unconditionally denied. Production discovery commands and
+expected evidence are in `docs/migration-reconciliation.md`.

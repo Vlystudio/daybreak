@@ -13,6 +13,7 @@ import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { verifyCronAuth } from "@/lib/security/cron-auth";
 import { integrationsAvailable } from "@/env";
+import { GROCERY_ENABLED } from "@/lib/features";
 import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 export const maxDuration = 300;
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Refresh the shared grocery-deal catalog once for everyone (global, not per-user).
-  if (integrationsAvailable.groceryDeals()) {
+  if (GROCERY_ENABLED && integrationsAvailable.groceryDeals()) {
     try {
       await importGroceryDeals();
       await notifyFavoriteDeals();

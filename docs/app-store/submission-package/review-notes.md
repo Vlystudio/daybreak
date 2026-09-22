@@ -18,7 +18,7 @@ App Store Connect’s protected username/password fields:
 
 Do not commit credentials. The demo user must contain only synthetic data and
 must not bypass signup, adult/legal, consent, RLS, or deletion behavior. Seed a
-few schedule items, habits, a workout/meal plan, manual health/check-in values,
+few schedule items, habits, manual health/check-in values,
 and no real third-party OAuth grant. If HealthKit data cannot be pre-seeded,
 reviewers can test empty/denied states; attach an owner-approved demo video for a
 physical-device HealthKit example if requested.
@@ -30,7 +30,8 @@ physical-device HealthKit example if requested.
 2. Dashboard and Schedule show synthetic planning data. Settings contains
    profile, integrations, AI choices, privacy requests/export, MFA/global logout,
    and deletion.
-3. AI: Settings > AI processing choices. All categories default off for new
+3. Open Plan preferences to set daily rhythm and optional work hours; save to return to Schedule.
+   AI: Settings > AI data use. All categories default off for new
    users. Enable Basic only, save, and invoke a briefing/plan; health and calendar
    detail remain excluded. Enable those separately to test; revoke and verify the
    next request is blocked or minimized. Output is labeled as AI/general wellness.
@@ -49,6 +50,12 @@ Google Calendar, Oura, and Fitbit are post-login optional connectors, not accoun
 login methods. Sign in with Apple is therefore not applicable to this
 email/password-only release. If the reviewer needs a connector demonstration,
 provide a separate synthetic provider account and exact steps securely.
+
+## Deferred features
+
+Grocery, Coach and Nutrition are unavailable in V1, including direct routes,
+server actions and related AI processing. Today, Schedule and Health are the
+primary tabs. Do not seed or submit screenshots of deferred feature flows.
 
 ## Subscriptions
 

@@ -2,8 +2,9 @@ import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { resolveDatabaseTestOptions } from "./lib/db-test-safety.mjs";
+import { RemoteDatabaseTestHarness, SUPABASE_VERSION } from "./lib/remote-db-test-harness.mjs";
 
-const SUPABASE_VERSION = "2.108.0";
 const root = process.cwd();
 const container = "supabase_db_daybreak-local";
 const docker = process.platform === "win32" ? "docker.exe" : "docker";
@@ -12,35 +13,42 @@ const npxPrefix =
   process.platform === "win32"
     ? [path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js")]
     : [];
-const supabase = (...args) => [
-  ...npxPrefix,
-  "--yes",
-  `supabase@${SUPABASE_VERSION}`,
-  ...args,
-  "--workdir",
-  root,
-];
 
-function run(command, args, options = {}) {
+let options;
+try {
+  options = resolveDatabaseTestOptions(process.argv.slice(2));
+  if (options.preflightOnly)
+    throw new Error("--preflight-only is not valid for the upgrade matrix");
+} catch (error) {
+  console.error(`Database upgrade matrix failed: ${error.message}`);
+  process.exit(1);
+}
+const { mode } = options;
+
+function run(command, args, runOptions = {}) {
   const result = spawnSync(command, args, {
     cwd: root,
     encoding: "utf8",
     shell: false,
-    input: options.input,
-    stdio: options.input === undefined ? "inherit" : ["pipe", "inherit", "inherit"],
+    input: runOptions.input,
+    stdio: runOptions.input === undefined ? "inherit" : ["pipe", "inherit", "inherit"],
   });
   if (result.error || result.status !== 0) {
     throw new Error(
-      `${options.label ?? command} failed (${result.error?.message ?? result.status}).`
+      `${runOptions.label ?? command} failed (${result.error?.message ?? result.status}).`
     );
   }
 }
 
-function cli(...args) {
-  run(npxCommand, supabase(...args), { label: `supabase ${args.join(" ")}` });
+function localCli(...args) {
+  run(
+    npxCommand,
+    [...npxPrefix, "--yes", `supabase@${SUPABASE_VERSION}`, ...args, "--workdir", root],
+    { label: `supabase ${args.join(" ")}` }
+  );
 }
 
-function sql(source, label) {
+function localSql(source, label) {
   run(
     docker,
     [
@@ -57,10 +65,7 @@ function sql(source, label) {
       "-d",
       "postgres",
     ],
-    {
-      input: source,
-      label,
-    }
+    { input: source, label }
   );
 }
 
@@ -166,25 +171,55 @@ const scenarios = [
   },
 ];
 
+let remote = null;
 const results = [];
-for (const scenario of scenarios) {
-  process.stdout.write(`\n=== duplicate-0021 scenario: ${scenario.id} ===\n`);
-  cli("db", "reset", "--local", "--no-seed", "--version", "0020");
-  sql(`${insertLegacyUser}\n${scenario.sql}`, `seed ${scenario.id}`);
-  cli("migration", "repair", "--local", "--status", "applied", "0021");
-  cli("migration", "up", "--local", "--include-all");
-  sql(matrixAssertions(scenario.row), `assert ${scenario.id}`);
-  if (scenario.repeatForward) {
-    sql(forward, "repeat forward reconciliation");
-    sql(matrixAssertions(true), "assert repeated reconciliation");
-  }
-  results.push({ scenario: scenario.id, status: "pass" });
+
+async function reset(version = null) {
+  if (remote) return remote.reset(version);
+  const args = ["db", "reset", "--local", "--no-seed"];
+  if (version) args.push("--version", version);
+  localCli(...args);
 }
 
-process.stdout.write("\n=== representative pre-eligibility/privacy/AI upgrade ===\n");
-cli("db", "reset", "--local", "--no-seed", "--version", "0048");
-sql(
-  `${insertLegacyUser}
+async function sql(source, label) {
+  if (remote) return remote.executeSql(source, label);
+  localSql(source, label);
+}
+
+async function repair(version) {
+  if (remote) return remote.repairMigration(version);
+  localCli("migration", "repair", "--local", "--status", "applied", version);
+}
+
+async function migrateUp() {
+  if (remote) return remote.migrateUp();
+  localCli("migration", "up", "--local", "--include-all");
+}
+
+try {
+  if (mode === "isolated-remote") {
+    remote = new RemoteDatabaseTestHarness(root);
+    await remote.initialize();
+  }
+
+  for (const scenario of scenarios) {
+    process.stdout.write(`\n=== duplicate-0021 scenario: ${scenario.id} ===\n`);
+    await reset("0020");
+    await sql(`${insertLegacyUser}\n${scenario.sql}`, `seed ${scenario.id}`);
+    await repair("0021");
+    await migrateUp();
+    await sql(matrixAssertions(scenario.row), `assert ${scenario.id}`);
+    if (scenario.repeatForward) {
+      await sql(forward, "repeat forward reconciliation");
+      await sql(matrixAssertions(true), "assert repeated reconciliation");
+    }
+    results.push({ scenario: scenario.id, status: "pass" });
+  }
+
+  process.stdout.write("\n=== representative pre-eligibility/privacy/AI upgrade ===\n");
+  await reset("0048");
+  await sql(
+    `${insertLegacyUser}
 update public.user_preferences set
   allow_ai_health_context=true,
   allow_ai_calendar_context=true,
@@ -206,11 +241,11 @@ begin
     insert into storage.objects (bucket_id,name,owner_id) values ('launch-upgrade-fixture','${userId}/fixture.txt','${userId}') on conflict do nothing;
   end if;
 end $$;`,
-  "seed representative upgrade"
-);
-cli("migration", "up", "--local", "--include-all");
-sql(
-  `do $$
+    "seed representative upgrade"
+  );
+  await migrateUp();
+  await sql(
+    `do $$
 begin
   if (select status from public.account_eligibility where user_id='${userId}') <> 'pending_adult_attestation' then raise exception 'legacy user eligibility was elevated'; end if;
   if exists (select 1 from public.user_legal_acceptances where user_id='${userId}') then raise exception 'legacy legal acceptance was invented'; end if;
@@ -226,53 +261,69 @@ begin
   end if;
   if to_regclass('storage.objects') is not null and not exists (select 1 from storage.objects where bucket_id='launch-upgrade-fixture' and name='${userId}/fixture.txt') then raise exception 'existing storage object was lost'; end if;
 end $$;`,
-  "assert representative upgrade"
-);
-results.push({ scenario: "representative-pre-eligibility", status: "pass" });
+    "assert representative upgrade"
+  );
+  results.push({ scenario: "representative-pre-eligibility", status: "pass" });
 
-process.stdout.write("\n=== pre-durable-deletion job upgrade ===\n");
-cli("db", "reset", "--local", "--no-seed", "--version", "0049");
-const deletionUser = "92000000-0000-0000-0000-000000000050";
-sql(
-  `insert into auth.users (id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+  process.stdout.write("\n=== pre-durable-deletion job upgrade ===\n");
+  await reset("0049");
+  const deletionUser = "92000000-0000-0000-0000-000000000050";
+  await sql(
+    `insert into auth.users (id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
    values ('${deletionUser}','authenticated','authenticated','upgrade-deletion@example.invalid','',
    '{"provider":"email","providers":["email"]}'::jsonb,
    '{"adult_attested":true,"adult_attestation_version":"2026-07-28","accepted_terms_version":"2026-07-28","acknowledged_privacy_version":"2026-07-28"}'::jsonb,now(),now());
    insert into public.account_deletion_jobs (id,user_id,reason,status,current_step,attempts,next_attempt_at)
    values ('92500000-0000-0000-0000-000000000050','${deletionUser}','user_request','pending','queued',0,now());`,
-  "seed pre-0050 deletion job"
-);
-cli("migration", "up", "--local", "--include-all");
-sql(
-  `do $$ begin
+    "seed pre-0050 deletion job"
+  );
+  await migrateUp();
+  await sql(
+    `do $$ begin
     if not exists (select 1 from public.account_deletion_jobs where id='92500000-0000-0000-0000-000000000050' and user_id='${deletionUser}' and status='pending' and step_state='{}'::jsonb and provider_revocation='{}'::jsonb) then
       raise exception 'existing deletion job was corrupted';
     end if;
   end $$;`,
-  "assert deletion job upgrade"
-);
-results.push({ scenario: "pre-durable-deletion-job", status: "pass" });
+    "assert deletion job upgrade"
+  );
+  results.push({ scenario: "pre-durable-deletion-job", status: "pass" });
 
-// Restore a clean head database for the pgTAP suite that follows this script.
-cli("db", "reset", "--local", "--no-seed");
+  await reset();
 
-const evidence = {
-  schemaVersion: 1,
-  generatedAt: new Date().toISOString(),
-  commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
-  database: "disposable local Supabase only",
-  supabaseCli: SUPABASE_VERSION,
-  migrationRange: "0001-0053",
-  historicalHashes: {
-    "0021_ai_cache.sql": createHash("sha256").update(legacyAi).digest("hex"),
-    "0021_subjective_checkins.sql": createHash("sha256").update(legacySubjective).digest("hex"),
-  },
-  results,
-  sensitiveData: false,
-};
-const evidencePath = path.join(root, "build", "release-evidence", "database-upgrade-matrix.json");
-mkdirSync(path.dirname(evidencePath), { recursive: true });
-writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
-console.log(
-  `Database upgrade matrix passed; intermediate result written to ${path.relative(root, evidencePath)}.`
-);
+  const evidence = {
+    schemaVersion: 2,
+    generatedAt: new Date().toISOString(),
+    commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+    mode,
+    databaseIdentity: remote?.sanitizedIdentity() ?? {
+      kind: "disposable local Supabase",
+      projectRefFingerprint: null,
+      databaseName: "postgres",
+      applicationOrigin: "local",
+      credentialSource: "local Supabase defaults",
+    },
+    supabaseCli: SUPABASE_VERSION,
+    migrationRange: "0001-0054",
+    historicalHashes: {
+      "0021_ai_cache.sql": createHash("sha256").update(legacyAi).digest("hex"),
+      "0021_subjective_checkins.sql": createHash("sha256").update(legacySubjective).digest("hex"),
+    },
+    results,
+    sensitiveData: false,
+  };
+  const evidencePath = path.join(root, "build", "release-evidence", "database-upgrade-matrix.json");
+  mkdirSync(path.dirname(evidencePath), { recursive: true });
+  writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, "utf8");
+  console.log(
+    `Database upgrade matrix passed in ${mode} mode; intermediate result written to ${path.relative(
+      root,
+      evidencePath
+    )}.`
+  );
+} catch (error) {
+  const message = remote ? remote.diagnostic(error.message) : error.message;
+  console.error(`Database upgrade matrix failed: ${message}`);
+  process.exitCode = 1;
+} finally {
+  if (remote) await remote.close();
+}

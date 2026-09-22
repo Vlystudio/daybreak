@@ -1,4 +1,5 @@
 import "server-only";
+import { COACH_ENABLED, GROCERY_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { generateWeeklyPlan, type PlanBlockType } from "@/lib/integrations/ai";
 import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
@@ -276,13 +277,19 @@ async function planDays(
           work_type: prefs.work_type,
           work_title: prefs.work_title,
           work_schedule: prefs.work_schedule,
-          fitness_goal: prefs.fitness_goal,
-          activity_level: prefs.activity_level,
-          exercise_frequency: prefs.exercise_frequency,
+          ...(COACH_ENABLED
+            ? {
+                fitness_goal: prefs.fitness_goal,
+                activity_level: prefs.activity_level,
+                exercise_frequency: prefs.exercise_frequency,
+              }
+            : {}),
           hobbies: prefs.hobbies,
           social_tendency: prefs.social_tendency,
           chores: prefs.chores,
-          dietary_restrictions: prefs.dietary_restrictions,
+          ...(GROCERY_ENABLED || NUTRITION_ENABLED
+            ? { dietary_restrictions: prefs.dietary_restrictions }
+            : {}),
           planning_scope: prefs.planning_scope,
         }
       : {};
@@ -414,7 +421,7 @@ async function planDays(
   });
 
   // Wire today's workout block to a real structured session (one per day).
-  if (todayWorkoutAccepted) {
+  if (COACH_ENABLED && todayWorkoutAccepted) {
     try {
       const ds = zonedToUtc(todayStr, "00:00", tz);
       const de = new Date(ds.getTime() + 86_400_000);

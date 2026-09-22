@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { createReminder, toggleReminder, deleteReminder } from "@/actions/reminders";
 import type { Reminder, ReminderKind } from "@/lib/types";
+import { NUTRITION_ENABLED } from "@/lib/features";
 
 const KINDS: { value: ReminderKind; label: string }[] = [
   { value: "hydration", label: "Hydration" },
@@ -26,7 +27,14 @@ function hourLabel(h: number): string {
   return `${hr}:00 ${ampm}`;
 }
 
-export function RemindersCard({ reminders, pushAvailable }: { reminders: Reminder[]; pushAvailable: boolean }) {
+export function RemindersCard({
+  reminders,
+  pushAvailable,
+}: {
+  reminders: Reminder[];
+  pushAvailable: boolean;
+}) {
+  const visibleReminders = reminders.filter((r) => NUTRITION_ENABLED || r.kind !== "log_food");
   const [adding, setAdding] = useState(false);
   const [kind, setKind] = useState<ReminderKind>("hydration");
   const [time, setTime] = useState("14:00");
@@ -67,33 +75,40 @@ export function RemindersCard({ reminders, pushAvailable }: { reminders: Reminde
       <CardHeader className="flex-row items-start justify-between space-y-0">
         <div>
           <CardTitle className="flex items-center gap-2 text-base">
-            <BellRing className="h-4 w-4 text-honey" aria-hidden />
+            <BellRing className="text-honey h-4 w-4" aria-hidden />
             Reminders
           </CardTitle>
           <CardDescription>Gentle push nudges at the times you choose</CardDescription>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setAdding((a) => !a)} aria-label="Add reminder">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setAdding((a) => !a)}
+          aria-label="Add reminder"
+        >
           <Plus aria-hidden />
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
         {!pushAvailable && (
-          <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          <p className="bg-muted/50 text-muted-foreground rounded-lg px-3 py-2 text-xs">
             Turn on push notifications above to receive reminders.
           </p>
         )}
 
         {adding && (
-          <div className="space-y-2 rounded-xl border bg-muted/30 p-3">
+          <div className="bg-muted/30 space-y-2 rounded-xl border p-3">
             <div className="flex flex-wrap gap-1.5">
-              {KINDS.map((k) => (
+              {KINDS.filter((k) => NUTRITION_ENABLED || k.value !== "log_food").map((k) => (
                 <button
                   key={k.value}
                   type="button"
                   onClick={() => setKind(k.value)}
                   className={
                     "rounded-full border px-3 py-1 text-xs font-medium transition-colors " +
-                    (kind === k.value ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground")
+                    (kind === k.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground")
                   }
                 >
                   {k.label}
@@ -101,7 +116,12 @@ export function RemindersCard({ reminders, pushAvailable }: { reminders: Reminde
               ))}
             </div>
             <div className="flex items-center gap-2">
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-32" />
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                className="w-32"
+              />
               {kind === "custom" && (
                 <Input
                   placeholder="Reminder text"
@@ -117,16 +137,18 @@ export function RemindersCard({ reminders, pushAvailable }: { reminders: Reminde
           </div>
         )}
 
-        {reminders.length === 0 && !adding ? (
-          <p className="text-sm text-muted-foreground">
+        {visibleReminders.length === 0 && !adding ? (
+          <p className="text-muted-foreground text-sm">
             No reminders yet. Add a hydration nudge, a wind-down cue, or a daily check-in.
           </p>
         ) : (
-          reminders.map((r) => (
+          visibleReminders.map((r) => (
             <div key={r.id} className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">{r.kind === "custom" && r.message ? r.message : labelFor(r.kind)}</p>
-                <p className="text-xs text-muted-foreground">{hourLabel(r.hour)}</p>
+                <p className="text-sm font-medium">
+                  {r.kind === "custom" && r.message ? r.message : labelFor(r.kind)}
+                </p>
+                <p className="text-muted-foreground text-xs">{hourLabel(r.hour)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
@@ -135,7 +157,13 @@ export function RemindersCard({ reminders, pushAvailable }: { reminders: Reminde
                   aria-label={`${labelFor(r.kind)} reminder`}
                   onCheckedChange={(v) => toggle(r.id, v)}
                 />
-                <button type="button" onClick={() => remove(r.id)} disabled={pending} aria-label="Remove reminder" className="text-muted-foreground hover:text-destructive">
+                <button
+                  type="button"
+                  onClick={() => remove(r.id)}
+                  disabled={pending}
+                  aria-label="Remove reminder"
+                  className="text-muted-foreground hover:text-destructive"
+                >
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               </div>

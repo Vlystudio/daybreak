@@ -38,6 +38,7 @@ yarn-error.log*
 
 # provider tokens (management/API) — never commit
 .supabase-token
+.supabase/.temp/
 .resend-token
 .secrets/
 
