@@ -1,26 +1,35 @@
-# App Store Connect owner checklist
+# App Store Connect submission checklist
 
-- [ ] App name/trademark, SKU, Bundle ID `app.daybreak.mobile`, primary language,
-      categories, copyright, content rights, EULA choice, and availability approved.
-- [ ] Adult-only Terms support an 18+ higher age-rating override; current
-      questionnaire, regional results, and age-suitability URL are archived.
-- [ ] Health & Fitness category regulated-medical-device declaration answered
-      accurately as not a regulated medical device, with counsel/owner evidence.
-- [ ] Description, promotion, keywords, support/marketing/privacy/choices URLs,
-      screenshots, and first-version What’s New handling match the candidate.
-- [ ] App Privacy answers include the app and integrated third parties and match
-      the Xcode aggregate privacy report/manifest; no tracking is actually configured.
-- [ ] Export-compliance determination and `ITSAppUsesNonExemptEncryption` match
-      the signed archive and approved distribution regions.
-- [ ] Owner contact name/email/phone and protected non-expiring synthetic demo
-      credentials are entered; review notes exercise AI, HealthKit, and deletion.
-- [ ] Agreements, tax/banking, DSA trader status, regional permits/availability,
-      content rights, privacy/legal/vendor/IP/insurance decisions are complete.
-- [ ] Exact archive/IPA/dSYMs, version/build, signing identity/profile,
-      entitlements, SDK signatures/manifests, and sanitized evidence are retained.
-- [ ] TestFlight, native automation, physical-device matrix, accessibility,
-      performance, account deletion, provider revocation, production configuration,
-      and GitHub/Codemagic checks pass on the submitted commit.
-- [ ] No debug/demo/admin/test control, localhost endpoint, placeholder, disabled
-      feature, private user data, real credential, or stale screenshot ships.
-- [ ] Account Holder explicitly authorizes submission. Codex does not submit.
+Current candidate: Daybreak Companion **1.0.0 (30)**. The owner explicitly
+authorized submission and publication after approval. That instruction supersedes
+the previous blanket prohibition on agent submission. Binding declarations still
+require the applicable confirmation; the App Privacy confirmation is recorded.
+
+- [x] App record, bundle `app.daybreak.mobile`, subtitle, category, copyright,
+      content-rights answer and existing standard Apple EULA are saved.
+- [x] Adult-only 18+ override and non-medical-device declaration are saved.
+- [x] Accurate description, promotion, keywords and support/privacy URLs are saved.
+- [x] Thirteen App Privacy categories are published with owner confirmation;
+      native manifest and UserDefaults reason match the inspected archive inventory.
+- [x] Build 30 passed archive/export-compliance checks and Apple processing, and
+      is selected in the App Store version.
+- [x] Private review contact and dedicated synthetic credentials are saved.
+      Review notes describe core screens, optional HealthKit and account controls;
+      cloud AI and new external connections remain paused.
+- [x] Free price, United States-only distribution and automatic release are saved.
+      Free Apps Agreement is Active. DSA's not-distributing-in-EU option is Active.
+      Mac and Vision Pro distribution are disabled.
+- [x] Owner's broader build-29 test and final build-30 installation check are
+      recorded, with the exact reported device/OS and coverage limits.
+- [x] CI, CodeQL and Security passed for the runtime follow-up `7c8c958`;
+      361 unit tests, isolated deletion/Auth tests and database rehearsal are recorded.
+- [ ] Actual iPhone/iPad screenshots captured, visually inspected and uploaded.
+- [ ] Apple's Add for Review validator passes and final submission is confirmed.
+- [ ] Apple approves the version and public U.S. availability is verified.
+
+The remaining broad evidence backlog is explicit in the
+[launch dashboard](../../launch-readiness/launch-dashboard.md): no full physical
+matrix, stable-iOS test, Xcode Organizer export or attorney/private-contract signoff
+is represented as completed. Ordinary review credentials are protected fields,
+not a hardcoded production bypass. Capture-only targets are excluded from the
+shipping archive, and no personal health account is used for store images.

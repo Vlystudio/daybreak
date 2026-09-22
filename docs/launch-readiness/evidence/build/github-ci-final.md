@@ -1,5 +1,25 @@
 # GitHub CI evidence
 
+## Current runtime — September 22, 2026
+
+Source `7c8c958` passed all required checks after the OAuth state-check follow-up:
+
+| Workflow/job                 | Run / job                      | Result                                                                         |
+| ---------------------------- | ------------------------------ | ------------------------------------------------------------------------------ |
+| CI / verify                  | `35779263528` / `106920239633` | PASS: 361 tests in 52 files, TypeScript, lint, compliance and production build |
+| CodeQL analysis              | `35779263506` / `106920240730` | PASS                                                                           |
+| CodeQL PR assessment         | `106920839368`                 | PASS; prior conditional state-verification finding resolved                    |
+| Security / audit             | `35779263652` / `106920240308` | PASS                                                                           |
+| Security / dependency-review | `35779263652` / `106920240310` | PASS                                                                           |
+| Security / gitleaks          | `35779263652` / `106920239873` | PASS                                                                           |
+
+The repository dependency graph is now enabled. No check was disabled or bypassed.
+The broad compliance inventory reports 26 passes, zero failures, nine external
+evidence gaps and one not applicable; green CI does not mean those gaps are passes.
+Subsequent simulator-capture-only and evidence commits have their own check runs.
+
+## Historical snapshot — July 28, 2026
+
 Observed: 2026-07-28 (America/New_York)
 
 Branch: `codex/app-store-launch-readiness`

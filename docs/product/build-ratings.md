@@ -141,3 +141,9 @@ Google Calendar/weather from the public welcome page. Core screens and native
 build 30 are unchanged. Targeted lint/format checks, the production build with
 TypeScript, and the deployed page-content check passed. This improves expectation
 setting; it does not add evidence of higher market competitiveness.
+
+The subsequent hosted callback hardening (`7c8c958`, deployment
+`dpl_3gA5x2jajmKefsJXZ1oRQC45XbMm`) also stays **7.2/10**. It adds nine meaningful
+OAuth boundary tests and resolves the security scanner's conditional state-check
+finding; 361 tests, CI, CodeQL and Security pass. This changes a paused integration
+callback, not the core UI or the signed build-30 package.

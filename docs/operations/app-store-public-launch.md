@@ -117,3 +117,9 @@ archive manifest inventory and published disclosures were reconciled separately.
   welcome page now accurately describes the launch. Product rating stays 7.2/10.
 - The disposable local Next.js port 3002 and `daybreak-local` Docker services were
   stopped after successful tests; Docker retained its normal local backup.
+- Follow-up source `7c8c958` makes OAuth callbacks reject missing inputs before
+  unconditional HMAC verification and independently reject paused providers.
+  Nine callback boundary tests pass, including valid/forged/mismatched state and
+  disabled providers. CI reports 361 tests in 52 files; CodeQL/Security/CI passed.
+  Deployment `dpl_3gA5x2jajmKefsJXZ1oRQC45XbMm` passed its production build and
+  unauthenticated callback redirect check and was promoted. Native build remains 30.
