@@ -216,3 +216,37 @@ workflows:
         auth: integration
         submit_to_testflight: false
         submit_to_app_store: false
+
+  # Build an App Store-eligible candidate for device QA before submission.
+  # Uploading does not submit to App Review or release the app. Outstanding
+  # public-launch evidence is retained and must be resolved before submission.
+  ios-app-store-candidate:
+    <<: *ios_release
+    name: Daybreak iOS — App Store release candidate
+    triggering:
+      events: []
+    scripts:
+      - *install_dependencies
+      - *verify_repository
+      - name: Verify live runtime and record pending release evidence
+        script: node scripts/verify-testflight-runtime.mjs
+      - *generate_assets
+      - *generate_platform
+      - *prepare_native
+      - *sync_capacitor
+      - *install_pods
+      - *validate_project
+      - *setup_signing
+      - name: Export an App Store-eligible candidate
+        script: |
+          set -euo pipefail
+          xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": false}'
+          [ "$(/usr/libexec/PlistBuddy -c 'Print :testFlightInternalTestingOnly' "$HOME/export_options.plist")" = "false" ]
+      - *bump_build_number
+      - *build_ipa
+      - *validate_archive
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
