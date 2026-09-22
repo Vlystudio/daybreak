@@ -25,8 +25,10 @@ if device["state"] != "Booted":
 run("xcrun", "simctl", "bootstatus", udid, "-b")
 run("xcrun", "simctl", "ui", udid, "appearance", "light")
 run("xcrun", "simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100")
-destination = "platform=iOS Simulator,id=" + udid
-run("xcodebuild", "build-for-testing", "-workspace", "ios/App/App.xcworkspace", "-scheme", "StoreScreenshots", "-configuration", "Debug", "-destination", destination, "-derivedDataPath", "build/store-derived", "CODE_SIGNING_ALLOWED=NO", "-quiet")
+destination = "platform=iOS Simulator,arch=arm64,id=" + udid
+# Apple Silicon simulator test runners need a valid local code signature. Ad-hoc
+# signing uses no Apple account, certificate or provisioning profile.
+run("xcodebuild", "build-for-testing", "-workspace", "ios/App/App.xcworkspace", "-scheme", "StoreScreenshots", "-configuration", "Debug", "-destination", destination, "-derivedDataPath", "build/store-derived", "CODE_SIGN_IDENTITY=-", "CODE_SIGNING_ALLOWED=YES", "-quiet")
 test_file = glob.glob("build/store-derived/Build/Products/*.xctestrun")
 if len(test_file) != 1:
     raise RuntimeError("Expected one generated xctestrun")
@@ -46,6 +48,14 @@ with open(test_file[0], "wb") as handle:
     plistlib.dump(plan, handle)
 try:
     run("xcodebuild", "test-without-building", "-xctestrun", test_file[0], "-destination", destination, "-resultBundlePath", "build/store-result.xcresult", "-parallel-testing-enabled", "NO", "-quiet")
+except subprocess.CalledProcessError:
+    # Only emit the summary, never the raw result bundle or test environment.
+    diagnostic = subprocess.run(("xcrun", "xcresulttool", "get", "test-results", "summary", "--path", "build/store-result.xcresult"), text=True, capture_output=True)
+    safe_summary = diagnostic.stdout
+    for key in ("DAYBREAK_REVIEW_EMAIL", "DAYBREAK_REVIEW_PASSWORD"):
+        safe_summary = safe_summary.replace(os.environ[key], "[REDACTED]")
+    print(safe_summary or "No test-result summary was available", flush=True)
+    raise
 finally:
     # Never publish the xctestrun or result bundle: either may retain credentials.
     for target in targets:
