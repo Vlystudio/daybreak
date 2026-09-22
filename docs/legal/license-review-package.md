@@ -4,7 +4,7 @@ This automated inventory identifies review candidates; it does not decide legal 
 
 ## Results
 
-- 900 unique package versions
+- 902 unique package versions
 - 50 package versions require manual review
 - 6 compound expressions
 - 0 unknown, 0 unclassified/custom, 0 prohibited-pattern findings
