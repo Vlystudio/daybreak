@@ -21,11 +21,27 @@ final class DaybreakStoreScreenshots: XCTestCase {
         XCTAssertTrue(emailField.waitForExistence(timeout: 45), "Login email field did not appear")
         emailField.tap()
         emailField.typeText(email)
+        // Assert only a boolean: assertion output must never include credentials.
+        XCTAssertTrue((emailField.value as? String) == email, "Email entry did not match the configured review account")
         let passwordField = app.webViews.secureTextFields["Account password"]
+        XCTAssertTrue(passwordField.waitForExistence(timeout: 15), "Login password field did not appear")
         passwordField.tap()
         passwordField.typeText(password)
         app.webViews.buttons["Sign in"].tap()
-        XCTAssertTrue(app.webViews.links["Schedule"].firstMatch.waitForExistence(timeout: 45), "Sign-in did not reach the app navigation")
+        // Cold cloud simulators can be slow. Keep a real navigation assertion,
+        // and report only known public UI states if it fails (no field values).
+        let reachedNavigation = app.webViews.links["Schedule"].firstMatch.waitForExistence(timeout: 90)
+        if !reachedNavigation {
+            let knownMessages = [
+                "Invalid email or password.",
+                "Too many attempts. Please try again later.",
+                "Something went wrong. Please try again.",
+                "We couldn’t load this page",
+            ]
+            let visibleMessages = knownMessages.filter { app.webViews.staticTexts[$0].exists }
+            let stillPending = app.webViews.buttons["One moment…"].exists
+            XCTFail("Sign-in did not reach the app navigation; pending=\(stillPending); known messages=\(visibleMessages.joined(separator: "; "))")
+        }
         capture(app, "01-today")
 
         app.webViews.links["Schedule"].firstMatch.tap()
