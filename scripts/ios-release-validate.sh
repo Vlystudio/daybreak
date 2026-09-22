@@ -89,7 +89,28 @@ if [ -n "${IPA_PATH:-}" ]; then
   [ "$entitlement_app_id" = "$EXPECTED_TEAM_ID.$EXPECTED_BUNDLE" ] || fail "signed application identifier mismatch"
 
   security cms -D -i "$app/embedded.mobileprovision" >"$tmp/embedded-profile.plist"
-  plutil -convert json -o "$tmp/embedded-profile.json" "$tmp/embedded-profile.plist"
+  # Provisioning profiles contain plist dates and certificate data, which
+  # plutil cannot represent as JSON. Export only the verifier's required fields.
+  python3 - "$tmp/embedded-profile.plist" "$tmp/embedded-profile.json" <<'PYTHON'
+import datetime
+import json
+import plistlib
+import sys
+
+with open(sys.argv[1], 'rb') as source:
+    profile = plistlib.load(source)
+expiration = profile.get('ExpirationDate')
+if not isinstance(expiration, datetime.datetime):
+    raise ValueError('Provisioning profile has no valid expiration date')
+safe_profile = {
+    'Name': profile.get('Name'),
+    'TeamIdentifier': profile.get('TeamIdentifier'),
+    'Entitlements': profile.get('Entitlements'),
+    'ExpirationDate': expiration.replace(tzinfo=datetime.timezone.utc).isoformat(),
+}
+with open(sys.argv[2], 'w') as output:
+    json.dump(safe_profile, output)
+PYTHON
   profile_team=$(plist_value "$tmp/embedded-profile.plist" TeamIdentifier:0)
   profile_app_id=$(plist_value "$tmp/embedded-profile.plist" Entitlements:application-identifier)
   profile_name=$(plist_value "$tmp/embedded-profile.plist" Name)
