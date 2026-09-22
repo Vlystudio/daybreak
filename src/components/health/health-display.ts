@@ -128,5 +128,10 @@ export function metricSeries(signals: DailyHealthSignal[], metric: HealthMetricN
   const tf = METRIC_DISPLAY[metric]?.transform ?? ((n: number) => n);
   return signals
     .filter((s) => s.metric === metric && typeof s.value === "number" && Number.isFinite(s.value))
-    .map((s) => ({ day: format(parseISO(s.date), "MMM d"), value: tf(s.value as number) }));
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((s) => ({
+      day: format(parseISO(s.date), "MMM d"),
+      date: s.date,
+      value: tf(s.value as number),
+    }));
 }

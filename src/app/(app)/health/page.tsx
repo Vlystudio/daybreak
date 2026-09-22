@@ -113,8 +113,7 @@ export default async function HealthPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Health</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          A source-aware read of your body — what each tracker is best at, and how confident
-          Daybreak is.
+          Understand your recovery, spot patterns, and see where your readings come from.
         </p>
       </div>
       <HealthCommandCenter

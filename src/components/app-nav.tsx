@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, type MouseEvent } from "react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import {
   Sunrise,
@@ -31,6 +32,17 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { rememberPageScroll } from "@/components/app-experience";
+import { feedback } from "@/lib/ui/haptics";
+
+function PendingNavigation() {
+  const { pending } = useLinkStatus();
+  return pending ? (
+    <span className="nav-pending" role="status">
+      <span className="sr-only">Opening page</span>
+    </span>
+  ) : null;
+}
 
 type Item = { href: string; label: string; icon: typeof Sun };
 
@@ -89,6 +101,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
 
 export function AppNav() {
   const pathname = usePathname();
+  const reduce = useReducedMotion();
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement | null>(null);
   const firstMenuLink = useRef<HTMLAnchorElement | null>(null);
@@ -118,8 +131,14 @@ export function AppNav() {
               <Link
                 key={link.href}
                 href={link.href}
+                onClick={() => {
+                  rememberPageScroll(pathname);
+                  void feedback();
+                }}
+                scroll={false}
+                aria-current={isActive(link.href) ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-colors",
+                  "relative flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                   isActive(link.href)
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -127,6 +146,7 @@ export function AppNav() {
               >
                 <link.icon className="h-4 w-4" aria-hidden />
                 {link.label}
+                <PendingNavigation />
               </Link>
             ))}
           </nav>
@@ -172,9 +192,14 @@ export function AppNav() {
                       key={link.href}
                       ref={link.href === "/dashboard" ? firstMenuLink : undefined}
                       href={link.href}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        rememberPageScroll(pathname);
+                        feedback();
+                        setOpen(false);
+                      }}
+                      scroll={false}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                        "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                         active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
                       )}
                       aria-current={active ? "page" : undefined}
@@ -208,31 +233,47 @@ export function AppNav() {
 
       {/* Mobile bottom bar */}
       <nav
-        className="glass border-border/60 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="nav-surface border-border/70 fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Primary"
       >
-        <div className="mx-auto flex max-w-md items-stretch justify-around py-2">
+        <div className="mx-auto flex max-w-md items-stretch gap-1 px-3 py-2">
           {PRIMARY.map((link) => {
             const active = isActive(link.href);
             return (
               <Link
                 key={link.href}
                 href={link.href}
+                scroll={false}
+                onClick={() => {
+                  rememberPageScroll(pathname);
+                  void feedback();
+                }}
                 className={cn(
-                  "flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-xs font-medium transition-colors",
+                  "nav-link transition-colors",
                   active ? "text-primary" : "text-muted-foreground"
                 )}
                 aria-current={active ? "page" : undefined}
               >
+                {active && (
+                  <motion.span
+                    aria-hidden
+                    className="nav-indicator"
+                    layoutId="primary-navigation"
+                    transition={
+                      reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }
+                    }
+                  />
+                )}
                 <link.icon className="h-5 w-5" aria-hidden />
-                {link.label}
+                <span>{link.label}</span>
+                <PendingNavigation />
               </Link>
             );
           })}
           <button
             type="button"
             onClick={openMenu}
-            className="text-muted-foreground flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-xs font-medium"
+            className="nav-link text-muted-foreground"
             aria-label="Open menu"
           >
             <Menu className="h-5 w-5" aria-hidden />

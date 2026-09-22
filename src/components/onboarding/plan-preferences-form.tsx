@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import Link from "next/link";
+import { feedback } from "@/lib/ui/haptics";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { savePlanPreferences } from "@/actions/onboarding";
@@ -19,6 +21,8 @@ import { cn } from "@/lib/utils";
 
 export function PlanPreferencesForm({ initial }: { initial: UserPreferences | null }) {
   const router = useRouter();
+  const isNew = !initial?.onboarding_completed;
+  const [step, setStep] = useState(0);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [workDays, setWorkDays] = useState<string[]>(initial?.work_days ?? []);
@@ -48,166 +52,233 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
       setError(parsed.error.issues[0]?.message ?? "Please check your times.");
       return;
     }
+    if (isNew && step < 2) {
+      setStep(step + 1);
+      feedback();
+      return;
+    }
     startTransition(async () => {
-      const result = await savePlanPreferences(parsed.data);
-      if (!result.ok) {
-        setError(result.error ?? "Couldn't save your preferences.");
-        return;
+      try {
+        const result = await savePlanPreferences(parsed.data);
+        if (!result.ok) {
+          setError(result.error ?? "Couldn't save your preferences.");
+          return;
+        }
+        toast.success("Your plan preferences are saved.");
+        router.push("/schedule");
+        router.refresh();
+      } catch {
+        setError(
+          "Couldn't save. Your choices are still here; check your connection and try again."
+        );
       }
-      toast.success("Your plan preferences are saved.");
-      router.push("/schedule");
-      router.refresh();
     });
   }
 
   return (
-    <form onSubmit={save} className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your daily rhythm</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-muted-foreground text-sm">
-            Choose the hours you want to plan around. No wearable is required.
+    <form onSubmit={save} className="space-y-4" aria-busy={pending}>
+      {isNew && (
+        <div className="space-y-3">
+          <p className="eyebrow" role="status">
+            Step {step + 1} of 3 · About a minute
           </p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="plan-wake">Wake up</Label>
-              <Input
-                id="plan-wake"
-                type="time"
-                required
-                value={wakeTime}
-                onChange={(e) => setWakeTime(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="plan-sleep">Bedtime</Label>
-              <Input
-                id="plan-sleep"
-                type="time"
-                required
-                value={sleepTime}
-                onChange={(e) => setSleepTime(e.target.value)}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Work hours</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <fieldset className="space-y-2">
-            <legend className="text-sm">
-              Keep these hours free. Leave days unselected if this doesn’t apply.
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {WORK_DAYS.map((day) => (
-                <button
-                  key={day.value}
-                  type="button"
-                  aria-label={day.value}
-                  aria-pressed={workDays.includes(day.value)}
-                  onClick={() =>
-                    setWorkDays((days) =>
-                      days.includes(day.value)
-                        ? days.filter((d) => d !== day.value)
-                        : [...days, day.value]
-                    )
-                  }
-                  className={cn(
-                    "min-h-11 min-w-11 rounded-full border px-3 text-sm",
-                    workDays.includes(day.value)
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border hover:bg-accent"
-                  )}
-                >
-                  {day.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-          {workDays.length > 0 && (
+          <ol className="flex gap-2" aria-label="Setup progress">
+            {["Your rhythm", "Work hours", "Planning"].map((label, index) => (
+              <li
+                key={label}
+                aria-current={index === step ? "step" : undefined}
+                className={cn(
+                  "flex-1 border-t-2 pt-2 text-xs",
+                  index <= step
+                    ? "border-primary text-foreground"
+                    : "border-border text-muted-foreground"
+                )}
+              >
+                {label}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {(!isNew || step === 0) && (
+        <Card className="panel-enter">
+          <CardHeader>
+            <CardTitle className="text-base">Your daily rhythm</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Choose the hours you want to plan around. No wearable is required.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="plan-work-start">Start</Label>
+                <Label htmlFor="plan-wake">Wake up</Label>
                 <Input
-                  id="plan-work-start"
+                  id="plan-wake"
                   type="time"
                   required
-                  value={workStartTime}
-                  onChange={(e) => setWorkStartTime(e.target.value)}
+                  value={wakeTime}
+                  onChange={(e) => setWakeTime(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="plan-work-end">End</Label>
+                <Label htmlFor="plan-sleep">Bedtime</Label>
                 <Input
-                  id="plan-work-end"
+                  id="plan-sleep"
                   type="time"
                   required
-                  value={workEndTime}
-                  onChange={(e) => setWorkEndTime(e.target.value)}
+                  value={sleepTime}
+                  onChange={(e) => setSleepTime(e.target.value)}
                 />
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Planning</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="plan-scope">How far ahead?</Label>
-            <select
-              id="plan-scope"
-              value={planningScope}
-              onChange={(e) => setPlanningScope(e.target.value)}
-              className="border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm"
-            >
-              {PLANNING_SCOPES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <details className="text-sm">
-            <summary className="min-h-11 cursor-pointer py-3 font-medium">
-              Automatic planning
-            </summary>
-            <p id="plan-auto-hint" className="text-muted-foreground mb-3">
-              Optional. Requires your AI data-sharing permission. You can always edit your schedule
-              yourself.
-            </p>
-            <Label htmlFor="plan-auto">Refresh my plan</Label>
-            <select
-              id="plan-auto"
-              aria-describedby="plan-auto-hint"
-              value={autoPlanCadence}
-              onChange={(e) => setAutoPlanCadence(e.target.value)}
-              className="border-input bg-background mt-2 min-h-11 w-full rounded-md border px-3 text-sm"
-            >
-              {AUTO_PLAN_CADENCES.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </details>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
+      {(!isNew || step === 1) && (
+        <Card className="panel-enter">
+          <CardHeader>
+            <CardTitle className="text-base">Work hours</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <fieldset className="space-y-2">
+              <legend className="text-sm">
+                Keep these hours free. Leave days unselected if this doesn’t apply.
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {WORK_DAYS.map((day) => (
+                  <button
+                    key={day.value}
+                    type="button"
+                    aria-label={day.value}
+                    aria-pressed={workDays.includes(day.value)}
+                    onClick={() =>
+                      setWorkDays((days) =>
+                        days.includes(day.value)
+                          ? days.filter((d) => d !== day.value)
+                          : [...days, day.value]
+                      )
+                    }
+                    className={cn(
+                      "min-h-11 min-w-11 rounded-full border px-3 text-sm",
+                      workDays.includes(day.value)
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border hover:bg-accent"
+                    )}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            {workDays.length > 0 && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="plan-work-start">Start</Label>
+                  <Input
+                    id="plan-work-start"
+                    type="time"
+                    required
+                    value={workStartTime}
+                    onChange={(e) => setWorkStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="plan-work-end">End</Label>
+                  <Input
+                    id="plan-work-end"
+                    type="time"
+                    required
+                    value={workEndTime}
+                    onChange={(e) => setWorkEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+      {(!isNew || step === 2) && (
+        <Card className="panel-enter">
+          <CardHeader>
+            <CardTitle className="text-base">Planning</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="plan-scope">How far ahead?</Label>
+              <select
+                id="plan-scope"
+                value={planningScope}
+                onChange={(e) => setPlanningScope(e.target.value)}
+                className="border-input bg-background min-h-11 w-full rounded-md border px-3 text-sm"
+              >
+                {PLANNING_SCOPES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <details className="text-sm">
+              <summary className="min-h-11 cursor-pointer py-3 font-medium">
+                Automatic planning
+              </summary>
+              <p id="plan-auto-hint" className="text-muted-foreground mb-3">
+                Optional. Requires your AI data-sharing permission. You can always edit your
+                schedule yourself.
+              </p>
+              <Label htmlFor="plan-auto">Refresh my plan</Label>
+              <select
+                id="plan-auto"
+                aria-describedby="plan-auto-hint"
+                value={autoPlanCadence}
+                onChange={(e) => setAutoPlanCadence(e.target.value)}
+                className="border-input bg-background mt-2 min-h-11 w-full rounded-md border px-3 text-sm"
+              >
+                {AUTO_PLAN_CADENCES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </details>
+          </CardContent>
+        </Card>
+      )}
       {error && (
         <p role="alert" className="text-destructive text-sm">
           {error}
         </p>
       )}
-      <Button type="submit" size="lg" disabled={pending} className="w-full">
-        {pending ? "Saving…" : "Save and view schedule"}
-      </Button>
+      {isNew && step === 2 && (
+        <p className="text-muted-foreground text-sm">
+          You’re ready to start. Connecting Apple Health or a calendar is optional and available
+          later in Settings.
+        </p>
+      )}
+      <div className="flex gap-2">
+        {isNew && step > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            disabled={pending}
+            onClick={() => {
+              setError(null);
+              setStep(step - 1);
+            }}
+          >
+            Back
+          </Button>
+        )}
+        <Button type="submit" size="lg" disabled={pending} className="flex-1">
+          {pending ? "Saving…" : isNew && step < 2 ? "Continue" : "Save and view schedule"}
+        </Button>
+      </div>
+      {isNew && (
+        <Button variant="ghost" asChild className="w-full">
+          <Link href="/dashboard">Set up later</Link>
+        </Button>
+      )}
     </form>
   );
 }

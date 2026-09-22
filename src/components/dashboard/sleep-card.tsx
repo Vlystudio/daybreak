@@ -1,14 +1,9 @@
 "use client";
 
+import { useReducedMotion } from "framer-motion";
+import Link from "next/link";
 import { Moon } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { HealthMetric } from "@/lib/types";
@@ -18,7 +13,14 @@ function fmtDuration(min: number | null): string {
   return `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
-export function SleepCard({ today, metrics }: { today: HealthMetric | null; metrics: HealthMetric[] }) {
+export function SleepCard({
+  today,
+  metrics,
+}: {
+  today: HealthMetric | null;
+  metrics: HealthMetric[];
+}) {
+  const reduce = useReducedMotion();
   const data = metrics.slice(-7).map((m) => ({
     day: format(parseISO(m.date), "EEE"),
     deep: m.deep_sleep_min ?? 0,
@@ -32,7 +34,7 @@ export function SleepCard({ today, metrics }: { today: HealthMetric | null; metr
     <Card className="h-full">
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Moon className="h-4 w-4 text-sky" aria-hidden />
+          <Moon className="text-sky h-4 w-4" aria-hidden />
           Sleep
         </CardTitle>
         {today?.sleep_score != null && (
@@ -48,8 +50,15 @@ export function SleepCard({ today, metrics }: { today: HealthMetric | null; metr
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: -28 }}>
-                <XAxis dataKey="day" tickLine={false} axisLine={false} fontSize={12} />
+                <XAxis
+                  tick={{ fill: "var(--muted-foreground)" }}
+                  dataKey="day"
+                  tickLine={false}
+                  axisLine={false}
+                  fontSize={12}
+                />
                 <YAxis
+                  tick={{ fill: "var(--muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
                   fontSize={11}
@@ -65,19 +74,65 @@ export function SleepCard({ today, metrics }: { today: HealthMetric | null; metr
                     fontSize: 12,
                   }}
                 />
-                <Bar dataKey="deep" name="Deep" stackId="sleep" fill="var(--sky)" radius={[0, 0, 4, 4]} />
-                <Bar dataKey="rem" name="REM" stackId="sleep" fill="var(--sage)" />
-                <Bar dataKey="light" name="Light" stackId="sleep" fill="var(--peach)" radius={[4, 4, 0, 0]} />
+                <Bar
+                  isAnimationActive={!reduce}
+                  animationDuration={300}
+                  dataKey="deep"
+                  name="Deep"
+                  stackId="sleep"
+                  fill="var(--sky)"
+                  radius={[0, 0, 4, 4]}
+                />
+                <Bar
+                  isAnimationActive={!reduce}
+                  animationDuration={300}
+                  dataKey="rem"
+                  name="REM"
+                  stackId="sleep"
+                  fill="var(--sage)"
+                />
+                <Bar
+                  isAnimationActive={!reduce}
+                  animationDuration={300}
+                  dataKey="light"
+                  name="Light"
+                  stackId="sleep"
+                  fill="var(--peach)"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            Sleep stages will appear here once Oura is connected.
+          <p className="text-muted-foreground py-8 text-center text-sm">
+            Sleep stages appear when your connected tracker shares them.
+            <Link
+              href="/settings"
+              className="text-primary mt-2 block min-h-11 py-3 font-medium underline"
+            >
+              Manage connections
+            </Link>
           </p>
         )}
+        {hasData && (
+          <div className="text-muted-foreground mt-3 flex flex-wrap justify-center gap-3 text-xs">
+            {[
+              ["Deep", "var(--sky)"],
+              ["REM", "var(--sage)"],
+              ["Light", "var(--peach)"],
+            ].map(([label, color]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: color }} />
+                {label}
+              </span>
+            ))}
+            <Link href="/health" className="text-primary min-h-11 py-3 underline">
+              Explore health trends
+            </Link>
+          </div>
+        )}
         {today?.sleep_efficiency != null && (
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-3 text-sm">
             {today.sleep_efficiency}% efficiency last night
           </p>
         )}

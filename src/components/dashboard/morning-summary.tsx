@@ -1,12 +1,10 @@
-"use client";
+﻿"use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Sparkles, RefreshCw, Target, Lightbulb } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Check, RefreshCw, Sunrise } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { regenerateBriefing } from "@/actions/settings";
 import type { DailySummary } from "@/lib/types";
 
@@ -15,101 +13,109 @@ export function MorningSummary({
   eventCount = 0,
   habitCount = 0,
   canGenerate = false,
+  checkedIn = false,
 }: {
   summary: DailySummary | null;
   eventCount?: number;
   habitCount?: number;
   canGenerate?: boolean;
+  checkedIn?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
-
+  const [error, setError] = useState<string | null>(null);
   function regenerate() {
+    setError(null);
     startTransition(async () => {
-      const result = await regenerateBriefing();
-      if (result.ok) toast.success("Your briefing is fresh out of the oven.");
-      else toast.error(result.error);
+      try {
+        const result = await regenerateBriefing();
+        if (result.ok) toast.success("Your briefing is updated.");
+        else setError(result.error ?? "Couldn't refresh your briefing.");
+      } catch {
+        setError(
+          "Couldn't connect. Your previous briefing is still here. Try again when you're online."
+        );
+      }
     });
   }
-
   return (
-    <Card className="glass border-none">
-      <CardContent className="p-6 sm:p-8">
-        <div className="flex items-start justify-between gap-4">
-          <Badge variant="honey" className="mb-3">
-            <Sparkles className="h-3 w-3" aria-hidden />
-            {summary ? "Morning briefing" : "Your morning"}
-          </Badge>
-          {canGenerate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={regenerate}
-              disabled={pending}
-              aria-label="Regenerate briefing"
-            >
-              <RefreshCw className={pending ? "animate-spin" : undefined} aria-hidden />
-              <span className="hidden sm:inline">{pending ? "Thinking…" : "Refresh"}</span>
-            </Button>
-          )}
-        </div>
-
-        {summary ? (
-          <>
-            <p className="text-lg leading-relaxed sm:text-xl">{summary.summary}</p>
-
-            {summary.focus && (
-              <div className="bg-honey-soft mt-5 flex items-start gap-3 rounded-2xl p-4">
-                <Target className="text-primary mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-                <div>
-                  <p className="text-sm font-semibold text-[#9a6b1f]">Today&apos;s focus</p>
-                  <p className="text-sm">{summary.focus}</p>
-                </div>
-              </div>
-            )}
-
-            {summary.insights.length > 0 && (
-              <ul className="mt-5 space-y-2" aria-label="Health insights">
-                {summary.insights.map((insight, i) => (
-                  <li key={i} className="text-muted-foreground flex items-start gap-2.5 text-sm">
-                    <Lightbulb className="text-honey mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                    {insight}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
+    <section className="today-hero" aria-labelledby="today-focus-title">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="eyebrow flex items-center gap-2">
+          <Sunrise className="text-primary h-4 w-4" aria-hidden /> A little room for you
+        </p>
+        {checkedIn && (
+          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+            <Check className="h-3.5 w-3.5" aria-hidden /> Checked in
+          </span>
+        )}
+      </div>
+      <h2 id="today-focus-title">
+        {checkedIn ? "Make today your own." : "A good day starts with you."}
+      </h2>
+      <p className="text-muted-foreground mt-3 max-w-xl text-sm leading-relaxed">
+        {checkedIn
+          ? "Your check-in is saved. See what’s ahead and make space for what matters."
+          : "Take a moment to check in, then shape the day around how you feel."}
+      </p>
+      <div className="my-5 flex flex-wrap gap-x-4 gap-y-2 text-sm">
+        <span className="flex items-center gap-1.5">
+          <CalendarDays className="text-primary h-4 w-4" aria-hidden />
+          {eventCount} {eventCount === 1 ? "plan" : "plans"} today
+        </span>
+        {habitCount > 0 && (
+          <span className="text-muted-foreground">
+            {habitCount} daily {habitCount === 1 ? "habit" : "habits"}
+          </span>
+        )}
+      </div>
+      <Button asChild className="w-full sm:w-auto">
+        {checkedIn ? (
+          <Link href="/schedule">
+            See today’s schedule <ArrowUpRight aria-hidden />
+          </Link>
         ) : (
-          <div className="space-y-3">
-            <p className="text-lg leading-relaxed">
-              {eventCount > 0
-                ? `You have ${eventCount} scheduled ${eventCount === 1 ? "block" : "blocks"} today. Start with a quick check-in, then make room for what matters.`
-                : "Start with how you feel. Add one thing you want to make time for today."}
-            </p>
-            {habitCount > 0 && (
-              <p className="text-muted-foreground text-sm">
-                Your {habitCount === 1 ? "habit is" : `${habitCount} habits are`} ready below. Small
-                steps count.
+          <a href="#daily-check-in">
+            Check in with yourself <ArrowUpRight aria-hidden />
+          </a>
+        )}
+      </Button>
+      {(summary || canGenerate) && (
+        <details className="border-border mt-4 border-t pt-1">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+            Your personal briefing
+          </summary>
+          <div className="space-y-3 pb-1 text-sm leading-relaxed">
+            {summary && (
+              <>
+                <p>{summary.summary}</p>
+                {summary.focus && (
+                  <p>
+                    <strong>Today’s focus:</strong> {summary.focus}
+                  </p>
+                )}
+                {summary.insights.length > 0 && (
+                  <ul className="text-muted-foreground list-disc space-y-2 pl-5">
+                    {summary.insights.map((insight, i) => (
+                      <li key={i}>{insight}</li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+            {error && (
+              <p role="alert" className="text-destructive">
+                {error}
               </p>
             )}
-            <div className="flex flex-wrap gap-4 text-sm">
-              <Link
-                href="/schedule"
-                className="text-primary font-medium underline underline-offset-4"
-              >
-                View your schedule
-              </Link>
-              {!canGenerate && (
-                <Link
-                  href="/settings#ai-data-use"
-                  className="text-muted-foreground underline underline-offset-4"
-                >
-                  Optional AI briefing settings
-                </Link>
-              )}
-            </div>
+            {canGenerate && (
+              <Button variant="outline" size="sm" onClick={regenerate} disabled={pending}>
+                <RefreshCw className={pending ? "animate-spin" : ""} aria-hidden />
+                {pending ? "Refreshing…" : summary ? "Refresh briefing" : "Create briefing"}
+              </Button>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </details>
+      )}
+    </section>
   );
 }

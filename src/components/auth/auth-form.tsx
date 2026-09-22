@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, type Resolver, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { toast } from "sonner";
 import { z } from "zod";
 import {
@@ -23,6 +23,8 @@ type Mode = "signin" | "signup" | "reset";
 type SignupValues = z.infer<typeof signupSchema>;
 
 export function AuthForm({ initialMode }: { initialMode: Mode }) {
+  const reduce = useReducedMotion();
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>(initialMode);
   const [pending, setPending] = useState(false);
   const [needsConfirm, setNeedsConfirm] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
 
   async function onSubmit(values: SignupValues) {
     setPending(true);
+    setSubmitError(null);
     setNeedsConfirm(null);
     try {
       if (mode === "signup") {
@@ -61,7 +64,7 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
       const message =
         error instanceof Error ? error.message : "Something went wrong. Please try again.";
       if (/confirm/i.test(message)) setNeedsConfirm(values.email);
-      toast.error(message);
+      setSubmitError(message);
     } finally {
       setPending(false);
     }
@@ -106,9 +109,9 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={reduce ? false : { opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={{ duration: reduce ? 0 : 0.24, ease: "easeOut" }}
       className="w-full max-w-md"
     >
       <Card className="glass border-none">
@@ -117,6 +120,14 @@ export function AuthForm({ initialMode }: { initialMode: Mode }) {
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
+          {submitError && (
+            <p
+              role="alert"
+              className="bg-destructive/10 text-destructive mb-4 rounded-xl p-3 text-sm"
+            >
+              {submitError}
+            </p>
+          )}
           {mode === "reset" ? (
             <div className="space-y-4">
               <div className="space-y-1.5">

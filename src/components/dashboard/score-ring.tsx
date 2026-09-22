@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 
 /** Animated radial score indicator (0-100). */
 export function ScoreRing({
@@ -16,6 +16,7 @@ export function ScoreRing({
   color?: string;
   label?: string;
 }) {
+  const reduce = useReducedMotion();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const fraction = score == null ? 0 : Math.max(0, Math.min(100, score)) / 100;
@@ -44,9 +45,9 @@ export function ScoreRing({
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          initial={{ strokeDashoffset: circumference }}
+          initial={false}
           animate={{ strokeDashoffset: circumference * (1 - fraction) }}
-          transition={{ duration: 1.1, ease: "easeOut", delay: 0.2 }}
+          transition={{ duration: reduce ? 0 : 0.45, ease: "easeOut" }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">

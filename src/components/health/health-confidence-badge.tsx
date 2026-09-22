@@ -37,7 +37,7 @@ export function ConfidenceBadge({
         <button
           type="button"
           className={cn(
-            "focus-visible:ring-ring rounded-full focus-visible:ring-2 focus-visible:outline-none",
+            "focus-visible:ring-ring inline-flex min-h-11 items-center rounded-full focus-visible:ring-2 focus-visible:outline-none",
             className
           )}
           aria-label={`${label} — why?`}

@@ -6,7 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScoreRing, scoreTone } from "@/components/dashboard/score-ring";
 import type { HealthMetric } from "@/lib/types";
 
-export function ReadinessCard({ today, metrics }: { today: HealthMetric | null; metrics: HealthMetric[] }) {
+export function ReadinessCard({
+  today,
+  metrics,
+}: {
+  today: HealthMetric | null;
+  metrics: HealthMetric[];
+}) {
   const todayScore = today?.readiness_score ?? null;
   // Readiness needs a night of sleep, so today's often isn't in yet — fall back
   // to the most recent reading instead of looking like there's no data at all.
@@ -27,26 +33,32 @@ export function ReadinessCard({ today, metrics }: { today: HealthMetric | null; 
     <Card className="h-full">
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Battery className="h-4 w-4 text-primary" aria-hidden />
+          <Battery className="text-primary h-4 w-4" aria-hidden />
           Readiness
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-2 pb-6">
-        <ScoreRing score={score} color={tone.color} label={`Readiness ${score ?? "unknown"}`} />
+        <ScoreRing
+          score={score}
+          size={88}
+          strokeWidth={7}
+          color={tone.color}
+          label={`Readiness ${score ?? "unknown"}`}
+        />
         <p className="font-medium" style={{ color: tone.color }}>
           {tone.word}
         </p>
         {score == null ? (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-center text-sm">
             Your readiness appears after a night of Oura sleep data.
           </p>
         ) : isStale ? (
-          <p className="text-center text-sm text-muted-foreground">
-            Latest, {latest?.date ? format(parseISO(latest.date), "MMM d") : "recently"}. Last night isn&apos;t in
-            yet — open the Oura app to sync your ring.
+          <p className="text-muted-foreground text-center text-sm">
+            Latest, {latest?.date ? format(parseISO(latest.date), "MMM d") : "recently"}. Last night
+            isn&apos;t in yet — open the Oura app to sync your ring.
           </p>
         ) : (
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-center text-sm">
             {delta == null
               ? "Tracking your recovery each morning."
               : delta >= 2

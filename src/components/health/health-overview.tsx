@@ -37,18 +37,26 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
 
   function analyze() {
     startAnalyze(async () => {
-      const res = await analyzeHealth();
-      if (res.ok) setAnalysis(res.analysis);
-      else toast.error(res.error);
+      try {
+        const res = await analyzeHealth();
+        if (res.ok) setAnalysis(res.analysis);
+        else toast.error(res.error);
+      } catch {
+        toast.error("Couldn't analyze right now. Please try again.");
+      }
     });
   }
   function sync() {
     startSync(async () => {
-      const res = await syncNow();
-      if (res.ok) {
-        toast.success("Synced your latest data.");
-        router.refresh();
-      } else toast.error(res.error);
+      try {
+        const res = await syncNow();
+        if (res.ok) {
+          toast.success("Synced your latest data.");
+          router.refresh();
+        } else toast.error(res.error);
+      } catch {
+        toast.error("Couldn't sync. Check your connection and try again.");
+      }
     });
   }
 
@@ -56,6 +64,11 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
   const sleep = RECOVERY_DISPLAY[summary.sleepStatus];
   const activity = ACTIVITY_DISPLAY[summary.activityStatus];
   const stress = STRESS_DISPLAY[summary.stressStatus];
+
+  const latestDate = understanding.dailySignals.reduce(
+    (latest, s) => (s.value != null && s.date > latest ? s.date : latest),
+    ""
+  );
 
   const tiles = [
     {
@@ -102,9 +115,14 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
         </Card>
       )}
 
-      {/* Today at a glance */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-muted-foreground text-sm font-semibold">Today at a glance</h2>
+      <p className="text-muted-foreground text-xs">
+        {latestDate
+          ? `Latest reading: ${latestDate}. Sync to check for newer data.`
+          : "No readings yet. Start with a check-in or connect a tracker."}
+      </p>
+      {/* Summary can include older readings; the latest date above stays explicit. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-muted-foreground text-sm font-semibold">Your health at a glance</h2>
         <div className="flex items-center gap-2">
           <ConfidenceBadge
             confidence={dataQuality.overallConfidence}
@@ -146,7 +164,7 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
 
       {/* AI explanation — secondary to the deterministic understanding above. */}
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex-col gap-3 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             <Sparkles className="text-honey h-4 w-4" aria-hidden /> What your data suggests
           </CardTitle>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
@@ -26,12 +27,17 @@ export default function AppError({
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold">Something went sideways</h2>
+        <h2 className="text-lg font-semibold">We couldn’t load this page</h2>
         <p className="text-muted-foreground max-w-sm text-sm">
-          This page hit a snag on our end. Your data is safe — give it another try.
+          Check your connection, then try again. If this keeps happening, our support page can help.
         </p>
       </div>
-      <Button onClick={reset}>Try again</Button>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button onClick={reset}>Try again</Button>
+        <Button variant="outline" asChild>
+          <Link href="/support">Get help</Link>
+        </Button>
+      </div>
     </div>
   );
 }

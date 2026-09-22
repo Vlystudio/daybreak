@@ -2,7 +2,7 @@
 
 import { COACH_ENABLED } from "@/lib/features";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import {
@@ -14,14 +14,12 @@ import {
   CheckCircle2,
   Dumbbell,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventEditor } from "@/components/schedule/event-editor";
-import { toggleEventCompleted } from "@/actions/schedule";
-import { ConfettiBurst } from "@/components/confetti-burst";
+import { useEventCompletion } from "@/components/schedule/use-event-completion";
 import type { ScheduleEvent } from "@/lib/types";
 
 const colorDot: Record<string, string> = {
@@ -40,11 +38,7 @@ export function ScheduleTimeline({
 }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<ScheduleEvent | null>(null);
-  const [, startTransition] = useTransition();
-  const [burst, setBurst] = useState(0);
-  const [done, setDone] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(events.map((e) => [e.id, e.completed_at != null]))
-  );
+  const { items, toggleDone: toggle } = useEventCompletion(events);
   // Mount-time clock, refreshed each minute, so the "now" highlight stays pure.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -61,19 +55,6 @@ export function ScheduleTimeline({
     setEditorOpen(true);
   }
 
-  function toggle(event: ScheduleEvent) {
-    const next = !done[event.id];
-    setDone((d) => ({ ...d, [event.id]: next }));
-    if (next) setBurst((b) => b + 1); // celebrate finishing a task
-    startTransition(async () => {
-      const res = await toggleEventCompleted(event.id, next);
-      if (!res.ok) {
-        setDone((d) => ({ ...d, [event.id]: !next })); // revert
-        toast.error(res.error);
-      }
-    });
-  }
-
   // Highlight the event happening now, or the next upcoming one if none is.
   const currentId = events.find(
     (e) =>
@@ -85,8 +66,7 @@ export function ScheduleTimeline({
 
   return (
     <Card className="relative h-full">
-      {burst > 0 && <ConfettiBurst key={burst} />}
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4 sm:p-6">
         <CardTitle className="flex items-center gap-2 text-base">
           <CalendarDays className="text-primary h-4 w-4" aria-hidden />
           Today&apos;s schedule
@@ -94,7 +74,7 @@ export function ScheduleTimeline({
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/schedule">
-              Full week
+              View all
               <ArrowRight aria-hidden />
             </Link>
           </Button>
@@ -115,8 +95,8 @@ export function ScheduleTimeline({
           </div>
         ) : (
           <ol className="relative space-y-1" aria-label="Today's events">
-            {events.map((event) => {
-              const isDone = done[event.id];
+            {items.map((event) => {
+              const isDone = event.completed_at != null;
               const isCurrent = event.id === currentId;
               const isNext = event.id === nextId;
               return (
@@ -130,8 +110,11 @@ export function ScheduleTimeline({
                     <button
                       type="button"
                       onClick={() => toggle(event)}
-                      aria-label={isDone ? "Mark not done" : "Mark done"}
-                      className="text-muted-foreground hover:text-primary mt-0.5 shrink-0 transition-colors"
+                      aria-label={
+                        isDone ? `Mark ${event.title} as not done` : `Mark ${event.title} as done`
+                      }
+                      aria-pressed={isDone}
+                      className="text-muted-foreground hover:text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors"
                     >
                       {isDone ? (
                         <CheckCircle2 className="text-primary h-5 w-5" aria-hidden />
@@ -139,7 +122,7 @@ export function ScheduleTimeline({
                         <Circle className="h-5 w-5" aria-hidden />
                       )}
                     </button>
-                    <div className="text-muted-foreground w-14 shrink-0 pt-0.5 text-sm tabular-nums">
+                    <div className="text-muted-foreground hidden w-16 shrink-0 pt-0.5 text-sm whitespace-nowrap tabular-nums sm:block">
                       {event.all_day ? "All day" : format(new Date(event.starts_at), "h:mm a")}
                     </div>
                     <div
@@ -152,7 +135,7 @@ export function ScheduleTimeline({
                     <button
                       type="button"
                       onClick={() => openEdit(event)}
-                      className="min-w-0 flex-1 text-left focus-visible:outline-none"
+                      className="focus-visible:ring-ring min-h-11 min-w-0 flex-1 rounded-md text-left focus-visible:ring-2"
                     >
                       <p
                         className={cn(
@@ -210,6 +193,7 @@ export function ScheduleTimeline({
         event={editing}
         defaultDate={new Date()}
         hasHousehold={hasHousehold}
+        existingEvents={items}
       />
     </Card>
   );

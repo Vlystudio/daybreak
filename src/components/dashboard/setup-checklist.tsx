@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2, Circle, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 interface Step {
@@ -33,34 +33,41 @@ export function SetupChecklist({
 
   return (
     <Card className="border-primary/30 bg-honey-soft/40">
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-base">Make it your day</CardTitle>
-        <p className="text-muted-foreground text-sm">
-          Optional setup for better suggestions. Health and calendar connections are in Settings.
+      <details>
+        <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-5 py-3 text-sm font-medium">
+          Make it your day{" "}
+          <span className="text-muted-foreground text-xs">
+            {doneCount}/{steps.length} · Optional setup
+          </span>
+        </summary>
+        <p className="text-muted-foreground px-5 pb-3 text-sm">
+          Start with your rhythm. Health and calendar connections can wait until you’re ready.
         </p>
-      </CardHeader>
-      <CardContent className="space-y-1">
-        {steps.map((s) => (
-          <div key={s.label} className="flex items-center gap-3 rounded-lg p-2">
-            {s.done ? (
-              <CheckCircle2 className="text-primary h-5 w-5 shrink-0" aria-hidden />
-            ) : (
-              <Circle className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
-            )}
-            <span className={cn("flex-1 text-sm", s.done && "text-muted-foreground line-through")}>
-              {s.label}
-            </span>
-            {!s.done && (
-              <Button asChild size="sm" variant="outline">
-                <Link href={s.href}>
-                  {s.cta}
-                  <ArrowRight aria-hidden />
-                </Link>
-              </Button>
-            )}
-          </div>
-        ))}
-      </CardContent>
+        <CardContent className="space-y-1">
+          {steps.map((s) => (
+            <div key={s.label} className="flex items-center gap-3 rounded-lg p-2">
+              {s.done ? (
+                <CheckCircle2 className="text-primary h-5 w-5 shrink-0" aria-hidden />
+              ) : (
+                <Circle className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+              )}
+              <span
+                className={cn("flex-1 text-sm", s.done && "text-muted-foreground line-through")}
+              >
+                {s.label}
+              </span>
+              {!s.done && (
+                <Button asChild size="sm" variant="outline">
+                  <Link href={s.href}>
+                    {s.cta}
+                    <ArrowRight aria-hidden />
+                  </Link>
+                </Button>
+              )}
+            </div>
+          ))}
+        </CardContent>
+      </details>
     </Card>
   );
 }

@@ -60,7 +60,7 @@ export function EventCard({
       className={cn(
         "border-border/55 shadow-soft relative flex items-start gap-3 rounded-2xl border",
         compact ? "p-2.5" : "p-3",
-        done && "opacity-60"
+        done && "border-dashed"
       )}
       style={{ backgroundColor: eventTint(event.color, done ? 7 : 14) }}
     >
@@ -114,9 +114,9 @@ export function EventCard({
           aria-pressed={done}
           aria-label={done ? `Mark ${event.title} as not done` : `Mark ${event.title} as done`}
           className={cn(
-            "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+            "mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
             done
-              ? "bg-sage border-transparent text-white"
+              ? "bg-primary text-primary-foreground border-transparent"
               : "border-muted-foreground/40 hover:border-sage focus-visible:border-sage text-transparent"
           )}
         >

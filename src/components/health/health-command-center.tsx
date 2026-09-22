@@ -1,5 +1,6 @@
 "use client";
 
+import { useUiPreference } from "@/components/ui-preferences";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HealthOverview } from "@/components/health/health-overview";
 import { HealthTrends } from "@/components/health/health-trends";
@@ -35,10 +36,11 @@ export function HealthCommandCenter({
     feelings: FeelingPoint[];
   };
 }) {
+  const [tab, setTab] = useUiPreference<string>("health-tab", "overview");
   const hasData = understanding.baselines.some((b) => b.sampleCount >= 3);
 
   return (
-    <Tabs defaultValue="overview">
+    <Tabs value={tab} onValueChange={setTab}>
       <TabsList className="w-full sm:w-auto">
         {[
           ["overview", "Overview"],
@@ -46,7 +48,11 @@ export function HealthCommandCenter({
           ["sources", "Sources"],
           ["checkin", "Check-in"],
         ].map(([value, label]) => (
-          <TabsTrigger key={value} value={value} className="flex-1 px-2 sm:flex-none sm:px-4">
+          <TabsTrigger
+            key={value}
+            value={value}
+            className="min-w-0 flex-1 px-1.5 text-xs whitespace-nowrap sm:flex-none sm:px-4 sm:text-sm"
+          >
             {label}
           </TabsTrigger>
         ))}

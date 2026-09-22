@@ -54,20 +54,9 @@ export default async function DashboardPage() {
           eventCount={data.todayEvents.length}
           habitCount={data.habits.length}
           canGenerate={data.canGenerateBriefing}
+          checkedIn={data.todayCheckin !== null}
         />
       </FadeIn>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <FadeIn delay={0.1} className="h-full">
-          <ReadinessCard today={data.today} metrics={data.metrics} />
-        </FadeIn>
-        <FadeIn delay={0.15} className="h-full">
-          <SleepCard today={data.today} metrics={data.metrics} />
-        </FadeIn>
-        <FadeIn delay={0.25} className="h-full">
-          <WeatherCard weather={data.weather} city={data.profile?.city ?? null} />
-        </FadeIn>
-      </div>
 
       {/* Today focus: schedule beside the two most time-sensitive cards */}
       <div className="grid gap-4 lg:grid-cols-3">
@@ -78,9 +67,11 @@ export default async function DashboardPage() {
           />
         </FadeIn>
         <div className="space-y-4">
-          <FadeIn delay={0.33}>
-            <CheckinCard checkin={data.todayCheckin} />
-          </FadeIn>
+          <div id="daily-check-in" className="scroll-mt-24">
+            <FadeIn delay={0.33}>
+              <CheckinCard checkin={data.todayCheckin} />
+            </FadeIn>
+          </div>
           <FadeIn delay={0.34}>
             <AdherenceCard
               total={data.adherence.total}
@@ -90,6 +81,17 @@ export default async function DashboardPage() {
           </FadeIn>
         </div>
       </div>
+
+      <section aria-labelledby="daily-signals-title" className="space-y-3">
+        <h2 id="daily-signals-title" className="section-heading">
+          Your daily signals
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <ReadinessCard today={data.today} metrics={data.metrics} />
+          <SleepCard today={data.today} metrics={data.metrics} />
+          <WeatherCard weather={data.weather} city={data.profile?.city ?? null} />
+        </div>
+      </section>
 
       {/* Daily habits and reflection remain easy to reach. */}
       <div className="grid items-start gap-4 md:grid-cols-2">

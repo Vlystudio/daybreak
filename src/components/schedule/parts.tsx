@@ -42,14 +42,14 @@ export function OpenDay({ onAdd, compact = false }: { onAdd?: () => void; compac
       <p className="text-muted-foreground text-sm font-medium">Your day is open</p>
       {!compact && (
         <p className="text-muted-foreground mt-0.5 text-xs">
-          Add something, or let Daybreak plan your day.
+          Add something you look forward to, or leave a little space.
         </p>
       )}
       {onAdd && (
         <button
           type="button"
           onClick={onAdd}
-          className="border-border bg-card text-card-foreground hover:bg-accent focus-visible:ring-ring mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className="border-border bg-card text-card-foreground hover:bg-accent focus-visible:ring-ring mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
         >
           <Plus className="h-4 w-4" aria-hidden />
           Add event

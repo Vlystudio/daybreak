@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { HeartPulse, Check } from "lucide-react";
+import { feedback } from "@/lib/ui/haptics";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,13 +27,21 @@ export function CheckinCard({ checkin }: { checkin: SubjectiveCheckin | null }) 
     soreness: checkin?.soreness ?? null,
   });
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const logged = Boolean(checkin);
 
   function save() {
+    setError(null);
     startTransition(async () => {
-      const result = await logSubjectiveCheckin({ ...values });
-      if (result.ok) toast.success("Checked in — thanks for sharing.");
-      else toast.error(result.error ?? "Something went wrong.");
+      try {
+        const result = await logSubjectiveCheckin({ ...values });
+        if (result.ok) {
+          toast.success("Check-in saved.");
+          feedback("success");
+        } else setError(result.error ?? "Couldn't save your check-in.");
+      } catch {
+        setError("Couldn't save. Your choices are still here. Please try again.");
+      }
     });
   }
 
@@ -42,15 +51,15 @@ export function CheckinCard({ checkin }: { checkin: SubjectiveCheckin | null }) 
     <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <HeartPulse className="h-4 w-4 text-peach" aria-hidden />
+          <HeartPulse className="text-peach h-4 w-4" aria-hidden />
           How are you feeling?
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 pb-6">
         {METRICS.map((m) => (
           <div key={m.key}>
-            <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">{m.label}</span>
+            <div className="text-muted-foreground mb-1 flex items-center justify-between text-xs">
+              <span className="text-foreground font-medium">{m.label}</span>
               <span>
                 {m.low} · {m.high}
               </span>
@@ -64,9 +73,9 @@ export function CheckinCard({ checkin }: { checkin: SubjectiveCheckin | null }) 
                   aria-pressed={values[m.key] === n}
                   onClick={() => setValues((v) => ({ ...v, [m.key]: v[m.key] === n ? null : n }))}
                   className={cn(
-                    "h-8 flex-1 rounded-lg border text-sm font-medium transition-colors",
+                    "min-h-11 flex-1 rounded-lg border text-sm font-medium transition-colors",
                     values[m.key] === n
-                      ? "border-peach bg-peach-soft text-[#8a4b2f]"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-background text-muted-foreground hover:border-peach/50"
                   )}
                 >
@@ -76,6 +85,11 @@ export function CheckinCard({ checkin }: { checkin: SubjectiveCheckin | null }) 
             </div>
           </div>
         ))}
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
         <Button onClick={save} disabled={pending || !anySet} size="sm" className="w-full">
           {logged ? <Check aria-hidden /> : null}
           {pending ? "Saving…" : logged ? "Update check-in" : "Log check-in"}

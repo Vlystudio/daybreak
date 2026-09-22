@@ -21,6 +21,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Authentication forms contain secrets; never print Server Function arguments.
+  logging: { serverFunctions: false },
   experimental: {
     // Apple Health imports POST parsed data in chunks; raise the 1MB default so
     // each chunk has headroom (the client still batches well under this).
