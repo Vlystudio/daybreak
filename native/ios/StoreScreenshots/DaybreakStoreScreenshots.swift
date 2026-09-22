@@ -61,7 +61,9 @@ final class DaybreakStoreScreenshots: XCTestCase {
     private func capture(_ app: XCUIApplication, _ name: String) {
         // Allow the app's real transition to finish without altering its UI.
         RunLoop.current.run(until: Date().addingTimeInterval(1.5))
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        // Capture device pixels, not an app-window crop (compatibility windows
+        // can otherwise return dimensions that App Store Connect rejects).
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)

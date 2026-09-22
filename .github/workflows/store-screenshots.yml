@@ -27,7 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        device: ["iPhone 17 Pro Max", "iPad Pro 13-inch (M5)"]
+        # Match the shipping app's iPhone-only TARGETED_DEVICE_FAMILY.
+        device: ["iPhone 17 Pro Max"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -19,8 +19,11 @@ English (U.S.), light appearance. Inspect each exported image before submission.
 | 5     | Plan preferences | Daily rhythm and optional working hours                  |
 | 6     | Settings         | Appearance, security and account controls                |
 
-Capture iPhone 17 Pro Max and iPad Pro 13-inch (M5) using Xcode 26.6 / iOS 26.5
-simulator runtime. App Store Connect determines the accepted slots and dimensions.
+Capture iPhone 17 Pro Max using Xcode 26.6 / iOS 26.5. V1's native preparation
+sets `TARGETED_DEVICE_FAMILY = 1`: it is iPhone-only. The exploratory iPad capture
+ran in compatibility mode and produced cropped 780x1688 images; those are rejected
+and must not be uploaded or represented as iPad support. Use the full-screen
+capture API and require six opaque RGB PNGs at 1320x2868 for Apple's 6.9-inch slot.
 The workflow writes a manifest containing the source commit, run ID, device,
 runtime, origin, capture method and SHA-256 of every image. Only successful
 captures are uploaded as workflow artifacts; test plans and result bundles can

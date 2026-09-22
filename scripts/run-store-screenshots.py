@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import plistlib
+import struct
 import subprocess
 import time
 
@@ -20,6 +21,8 @@ def run(*args, capture=False, timeout=600):
         print(f"Finished: {label} ({time.monotonic() - started:.1f}s)", flush=True)
 
 device_name = os.environ["DAYBREAK_SCREENSHOT_DEVICE"]
+if device_name != "iPhone 17 Pro Max":
+    raise RuntimeError("Store captures must match the iPhone-only launch scope")
 for key in ("DAYBREAK_REVIEW_EMAIL", "DAYBREAK_REVIEW_PASSWORD"):
     if not os.environ.get(key):
         raise RuntimeError("Missing synthetic review credentials")
@@ -79,7 +82,14 @@ output = pathlib.Path("build/store-screenshots")
 output.mkdir(parents=True, exist_ok=True)
 run("xcrun", "xcresulttool", "export", "attachments", "--path", "build/store-result.xcresult", "--output-path", str(output))
 images = sorted(output.glob("*.png"))
-if len(images) < 6:
+if len(images) != 6:
     raise RuntimeError("The complete screenshot set was not exported")
+for item in images:
+    png = item.read_bytes()
+    if png[:8] != b"\x89PNG\r\n\x1a\n" or png[12:16] != b"IHDR":
+        raise RuntimeError("Expected actual PNG screenshots")
+    width, height, depth, color, _, _, _ = struct.unpack(">IIBBBBB", png[16:29])
+    if (width, height, depth, color) != (1320, 2868, 8, 2):
+        raise RuntimeError("Expected opaque 1320x2868 RGB iPhone screenshots")
 evidence = {"commit": os.environ.get("GITHUB_SHA"), "workflowRun": os.environ.get("GITHUB_RUN_ID"), "device": device_name, "runtime": runtime, "origin": "https://daybreak-one.vercel.app", "data": "Synthetic App Review account only", "capture": "Actual iOS Simulator app screens, not composited mockups", "images": [{"file": item.name, "sha256": hashlib.sha256(item.read_bytes()).hexdigest()} for item in images]}
 (output / "capture-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
