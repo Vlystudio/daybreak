@@ -23,15 +23,18 @@ device_name = os.environ["DAYBREAK_SCREENSHOT_DEVICE"]
 for key in ("DAYBREAK_REVIEW_EMAIL", "DAYBREAK_REVIEW_PASSWORD"):
     if not os.environ.get(key):
         raise RuntimeError("Missing synthetic review credentials")
+# Xcode 26.4+ builds these caches asynchronously. Apple documents waiting for
+# this command before boot to avoid degraded cold-start performance in VMs.
+run("xcrun", "simctl", "runtime", "dyld_shared_cache", "update", "--all", timeout=900)
 devices = json.loads(run("xcrun", "simctl", "list", "devices", "available", "--json", capture=True, timeout=120))["devices"]
-matches = [(runtime, d) for runtime, entries in devices.items() if runtime.endswith("iOS-26-4") for d in entries if d["name"] == device_name]
+matches = [(runtime, d) for runtime, entries in devices.items() if runtime.endswith("iOS-26-5") for d in entries if d["name"] == device_name]
 if len(matches) != 1:
-    raise RuntimeError("Expected one matching iOS 26.4 simulator")
+    raise RuntimeError("Expected one matching iOS 26.5 simulator")
 runtime, device = matches[0]
 udid = device["udid"]
 if device["state"] != "Booted":
     run("xcrun", "simctl", "boot", udid, timeout=180)
-run("xcrun", "simctl", "bootstatus", udid, "-b", timeout=300)
+run("xcrun", "simctl", "bootstatus", udid, "-b", timeout=600)
 run("xcrun", "simctl", "ui", udid, "appearance", "light")
 run("xcrun", "simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100")
 destination = "platform=iOS Simulator,arch=arm64,id=" + udid
