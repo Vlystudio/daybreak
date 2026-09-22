@@ -129,7 +129,7 @@ export default function PrivacyPage() {
           <a className="text-primary underline" href={`mailto:${identity.privacyEmail}`}>
             {identity.privacyEmail}
           </a>{" "}
-          for privacy requests or complaints. Business contact: {identity.businessAddress}.
+          for privacy requests or complaints.
         </p>
       </LegalSection>
     </LegalPage>

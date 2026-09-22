@@ -107,8 +107,8 @@ export default function TermsPage() {
           Contact{" "}
           <a className="text-primary underline" href={`mailto:${identity.supportEmail}`}>
             {identity.supportEmail}
-          </a>{" "}
-          or write to {identity.businessAddress}.
+          </a>
+          .
         </p>
       </LegalSection>
     </LegalPage>

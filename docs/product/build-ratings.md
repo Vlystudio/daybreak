@@ -77,3 +77,18 @@ judgment, not a predicted App Store score, ranking, retention rate or revenue.
 For an 8: verify the signed candidate on iPhone (including reduced motion,
 VoiceOver, keyboard/safe areas, interrupted saves and haptics), resolve the release
 evidence gaps, and observe several first-time users completing the core journey.
+
+## September 22 public address removal — source 081d2a7
+
+Live web release: **6.1/10**, using the unchanged baseline dimension scores above.
+The focused privacy fix removes the owner's postal address and preserves Settings
+without that configuration. It also retains the tested dependency security fixes.
+Verification includes 341 tests, lint, compliance checks, a production build and
+live browser checks of Terms, Privacy and signed-in Settings. See the
+[release record](../operations/public-address-removal-2026-09-22.md).
+
+The improvement is privacy and configuration resilience; the baseline's visual
+and task-flow weaknesses remain. Confidence is moderate for browser behavior and
+low for native performance and market outcomes. UI polish remains local at
+**7.2/10**; TestFlight remains build 28. No physical-device testing was performed
+for this web update.

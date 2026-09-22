@@ -9,7 +9,6 @@ Object.assign(valid, {
   LEGAL_OPERATOR_NAME: "Sunrise Operations LLC",
   LEGAL_PUBLIC_DEVELOPER_NAME: "Sunrise Operations",
   LEGAL_GOVERNING_JURISDICTION: "New York, United States",
-  LEGAL_BUSINESS_ADDRESS: "500 Market Street, Albany, New York 12207, United States",
   LEGAL_PRIVACY_EMAIL: "privacy@sunrise.test",
   LEGAL_SECURITY_EMAIL: "security@sunrise.test",
   LEGAL_SUPPORT_EMAIL: "support@sunrise.test",
@@ -24,8 +23,19 @@ Object.assign(valid, {
 });
 
 describe("production legal identity", () => {
-  it("accepts a complete non-placeholder identity", () => {
+  it("accepts a complete identity without a mailing address", () => {
     expect(validateProductionLegalIdentity(valid).ok).toBe(true);
+  });
+
+  it("does not expose a legacy mailing address in the public identity", () => {
+    const result = validateProductionLegalIdentity({
+      ...valid,
+      LEGAL_BUSINESS_ADDRESS: "500 Market Street, Albany, New York 12207, United States",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.identity).toEqual(validateProductionLegalIdentity(valid).identity);
+    expect(result.identity).not.toHaveProperty("businessAddress");
+    expect(LEGAL_IDENTITY_KEYS).not.toContain("LEGAL_BUSINESS_ADDRESS");
   });
 
   it.each(["TODO", "TBD", "Acme LLC", "example.com", "localhost", "123 Main Street"])(
@@ -37,10 +47,15 @@ describe("production legal identity", () => {
     }
   );
 
-  it("rejects missing values and non-HTTPS public URLs", () => {
+  it("still requires the operator name", () => {
+    const result = validateProductionLegalIdentity({ ...valid, LEGAL_OPERATOR_NAME: "" });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((issue) => issue.startsWith("operatorName:"))).toBe(true);
+  });
+
+  it("rejects non-HTTPS public URLs", () => {
     const result = validateProductionLegalIdentity({
       ...valid,
-      LEGAL_BUSINESS_ADDRESS: "",
       LEGAL_SUPPORT_URL: "http://sunrise.test/support",
     });
     expect(result.ok).toBe(false);
