@@ -1,31 +1,25 @@
 import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
-import { integrationsAvailable } from "@/env";
-import { loadUserProgress } from "@/lib/game/progress";
-import { StatsStrip } from "@/components/game/stats-strip";
 import { Greeting } from "@/components/dashboard/greeting";
 import { ConnectToast } from "@/components/dashboard/connect-toast";
 import { MorningSummary } from "@/components/dashboard/morning-summary";
-import { PlanConfidence } from "@/components/dashboard/plan-confidence";
-import { buildPlanHealthSnapshot } from "@/lib/health/plan-snapshot";
 import { ReadinessCard } from "@/components/dashboard/readiness-card";
 import { SleepCard } from "@/components/dashboard/sleep-card";
-import { HrvCard } from "@/components/dashboard/hrv-card";
 import { WeatherCard } from "@/components/dashboard/weather-card";
 import { ScheduleTimeline } from "@/components/dashboard/schedule-timeline";
 import { SetupChecklist } from "@/components/dashboard/setup-checklist";
 import { AdherenceCard } from "@/components/dashboard/adherence-card";
 import { CheckinCard } from "@/components/dashboard/checkin-card";
-import { DailyCheckinModal } from "@/components/dashboard/daily-checkin-modal";
 import { NutritionCard } from "@/components/dashboard/nutrition-card";
 import { EveningReviewCard } from "@/components/dashboard/evening-review-card";
 import { HabitsCard } from "@/components/dashboard/habits-card";
 import { NudgesCard } from "@/components/dashboard/nudges-card";
-import { CalendarSyncCard } from "@/components/dashboard/calendar-sync-card";
 import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
 import { FadeIn } from "@/components/motion";
+import { SOCIAL_FEATURES_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
+import { availableIntegrations } from "@/lib/integrations/availability";
 
 export const metadata = { title: "Today" };
 export const dynamic = "force-dynamic";
@@ -34,11 +28,8 @@ export default async function DashboardPage() {
   const user = await requireUser();
   const data = await loadDashboardData(user.id);
 
-  const progress = await loadUserProgress(user.id, data.profile?.timezone ?? "UTC");
-  // Normalized, source-aware health snapshot powering the plan confidence meter
-  // (works for any wearable or a manual check-in, never Oura-specific).
-  const planHealth = await buildPlanHealthSnapshot(user.id);
   const firstName = (data.profile?.display_name ?? "").split(" ")[0];
+  const weatherAvailable = availableIntegrations.weather();
 
   return (
     <div className="space-y-6">
@@ -46,65 +37,44 @@ export default async function DashboardPage() {
         <ConnectToast />
       </Suspense>
 
-      <DailyCheckinModal checkin={data.todayCheckin} />
-
       <Greeting
         name={firstName}
         timezone={data.profile?.timezone ?? "UTC"}
         avatarUrl={data.profile?.avatar_url ?? null}
       />
 
-      <FadeIn delay={0.02}>
-        <StatsStrip
-          level={progress.level}
-          intoLevel={progress.intoLevel}
-          span={progress.span}
-          seeds={progress.seeds}
-          dayStreak={progress.dayStreak}
-        />
-      </FadeIn>
-
       <SetupChecklist
         onboardingCompleted={data.onboardingCompleted}
         hasCity={Boolean(data.profile?.city)}
-        hasOura={data.connections.some((c) => c.provider === "oura")}
-        hasGoogle={data.connections.some((c) => c.provider === "google")}
+        weatherAvailable={weatherAvailable}
       />
 
-      <NudgesCard nudges={data.nudges} />
+      {SOCIAL_FEATURES_ENABLED && <NudgesCard nudges={data.nudges} />}
 
       <FadeIn delay={0.05}>
-        <MorningSummary summary={data.summary} />
+        <MorningSummary
+          summary={data.summary}
+          eventCount={data.todayEvents.length}
+          habitCount={data.habits.length}
+          canGenerate={data.canGenerateBriefing}
+          checkedIn={data.todayCheckin !== null}
+        />
       </FadeIn>
-
-      <FadeIn delay={0.06}>
-        <PlanConfidence snapshot={planHealth} />
-      </FadeIn>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <FadeIn delay={0.1} className="h-full">
-          <ReadinessCard today={data.today} metrics={data.metrics} />
-        </FadeIn>
-        <FadeIn delay={0.15} className="h-full">
-          <SleepCard today={data.today} metrics={data.metrics} />
-        </FadeIn>
-        <FadeIn delay={0.2} className="h-full">
-          <HrvCard today={data.today} metrics={data.metrics} />
-        </FadeIn>
-        <FadeIn delay={0.25} className="h-full">
-          <WeatherCard weather={data.weather} city={data.profile?.city ?? null} />
-        </FadeIn>
-      </div>
 
       {/* Today focus: schedule beside the two most time-sensitive cards */}
       <div className="grid gap-4 lg:grid-cols-3">
         <FadeIn delay={0.3} className="h-full lg:col-span-2">
-          <ScheduleTimeline events={data.todayEvents} hasHousehold={data.household !== null} />
+          <ScheduleTimeline
+            events={data.todayEvents}
+            hasHousehold={SOCIAL_FEATURES_ENABLED && data.household !== null}
+          />
         </FadeIn>
         <div className="space-y-4">
-          <FadeIn delay={0.33}>
-            <CheckinCard checkin={data.todayCheckin} />
-          </FadeIn>
+          <div id="daily-check-in" className="scroll-mt-24">
+            <FadeIn delay={0.33}>
+              <CheckinCard checkin={data.todayCheckin} />
+            </FadeIn>
+          </div>
           <FadeIn delay={0.34}>
             <AdherenceCard
               total={data.adherence.total}
@@ -115,24 +85,31 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Everything else tiles in a masonry grid so heights pack tightly */}
-      <div className="gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
+      <section aria-labelledby="daily-signals-title" className="space-y-3">
+        <h2 id="daily-signals-title" className="section-heading">
+          Your daily signals
+        </h2>
+        <div className={`grid gap-4 ${weatherAvailable ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          <ReadinessCard today={data.today} metrics={data.metrics} />
+          <SleepCard today={data.today} metrics={data.metrics} />
+          {weatherAvailable && (
+            <WeatherCard weather={data.weather} city={data.profile?.city ?? null} />
+          )}
+        </div>
+      </section>
+
+      {/* Daily habits and reflection remain easy to reach. */}
+      <div className="grid items-start gap-4 md:grid-cols-2">
         <HabitsCard habits={data.habits} />
-        <NutritionCard nutrition={data.todayNutrition} />
-        <CalendarSyncCard
-          connections={data.connections}
-          calendarSync={data.calendarSync}
-          fitbitAvailable={integrationsAvailable.fitbit()}
-        />
-        <HouseholdCard household={data.household} householdEvents={data.householdEvents} />
+        <EveningReviewCard review={data.todayReview} />
+        {NUTRITION_ENABLED && <NutritionCard nutrition={data.todayNutrition} />}
+        {SOCIAL_FEATURES_ENABLED && (
+          <HouseholdCard household={data.household} householdEvents={data.householdEvents} />
+        )}
       </div>
 
       <FadeIn delay={0.45}>
         <Recommendations summary={data.summary} />
-      </FadeIn>
-
-      <FadeIn delay={0.5}>
-        <EveningReviewCard review={data.todayReview} />
       </FadeIn>
     </div>
   );

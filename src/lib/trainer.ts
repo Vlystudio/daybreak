@@ -4,6 +4,7 @@ import { generateFitnessPlan } from "@/lib/integrations/ai";
 import { inputHash } from "@/lib/integrations/openai";
 import { audit } from "@/lib/audit";
 import type { UserPreferences } from "@/lib/planning";
+import { getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 const ACTIVITY_MULTIPLIER: Record<string, number> = {
   sedentary: 1.2,
@@ -26,7 +27,9 @@ export function computeTargets(prefs: UserPreferences): MacroTargets | null {
 
   const kg = prefs.weight_lb * 0.453592;
   const cm = prefs.height_in * 2.54;
-  const age = prefs.birth_year ? new Date().getFullYear() - prefs.birth_year : 30;
+  // Daybreak deliberately does not collect birth year. Use a neutral estimate
+  // and present targets as general planning guidance, not clinical nutrition.
+  const age = 30;
 
   let bmr: number;
   if (prefs.sex === "male") bmr = 10 * kg + 6.25 * cm - 5 * age + 5;
@@ -50,9 +53,11 @@ export function computeTargets(prefs: UserPreferences): MacroTargets | null {
   return { calories, protein, carbs, fat };
 }
 
-export type TrainerResult = "ok" | "missing_metrics" | "failed";
+export type TrainerResult = "ok" | "missing_metrics" | "consent_required" | "failed";
 
 export async function generateFitnessPlanForUser(userId: string): Promise<TrainerResult> {
+  const permit = await getAiProcessingPermit(userId, "fitness_plan");
+  if (!permit || !permit.consent.health) return "consent_required";
   const admin = createAdminClient();
 
   const { data: prefs } = await admin
@@ -67,7 +72,7 @@ export async function generateFitnessPlanForUser(userId: string): Promise<Traine
 
   const planInput = {
     profile: {
-      age: prefs.birth_year ? new Date().getFullYear() - prefs.birth_year : null,
+      age: null,
       sex: prefs.sex,
       heightIn: prefs.height_in as number,
       weightLb: prefs.weight_lb as number,
@@ -90,7 +95,7 @@ export async function generateFitnessPlanForUser(userId: string): Promise<Traine
     .maybeSingle<{ input_hash: string | null }>();
   if (existingPlan?.input_hash === hash) return "ok";
 
-  const content = await generateFitnessPlan(planInput);
+  const content = await generateFitnessPlan(permit, planInput);
   if (!content) return "failed";
 
   const { error } = await admin.from("fitness_plans").upsert(

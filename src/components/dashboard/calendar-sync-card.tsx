@@ -16,11 +16,15 @@ export function CalendarSyncCard({
   connections,
   calendarSync,
   fitbitAvailable = false,
+  ouraAvailable = false,
+  googleAvailable = false,
   appleHealth,
 }: {
   connections: Connection[];
   calendarSync: CalendarSyncSettings | null;
   fitbitAvailable?: boolean;
+  ouraAvailable?: boolean;
+  googleAvailable?: boolean;
   appleHealth?: { connected: boolean; lastRangeEnd: string | null };
 }) {
   const [pending, startTransition] = useTransition();
@@ -29,6 +33,7 @@ export function CalendarSyncCard({
   const googleConnected = connections.some((c) => c.provider === "google");
   const fitbitConnected = connections.some((c) => c.provider === "fitbit");
   const syncEnabled = calendarSync?.sync_enabled ?? true;
+  const canSync = (ouraConnected && ouraAvailable) || (googleConnected && googleAvailable);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, success: string) {
     startTransition(async () => {
@@ -45,47 +50,55 @@ export function CalendarSyncCard({
           <Link2 className="text-primary h-4 w-4" aria-hidden />
           Connections
         </CardTitle>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={pending || (!ouraConnected && !googleConnected)}
-          onClick={() => run(syncNow, "Everything is up to date.")}
-        >
-          <RefreshCw className={pending ? "animate-spin" : undefined} aria-hidden />
-          Sync now
-        </Button>
+        {canSync && (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={pending}
+            onClick={() => run(syncNow, "Everything is up to date.")}
+          >
+            <RefreshCw className={pending ? "animate-spin" : undefined} aria-hidden />
+            Sync now
+          </Button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4 pb-6">
         {/* Oura */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="bg-sage-soft flex h-9 w-9 items-center justify-center rounded-full">
-              <Activity className="text-sage h-4 w-4" aria-hidden />
-            </span>
-            <div>
-              <p className="text-sm font-medium">Oura Ring</p>
-              <p className="text-muted-foreground text-xs">
-                {ouraConnected ? "Connected — syncs every morning" : "Sleep, readiness & HRV"}
-              </p>
+        {(ouraAvailable || ouraConnected) && (
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="bg-sage-soft flex h-9 w-9 items-center justify-center rounded-full">
+                <Activity className="text-sage h-4 w-4" aria-hidden />
+              </span>
+              <div>
+                <p className="text-sm font-medium">Oura Ring</p>
+                <p className="text-muted-foreground text-xs">
+                  {ouraConnected
+                    ? ouraAvailable
+                      ? "Connected — syncs every morning"
+                      : "Saved connection — syncing paused"
+                    : "Sleep, readiness & HRV"}
+                </p>
+              </div>
             </div>
+            {ouraConnected ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={pending}
+                onClick={() => run(() => disconnectProvider("oura"), "Oura disconnected.")}
+              >
+                <Unlink aria-hidden />
+                <span className="sr-only">Disconnect Oura</span>
+              </Button>
+            ) : (
+              <Button size="sm" asChild>
+                {/* Full page navigation (not a Next Link) so the OAuth redirect works */}
+                <a href="/api/oauth/oura/start">Connect</a>
+              </Button>
+            )}
           </div>
-          {ouraConnected ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pending}
-              onClick={() => run(() => disconnectProvider("oura"), "Oura disconnected.")}
-            >
-              <Unlink aria-hidden />
-              <span className="sr-only">Disconnect Oura</span>
-            </Button>
-          ) : (
-            <Button size="sm" asChild>
-              {/* Full page navigation (not a Next Link) so the OAuth redirect works */}
-              <a href="/api/oauth/oura/start">Connect</a>
-            </Button>
-          )}
-        </div>
+        )}
 
         {(fitbitAvailable || fitbitConnected) && (
           <>
@@ -99,7 +112,9 @@ export function CalendarSyncCard({
                   <p className="text-sm font-medium">Fitbit</p>
                   <p className="text-muted-foreground text-xs">
                     {fitbitConnected
-                      ? "Connected — syncs every morning"
+                      ? fitbitAvailable
+                        ? "Connected — syncs every morning"
+                        : "Saved connection — syncing paused"
                       : "Sleep, heart rate & activity"}
                   </p>
                 </div>
@@ -123,64 +138,70 @@ export function CalendarSyncCard({
           </>
         )}
 
-        <Separator />
+        {(ouraAvailable || ouraConnected || fitbitAvailable || fitbitConnected) && <Separator />}
         <AppleHealthConnect
           connected={appleHealth?.connected ?? false}
           lastRangeEnd={appleHealth?.lastRangeEnd ?? null}
         />
 
-        <Separator />
-
         {/* Google Calendar */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="bg-sky-soft flex h-9 w-9 items-center justify-center rounded-full">
-              <CalendarCheck className="text-sky h-4 w-4" aria-hidden />
-            </span>
-            <div>
-              <p className="text-sm font-medium">Google Calendar</p>
-              <p className="text-muted-foreground text-xs">
-                {googleConnected
-                  ? calendarSync?.last_synced_at
-                    ? `Synced ${formatDistanceToNow(new Date(calendarSync.last_synced_at), { addSuffix: true })}`
-                    : "Connected"
-                  : "See your day alongside your health"}
-              </p>
+        {(googleAvailable || googleConnected) && (
+          <>
+            <Separator />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="bg-sky-soft flex h-9 w-9 items-center justify-center rounded-full">
+                  <CalendarCheck className="text-sky h-4 w-4" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-sm font-medium">Google Calendar</p>
+                  <p className="text-muted-foreground text-xs">
+                    {googleConnected
+                      ? !googleAvailable
+                        ? "Saved connection — syncing paused"
+                        : calendarSync?.last_synced_at
+                          ? `Synced ${formatDistanceToNow(new Date(calendarSync.last_synced_at), { addSuffix: true })}`
+                          : "Connected"
+                      : "See your day alongside your health"}
+                  </p>
+                </div>
+              </div>
+              {googleConnected ? (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={syncEnabled}
+                    disabled={pending || !googleAvailable}
+                    aria-label="Calendar sync enabled"
+                    onCheckedChange={(v) =>
+                      run(
+                        () => setCalendarSyncEnabled({ syncEnabled: v }),
+                        v ? "Calendar sync on." : "Calendar sync paused."
+                      )
+                    }
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={pending}
+                    onClick={() =>
+                      run(() => disconnectProvider("google"), "Google Calendar disconnected.")
+                    }
+                  >
+                    <Unlink aria-hidden />
+                    <span className="sr-only">Disconnect Google Calendar</span>
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" asChild>
+                  <a href="/api/oauth/google/start">Connect</a>
+                </Button>
+              )}
             </div>
-          </div>
-          {googleConnected ? (
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={syncEnabled}
-                disabled={pending}
-                aria-label="Calendar sync enabled"
-                onCheckedChange={(v) =>
-                  run(
-                    () => setCalendarSyncEnabled({ syncEnabled: v }),
-                    v ? "Calendar sync on." : "Calendar sync paused."
-                  )
-                }
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={pending}
-                onClick={() =>
-                  run(() => disconnectProvider("google"), "Google Calendar disconnected.")
-                }
-              >
-                <Unlink aria-hidden />
-                <span className="sr-only">Disconnect Google Calendar</span>
-              </Button>
-            </div>
-          ) : (
-            <Button size="sm" asChild>
-              <a href="/api/oauth/google/start">Connect</a>
-            </Button>
-          )}
-        </div>
+          </>
+        )}
 
-        {googleConnected &&
+        {googleAvailable &&
+          googleConnected &&
           (calendarSync?.daybreak_calendar_id ? (
             <p className="bg-muted/50 text-muted-foreground rounded-lg px-3 py-2 text-xs">
               ↪ Two-way sync on — your Daybreak plan is written to a “Daybreak” calendar in Google.

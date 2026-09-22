@@ -5,6 +5,7 @@ import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { verifyCronAuth } from "@/lib/security/cron-auth";
 import { integrationsAvailable } from "@/env";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 export const maxDuration = 300;
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       if (r.value) sent++;
     } else {
       failed++;
-      console.error("[cron] weekly digest failed for a user:", r.reason);
+      safeLog("error", "cron.weekly_digest_user_failed", { errorClass: errorClass(r.reason) });
     }
   }
 

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "buildNumber": "",
+    "commit": "",
+    "bundleId": "app.daybreak.mobile",
+    "ipaSha256": "",
+    "codemagicBuildId": "",
+    "installationType": "testflight"
+  },
+  "execution": {
+    "deviceModel": "",
+    "iosVersion": "",
+    "testAccountReference": "",
+    "testerReference": "",
+    "startedAt": "",
+    "completedAt": ""
+  },
+  "results": [],
+  "instructions": "Populate one result for every ID in config/testing/physical-device-scenarios.json. Each result requires id, result, evidence, notes, defectLink, and retestResult. Run npm run physical-device:validate with --input and --evidence."
+}

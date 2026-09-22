@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /**
  * Append-only audit log. Never include health values or tokens in metadata —
@@ -38,6 +39,7 @@ export type AuditAction =
   | "household.left"
   | "profile.updated"
   | "preferences.updated"
+  | "ai.consent_updated"
   | "plan.generated"
   | "fitness_plan.generated"
   | "exercises.generated"
@@ -60,7 +62,9 @@ export type AuditAction =
   | "cron.calendar_sync"
   | "cron.data_sync"
   | "admin.backfill_observations"
+  | "admin.minor_account_restricted"
   | "data.exported"
+  | "privacy_rights.submitted"
   | "account.deleted";
 
 export async function audit(
@@ -83,6 +87,6 @@ export async function audit(
     });
   } catch (err) {
     // Auditing must never break the user-facing operation.
-    console.error("[audit] failed to record", action, err);
+    safeLog("error", "audit.write_failed", { action, errorClass: errorClass(err) });
   }
 }

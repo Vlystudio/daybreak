@@ -1,9 +1,11 @@
 import "server-only";
+import { GROCERY_ENABLED } from "@/lib/features";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { integrationsAvailable } from "@/env";
 import { sendPushToUser } from "@/lib/push";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import { activeDeals, matchFavoritesToDeals } from "@/lib/grocery/on-sale";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /**
  * After a deal refresh, push each user a heads-up when their favorite grocery
@@ -11,6 +13,7 @@ import { activeDeals, matchFavoritesToDeals } from "@/lib/grocery/on-sale";
  * Called from the morning cron, once per day, right after the deal import.
  */
 export async function notifyFavoriteDeals(): Promise<number> {
+  if (!GROCERY_ENABLED) return 0;
   if (!integrationsAvailable.push()) return 0;
 
   const deals = await activeDeals();
@@ -35,7 +38,8 @@ export async function notifyFavoriteDeals(): Promise<number> {
     const extra = matches.length - 1;
     const body =
       `${lead.favorite} is on sale${lead.store ? ` at ${lead.store}` : ""}` +
-      (extra > 0 ? ` (+${extra} more of your favorites)` : "") + ".";
+      (extra > 0 ? ` (+${extra} more of your favorites)` : "") +
+      ".";
 
     const sent = await sendPushToUser(s.user_id, {
       title: "🏷️ Your groceries are on sale",
@@ -50,7 +54,7 @@ export async function notifyFavoriteDeals(): Promise<number> {
     if (r.status === "fulfilled") {
       if (r.value) notified++;
     } else {
-      console.error("[deal-alerts] push failed for a user:", r.reason);
+      safeLog("error", "deal_alerts.push_failed", { errorClass: errorClass(r.reason) });
     }
   }
   return notified;

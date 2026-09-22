@@ -3,6 +3,8 @@ import webpush from "web-push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { serverEnv, publicEnv, integrationsAvailable } from "@/env";
 import { sanitizeNotificationUrl } from "@/lib/security/safe-url";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 
 /**
  * Web Push delivery. Sends to every subscription a user has registered and
@@ -12,7 +14,7 @@ import { sanitizeNotificationUrl } from "@/lib/security/safe-url";
 
 let configured = false;
 function ensureConfigured(): boolean {
-  if (!integrationsAvailable.push()) return false;
+  if (!integrationsAvailable.push() || !isProcessorEnabled("web_push")) return false;
   if (!configured) {
     webpush.setVapidDetails(
       serverEnv().VAPID_SUBJECT,
@@ -67,7 +69,11 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode;
         if (status === 404 || status === 410) dead.push(s.id);
-        else console.error("[push] send failed:", err instanceof Error ? err.message : "unknown");
+        else
+          safeLog("error", "push.send_failed", {
+            errorClass: errorClass(err),
+            httpStatus: status ?? 0,
+          });
       }
     })
   );

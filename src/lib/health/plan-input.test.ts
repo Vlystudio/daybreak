@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { snapshotFromUnderstanding } from "./plan-input";
-import { HEALTH_PROVIDERS, isProviderEnabled, providerInfo, providerState } from "./providers";
+import { HEALTH_PROVIDERS, providerInfo, providerState } from "./providers";
 import type {
   Confidence,
   DailyHealthSignal,
@@ -149,21 +149,7 @@ describe("snapshotFromUnderstanding — Daily Plan health input", () => {
   });
 });
 
-describe("provider registry — gating", () => {
-  it("Garmin is gated and never reports enabled/available", () => {
-    expect(isProviderEnabled("garmin")).toBe(false);
-    const garmin = providerInfo("garmin")!;
-    expect(providerState(garmin, { configured: false })).toBe("Gated");
-    expect(providerState(garmin, { connected: true })).toBe("Gated");
-  });
-
-  it("Google Health is planned (or available only when configured), not generally enabled", () => {
-    expect(isProviderEnabled("google_health")).toBe(false);
-    const google = providerInfo("google_health")!;
-    expect(providerState(google, { configured: false })).toBe("Planned");
-    expect(providerState(google, { configured: true })).toBe("Available");
-  });
-
+describe("V1 provider registry", () => {
   it("active providers reflect connection + config", () => {
     const oura = providerInfo("oura")!;
     expect(providerState(oura, { connected: true })).toBe("Connected");

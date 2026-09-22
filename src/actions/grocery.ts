@@ -1,5 +1,7 @@
 "use server";
 
+import { GROCERY_ENABLED, GROCERY_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -16,11 +18,15 @@ import {
 import { importGroceryDeals } from "@/lib/grocery/import-deals";
 import { analyzeReceipt, type ReceiptAnalysis } from "@/lib/integrations/receipt-vision";
 import { validateImageDataUrl } from "@/lib/image-upload";
+import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
 import { integrationsAvailable } from "@/env";
 import { z } from "zod";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 async function householdId(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  if (!SOCIAL_FEATURES_ENABLED) return null;
   const { data } = await supabase
     .from("household_members")
     .select("household_id")
@@ -30,6 +36,7 @@ async function householdId(supabase: SupabaseClient, userId: string): Promise<st
 }
 
 export async function saveGrocerySettings(input: GrocerySettingsInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
@@ -61,6 +68,7 @@ export async function saveGrocerySettings(input: GrocerySettingsInput): Promise<
 }
 
 export async function addPantryItem(input: PantryItemInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const parsed = pantryItemSchema.safeParse(input);
   if (!parsed.success)
@@ -86,6 +94,7 @@ export async function addPantryItem(input: PantryItemInput): Promise<ActionResul
 }
 
 export async function removePantryItem(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid item" };
 
@@ -106,6 +115,7 @@ export async function removePantryItem(id: string): Promise<ActionResult> {
 export async function refreshGroceryDeals(): Promise<
   { ok: true; prices: number } | { ok: false; error: string }
 > {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!integrationsAvailable.groceryDeals()) {
     return { ok: false, error: "The deals feed isn't connected on this deployment." };
@@ -125,7 +135,7 @@ export async function refreshGroceryDeals(): Promise<
     revalidatePath("/grocery");
     return { ok: true, prices: result.prices };
   } catch (err) {
-    console.error("[grocery] deal import failed:", err);
+    safeLog("error", "grocery.deal_import_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "The deal import hit a snag — please try again." };
   }
 }
@@ -136,6 +146,7 @@ export type ReceiptResult = { ok: true; receipt: ReceiptAnalysis } | { ok: false
 
 /** Read a grocery receipt photo into a structured purchase (no save yet). */
 export async function analyzeReceiptPhoto(input: { imageDataUrl: string }): Promise<ReceiptResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`vision:${user.id}`, RATE_LIMITS.aiVision);
   if (!limited.ok)
@@ -144,7 +155,9 @@ export async function analyzeReceiptPhoto(input: { imageDataUrl: string }): Prom
   const valid = validateImageDataUrl(input.imageDataUrl);
   if (!valid.ok) return { ok: false, error: valid.error };
 
-  const receipt = await analyzeReceipt(input.imageDataUrl);
+  const permit = await getAiProcessingPermit(user.id, "receipt_image");
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  const receipt = await analyzeReceipt(permit, input.imageDataUrl);
   if (!receipt)
     return { ok: false, error: "Couldn't read that receipt — enter the total manually." };
   await audit(user.id, "receipt.scanned");
@@ -163,6 +176,7 @@ const purchaseSchema = z.object({
 });
 
 export async function logPurchase(input: z.input<typeof purchaseSchema>): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many updates — try again shortly." };
@@ -192,6 +206,7 @@ export async function logPurchase(input: z.input<typeof purchaseSchema>): Promis
 }
 
 export async function deletePurchase(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Unknown purchase" };
   const supabase = await createClient();
@@ -208,6 +223,7 @@ export async function deletePurchase(id: string): Promise<ActionResult> {
 
 /** Toggle a store on/off in the user's preferred-store list. */
 export async function toggleStore(storeId: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(storeId).success) return { ok: false, error: "Invalid store" };
 

@@ -25,8 +25,8 @@ jobs:
       - name: Scan for secrets
         run: gitleaks detect --no-banner --redact --exit-code 1
 
-  # Informational full audit (includes dev tooling). Non-blocking — the blocking
-  # production gate lives in ci.yml. Surfaces the known dev-only advisories.
+  # Full audit includes build and native tooling. Patched transitive overrides
+  # keep this blocking; production dependencies are also checked in ci.yml.
   audit:
     runs-on: ubuntu-latest
     steps:
@@ -36,8 +36,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Full npm audit (informational)
-        run: npm audit --audit-level=moderate || true
+      - name: Full npm audit — blocking
+        run: npm audit --audit-level=moderate
       - name: Production audit (high+) — blocking
         run: npm audit --omit=dev --audit-level=high
 

@@ -1,17 +1,25 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { COACH_ENABLED } from "@/lib/features";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { CalendarDays, Plus, MapPin, ArrowRight, Circle, CheckCircle2, Dumbbell } from "lucide-react";
-import { toast } from "sonner";
+import {
+  CalendarDays,
+  Plus,
+  MapPin,
+  ArrowRight,
+  Circle,
+  CheckCircle2,
+  Dumbbell,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventEditor } from "@/components/schedule/event-editor";
-import { toggleEventCompleted } from "@/actions/schedule";
-import { ConfettiBurst } from "@/components/confetti-burst";
+import { useEventCompletion } from "@/components/schedule/use-event-completion";
 import type { ScheduleEvent } from "@/lib/types";
 
 const colorDot: Record<string, string> = {
@@ -30,11 +38,7 @@ export function ScheduleTimeline({
 }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<ScheduleEvent | null>(null);
-  const [, startTransition] = useTransition();
-  const [burst, setBurst] = useState(0);
-  const [done, setDone] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(events.map((e) => [e.id, e.completed_at != null]))
-  );
+  const { items, toggleDone: toggle } = useEventCompletion(events);
   // Mount-time clock, refreshed each minute, so the "now" highlight stays pure.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -51,22 +55,10 @@ export function ScheduleTimeline({
     setEditorOpen(true);
   }
 
-  function toggle(event: ScheduleEvent) {
-    const next = !done[event.id];
-    setDone((d) => ({ ...d, [event.id]: next }));
-    if (next) setBurst((b) => b + 1); // celebrate finishing a task
-    startTransition(async () => {
-      const res = await toggleEventCompleted(event.id, next);
-      if (!res.ok) {
-        setDone((d) => ({ ...d, [event.id]: !next })); // revert
-        toast.error(res.error);
-      }
-    });
-  }
-
   // Highlight the event happening now, or the next upcoming one if none is.
   const currentId = events.find(
-    (e) => !e.all_day && new Date(e.starts_at).getTime() <= now && new Date(e.ends_at).getTime() > now
+    (e) =>
+      !e.all_day && new Date(e.starts_at).getTime() <= now && new Date(e.ends_at).getTime() > now
   )?.id;
   const nextId = currentId
     ? undefined
@@ -74,16 +66,15 @@ export function ScheduleTimeline({
 
   return (
     <Card className="relative h-full">
-      {burst > 0 && <ConfettiBurst key={burst} />}
-      <CardHeader className="flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4 sm:p-6">
         <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-4 w-4 text-primary" aria-hidden />
+          <CalendarDays className="text-primary h-4 w-4" aria-hidden />
           Today&apos;s schedule
         </CardTitle>
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="sm" asChild>
             <Link href="/schedule">
-              Full week
+              View all
               <ArrowRight aria-hidden />
             </Link>
           </Button>
@@ -104,8 +95,8 @@ export function ScheduleTimeline({
           </div>
         ) : (
           <ol className="relative space-y-1" aria-label="Today's events">
-            {events.map((event) => {
-              const isDone = done[event.id];
+            {items.map((event) => {
+              const isDone = event.completed_at != null;
               const isCurrent = event.id === currentId;
               const isNext = event.id === nextId;
               return (
@@ -113,22 +104,25 @@ export function ScheduleTimeline({
                   <div
                     className={cn(
                       "group flex items-start gap-2 rounded-xl p-2.5 transition-colors",
-                      isCurrent ? "bg-primary/10 ring-1 ring-primary/25" : "hover:bg-accent"
+                      isCurrent ? "bg-primary/10 ring-primary/25 ring-1" : "hover:bg-accent"
                     )}
                   >
                     <button
                       type="button"
                       onClick={() => toggle(event)}
-                      aria-label={isDone ? "Mark not done" : "Mark done"}
-                      className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-primary"
+                      aria-label={
+                        isDone ? `Mark ${event.title} as not done` : `Mark ${event.title} as done`
+                      }
+                      aria-pressed={isDone}
+                      className="text-muted-foreground hover:text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors"
                     >
                       {isDone ? (
-                        <CheckCircle2 className="h-5 w-5 text-primary" aria-hidden />
+                        <CheckCircle2 className="text-primary h-5 w-5" aria-hidden />
                       ) : (
                         <Circle className="h-5 w-5" aria-hidden />
                       )}
                     </button>
-                    <div className="w-14 shrink-0 pt-0.5 text-sm tabular-nums text-muted-foreground">
+                    <div className="text-muted-foreground hidden w-16 shrink-0 pt-0.5 text-sm whitespace-nowrap tabular-nums sm:block">
                       {event.all_day ? "All day" : format(new Date(event.starts_at), "h:mm a")}
                     </div>
                     <div
@@ -141,12 +135,17 @@ export function ScheduleTimeline({
                     <button
                       type="button"
                       onClick={() => openEdit(event)}
-                      className="min-w-0 flex-1 text-left focus-visible:outline-none"
+                      className="focus-visible:ring-ring min-h-11 min-w-0 flex-1 rounded-md text-left focus-visible:ring-2"
                     >
-                      <p className={cn("truncate font-medium", isDone && "text-muted-foreground line-through")}>
+                      <p
+                        className={cn(
+                          "truncate font-medium",
+                          isDone && "text-muted-foreground line-through"
+                        )}
+                      >
                         {event.title}
                       </p>
-                      <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                      <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-sm">
                         {!event.all_day && (
                           <span>
                             {format(new Date(event.starts_at), "h:mm")}–
@@ -161,7 +160,7 @@ export function ScheduleTimeline({
                         )}
                       </p>
                       {event.description && (
-                        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground/80">
+                        <p className="text-muted-foreground/80 mt-0.5 line-clamp-2 text-xs">
                           {event.description}
                         </p>
                       )}
@@ -171,10 +170,10 @@ export function ScheduleTimeline({
                       {isNext && <Badge variant="outline">Next</Badge>}
                       {event.source === "google" && <Badge variant="sky">Google</Badge>}
                       {event.household_id && <Badge variant="sage">Shared</Badge>}
-                      {event.plan_type === "workout" && (
+                      {COACH_ENABLED && event.plan_type === "workout" && (
                         <Link
                           href="/coach"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          className="text-primary inline-flex items-center gap-1 text-xs font-medium hover:underline"
                         >
                           <Dumbbell className="h-3 w-3" aria-hidden /> Workout
                         </Link>
@@ -194,6 +193,7 @@ export function ScheduleTimeline({
         event={editing}
         defaultDate={new Date()}
         hasHousehold={hasHousehold}
+        existingEvents={items}
       />
     </Card>
   );

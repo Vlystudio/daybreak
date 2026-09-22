@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { getUser } from "@/lib/auth";
+import { getUser, isAuthenticatedUserEligible } from "@/lib/auth";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import {
@@ -29,6 +29,9 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
+  if (!(await isAuthenticatedUserEligible(user.id))) {
+    return NextResponse.json({ error: "Account eligibility required." }, { status: 403 });
+  }
 
   const limited = await rateLimit(`apple-import:${user.id}`, RATE_LIMITS.appleImport);
   if (!limited.ok) {

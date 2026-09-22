@@ -9,6 +9,7 @@ import {
   type ChunkResult,
   type ImportSummary,
 } from "./schema";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /**
  * Server-side persistence for Apple Health imports, shared by the Phase 1 export
@@ -122,7 +123,9 @@ export async function upsertAppleHealthChunk(
       appleChunkToObservations(userId, { metrics, workouts }, "apple_health")
     );
   } catch (err) {
-    console.error("[apple-health] observation dual-write failed:", err);
+    safeLog("error", "apple_health.observation_dual_write_failed", {
+      errorClass: errorClass(err),
+    });
   }
 
   return { ok: true, metrics: metricsWritten, workouts: workouts.length, samples: samples.length };

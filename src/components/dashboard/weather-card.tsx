@@ -31,7 +31,13 @@ function WeatherIcon({ code, className }: { code: number; className?: string }) 
   return <CloudLightning className={className} aria-hidden />;
 }
 
-export function WeatherCard({ weather, city }: { weather: WeatherSnapshot | null; city: string | null }) {
+export function WeatherCard({
+  weather,
+  city,
+}: {
+  weather: WeatherSnapshot | null;
+  city: string | null;
+}) {
   return (
     <Card className="bg-sunrise h-full border-none text-[#5a3d1a]">
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
@@ -61,7 +67,8 @@ export function WeatherCard({ weather, city }: { weather: WeatherSnapshot | null
               </span>
               {weather.precipitationChance != null && (
                 <span className="flex items-center gap-1">
-                  <Droplets className="h-3.5 w-3.5" aria-hidden /> {weather.precipitationChance}% rain
+                  <Droplets className="h-3.5 w-3.5" aria-hidden /> {weather.precipitationChance}%
+                  rain
                 </span>
               )}
               <span className="flex items-center gap-1">
@@ -76,11 +83,13 @@ export function WeatherCard({ weather, city }: { weather: WeatherSnapshot | null
           </>
         ) : (
           <p className="py-6 text-sm">
-            Set your city in{" "}
+            {city
+              ? "Weather is unavailable right now. Check your location in "
+              : "Add your city in "}
             <Link href="/settings" className="font-medium underline underline-offset-2">
               settings
             </Link>{" "}
-            to see your local morning weather here.
+            {city ? "." : " for a local forecast."}
           </p>
         )}
       </CardContent>

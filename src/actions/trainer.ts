@@ -1,13 +1,18 @@
 "use server";
 
+import { COACH_ENABLED, COACH_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { generateFitnessPlanForUser } from "@/lib/trainer";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_REQUIRED_ERROR } from "@/lib/integrations/ai-permit";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /** Generate the user's workout + nutrition regimen. */
 export async function generateFitnessPlan(): Promise<ActionResult> {
+  if (!COACH_ENABLED) return { ok: false, error: COACH_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`ai:${user.id}`, RATE_LIMITS.aiSummary);
@@ -20,13 +25,16 @@ export async function generateFitnessPlan(): Promise<ActionResult> {
     if (result === "missing_metrics") {
       return { ok: false, error: "Add your height and weight on the Plan tab first." };
     }
+    if (result === "consent_required") {
+      return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+    }
     if (result === "failed") {
       return { ok: false, error: "Couldn't build your regimen — please try again in a minute." };
     }
     revalidatePath("/trainer");
     return { ok: true };
   } catch (err) {
-    console.error("[trainer] generation failed:", err instanceof Error ? err.message : "unknown");
+    safeLog("error", "trainer.generation_failed", { errorClass: errorClass(err) });
     return { ok: false, error: "Couldn't build your regimen — please try again in a minute." };
   }
 }

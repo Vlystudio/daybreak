@@ -21,6 +21,8 @@ import { buildDailyHealthUnderstanding } from "@/lib/health/understanding";
 import { buildAiHealthInput } from "@/lib/health/ai-input";
 import type { HealthMetric } from "@/lib/types";
 import type { ActionResult } from "@/actions/schedule";
+import { AI_CONSENT_REQUIRED_ERROR, getAiProcessingPermit } from "@/lib/integrations/ai-permit";
+import { immediateEmergencySafetyMessage } from "@/lib/integrations/ai-boundary";
 
 export type AnalyzeResult = { ok: true; analysis: HealthAnalysis } | { ok: false; error: string };
 
@@ -45,6 +47,14 @@ const METRIC_COLUMNS =
  */
 export async function analyzeHealth(): Promise<AnalyzeResult> {
   const user = await requireUser();
+  const permit = await getAiProcessingPermit(user.id, "health_analysis");
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  if (!permit.consent.health) {
+    return {
+      ok: false,
+      error: "Enable Health and wearable summaries under Settings → AI data use first.",
+    };
+  }
 
   const limited = await rateLimit(`ai:${user.id}`, RATE_LIMITS.aiSummary);
   if (!limited.ok) {
@@ -64,7 +74,7 @@ export async function analyzeHealth(): Promise<AnalyzeResult> {
   }
 
   const aiInput = buildAiHealthInput(understanding) as unknown as Record<string, unknown>;
-  const analysis = await analyzeFusedHealth(aiInput);
+  const analysis = await analyzeFusedHealth(permit, aiInput);
   if (!analysis) {
     return { ok: false, error: "Couldn't analyze your trends right now — please try again." };
   }
@@ -91,15 +101,32 @@ async function recentMetricsAndFlags(supabase: SupabaseClient, userId: string) {
 /** Start a check-in: the coach opens with a pointed question from your data. */
 export async function startCheckin(): Promise<CheckinResult> {
   const user = await requireUser();
+  const permit = await getAiProcessingPermit(user.id, "health_checkin");
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  if (!permit.consent.health) {
+    return {
+      ok: false,
+      error: "Enable Health and wearable summaries under Settings → AI data use first.",
+    };
+  }
+  if (!permit.consent.checkin) {
+    return {
+      ok: false,
+      error: "Enable Check-ins under Settings → AI data use first.",
+    };
+  }
   const limited = await rateLimit(`chat:${user.id}`, RATE_LIMITS.aiChat);
   if (!limited.ok) return { ok: false, error: "Check-in limit reached for now — try again later." };
 
   const supabase = await createClient();
   const { rows, flags } = await recentMetricsAndFlags(supabase, user.id);
   if (rows.length < 3)
-    return { ok: false, error: "Not enough data yet — give Oura a few more nights to sync." };
+    return {
+      ok: false,
+      error: "Not enough data yet — give your health source a few more days to sync.",
+    };
 
-  const reply = await healthCheckinReply({
+  const reply = await healthCheckinReply(permit, {
     metrics: rows as unknown as Record<string, unknown>[],
     flags,
     history: [],
@@ -151,8 +178,39 @@ export async function replyCheckin(id: string, message: string): Promise<Checkin
     { role: "user", content: text, at: new Date().toISOString() },
   ];
 
+  // Immediate-danger language never leaves Daybreak. Preserve the original
+  // turn and return deterministic guidance without persisting a classification.
+  const emergencyMessage = immediateEmergencySafetyMessage(text);
+  if (emergencyMessage) {
+    const messages: CheckinMessage[] = [
+      ...history,
+      {
+        role: "assistant",
+        content: emergencyMessage,
+        at: new Date().toISOString(),
+        action: null,
+      },
+    ];
+    const { error } = await supabase.from("health_checkins").update({ messages }).eq("id", id);
+    return error
+      ? {
+          ok: false,
+          error: "Emergency guidance is shown above, but the check-in could not be saved.",
+        }
+      : { ok: true, id, messages };
+  }
+
+  const permit = await getAiProcessingPermit(user.id, "health_checkin");
+  if (!permit) return { ok: false, error: AI_CONSENT_REQUIRED_ERROR };
+  if (!permit.consent.checkin || !permit.consent.health) {
+    return {
+      ok: false,
+      error: "Enable both Check-ins and Health under Settings → AI data use first.",
+    };
+  }
+
   const { rows, flags } = await recentMetricsAndFlags(supabase, user.id);
-  const reply = await healthCheckinReply({
+  const reply = await healthCheckinReply(permit, {
     metrics: rows as unknown as Record<string, unknown>[],
     flags,
     history: history.map((m): CheckinTurn => ({ role: m.role, content: m.content })),

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUiPreference } from "@/components/ui-preferences";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HealthOverview } from "@/components/health/health-overview";
 import { HealthTrends } from "@/components/health/health-trends";
@@ -24,8 +25,12 @@ export function HealthCommandCenter({
   todayCheckin,
   conversation,
   selfReport,
+  aiAvailable = false,
+  cloudSyncAvailable = false,
 }: {
   understanding: HealthUnderstandingResult;
+  aiAvailable?: boolean;
+  cloudSyncAvailable?: boolean;
   todayCheckin: SubjectiveCheckin | null;
   conversation: { id: string; messages: CheckinMessage[] } | null;
   selfReport: {
@@ -35,10 +40,11 @@ export function HealthCommandCenter({
     feelings: FeelingPoint[];
   };
 }) {
+  const [tab, setTab] = useUiPreference<string>("health-tab", "overview");
   const hasData = understanding.baselines.some((b) => b.sampleCount >= 3);
 
   return (
-    <Tabs defaultValue="overview">
+    <Tabs value={tab} onValueChange={setTab}>
       <TabsList className="w-full sm:w-auto">
         {[
           ["overview", "Overview"],
@@ -46,14 +52,22 @@ export function HealthCommandCenter({
           ["sources", "Sources"],
           ["checkin", "Check-in"],
         ].map(([value, label]) => (
-          <TabsTrigger key={value} value={value} className="flex-1 px-2 sm:flex-none sm:px-4">
+          <TabsTrigger
+            key={value}
+            value={value}
+            className="min-w-0 flex-1 px-1.5 text-xs whitespace-nowrap sm:flex-none sm:px-4 sm:text-sm"
+          >
             {label}
           </TabsTrigger>
         ))}
       </TabsList>
 
       <TabsContent value="overview">
-        <HealthOverview understanding={understanding} />
+        <HealthOverview
+          understanding={understanding}
+          aiAvailable={aiAvailable}
+          cloudSyncAvailable={cloudSyncAvailable}
+        />
       </TabsContent>
       <TabsContent value="trends">
         <HealthTrends understanding={understanding} />
@@ -63,6 +77,7 @@ export function HealthCommandCenter({
       </TabsContent>
       <TabsContent value="checkin">
         <HealthCheckIn
+          aiAvailable={aiAvailable}
           todayCheckin={todayCheckin}
           conversation={conversation}
           hasData={hasData}

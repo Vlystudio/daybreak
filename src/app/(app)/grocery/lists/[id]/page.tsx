@@ -1,3 +1,4 @@
+import { GROCERY_ENABLED } from "@/lib/features";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
@@ -13,7 +14,7 @@ import {
   type PriceHint,
 } from "@/components/grocery/shopping-list-detail";
 
-export const metadata = { title: "Shopping list · Daybreak" };
+export const metadata = { title: "Shopping list" };
 
 interface ListRow {
   id: string;
@@ -40,6 +41,7 @@ export default async function ShoppingListPage({ params }: { params: Promise<{ i
   const { id } = await params;
   if (!uuidSchema.safeParse(id).success) notFound();
 
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -115,15 +117,17 @@ export default async function ShoppingListPage({ params }: { params: Promise<{ i
       <div>
         <Link
           href="/grocery/lists"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden /> Shopping lists
         </Link>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight">{list.title || "Shopping list"}</h1>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+          {list.title || "Shopping list"}
+        </h1>
         {stores.length === 0 && (
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-sm">
             Pick your stores on the{" "}
-            <Link href="/grocery" className="font-medium text-primary hover:underline">
+            <Link href="/grocery" className="text-primary font-medium hover:underline">
               Grocery
             </Link>{" "}
             page to compare prices.

@@ -1,0 +1,39 @@
+﻿{
+  "commit": "f1940ae93e7d8bb236cf064af6fa7dbcbe99037b",
+  "workflowRun": "35790969516",
+  "device": "iPhone 17 Pro Max",
+  "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+  "origin": "https://daybreak-one.vercel.app",
+  "data": "Synthetic App Review account only",
+  "capture": "Actual iOS Simulator app screens, not composited mockups",
+  "images": [
+    {
+      "file": "1D9AB1F0-4E4A-4EAB-A1E9-ED5A86D08461.png",
+      "sha256": "1c0c9803f1d09f343fefe23e442a97f1253bdf54ef36e006d2493e665c13e80f"
+    },
+    {
+      "file": "2C8E3938-417C-4545-9DAD-E85C835C1234.png",
+      "sha256": "e3c6df0c7150b6a331c96756a932909d1e29c19957993ba15eb10aa5fb1ca934"
+    },
+    {
+      "file": "40A93584-3615-4E2E-ADB6-4A7189663DEF.png",
+      "sha256": "cbd6ea294f647721d8318884324b913446997996e73d8e242e05144f1a1cc00b"
+    },
+    {
+      "file": "4378ACFC-7E4A-4A5B-8F88-AA6A09A88301.png",
+      "sha256": "1c4a9a5da4c4adcd61c21903b5a648fcbe146f2dfbbbe13259a639ecd6fcd1fd"
+    },
+    {
+      "file": "7CB79DB7-3C03-494A-99CA-D5CB754489B7.png",
+      "sha256": "0bf593ca41b2b5f6efb8a302938c21ea07ea81fc9e6cf9ab8c2ec07608de9564"
+    },
+    {
+      "file": "C00607A7-0340-438F-88CE-FD503487D201.png",
+      "sha256": "7a1a0ce051c1fab635e59222fc632629c3c979c354ace298d57353cad7b60b18"
+    }
+  ],
+  "hostedSource": "c1cb521",
+  "hostedDeployment": "dpl_DoTnoWWp81nYf1UB414wKxWxMSyy",
+  "validation": "Normal UI sign-in and six screen checks passed. Six 1320x2868 8-bit RGB PNGs without alpha passed strict validation. All six images visually inspected; time fields fit inside cards.",
+  "limits": "Simulator evidence, not the signed TestFlight IPA or a new physical-device test. Two preceding intermittent UI sign-in failures were not reproduced; their exact cause is unproven. Uploaded listing images retain their original provenance."
+}

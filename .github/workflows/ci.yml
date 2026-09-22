@@ -42,6 +42,9 @@ jobs:
       - name: Test
         run: npm run test:run
 
+      - name: Repository compliance gates
+        run: npm run verify:app-store-sections-1-8 -- --allow-external-blockers --no-write-evidence
+
       - name: Build
         run: npm run build
         env:
@@ -52,3 +55,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ci-service-role-aaaaaaaaaaaaaaaaaaaa
           TOKEN_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
           CRON_SECRET: ci-dummy-cron-secret-0123456789
+          # This compiles repository code without pretending the dummy identity
+          # is deployable. Vercel/Codemagic release builds cannot use this path.
+          LEGAL_REPOSITORY_BUILD: "true"

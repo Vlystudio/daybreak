@@ -2,6 +2,8 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptToken, encryptToken } from "@/lib/crypto";
 import { serverEnv } from "@/env";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { assertProcessorEnabled } from "@/lib/privacy/processors";
 
 /**
  * OAuth token storage. Tokens are AES-256-GCM encrypted at rest, the table
@@ -52,6 +54,89 @@ interface StoredConnection {
   expires_at: string | null;
 }
 
+export type ProviderRevocationStatus = "revoked" | "already_invalid";
+
+export interface ProviderRevocationResult {
+  provider: Provider;
+  status: ProviderRevocationStatus;
+  httpStatus: number;
+}
+
+export class ProviderRevocationRetryableError extends Error {
+  constructor(
+    public readonly provider: Provider,
+    public readonly code: "network" | "rate_limited" | "provider_unavailable" | "provider_rejected"
+  ) {
+    super(`${provider} authorization revocation is temporarily unavailable`);
+    this.name = "ProviderRevocationRetryableError";
+  }
+}
+
+/**
+ * Revoke a stored provider grant without ever exposing a decrypted token to
+ * the browser or logs. A missing connection is idempotently already-invalid.
+ * Only network/429/5xx outcomes are retryable; callers may safely delete the
+ * local credential after any returned terminal result.
+ */
+export async function revokeProviderConnection(
+  userId: string,
+  provider: Provider
+): Promise<ProviderRevocationResult> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("oauth_connections")
+    .select("access_token_enc, refresh_token_enc, expires_at")
+    .eq("user_id", userId)
+    .eq("provider", provider)
+    .maybeSingle<StoredConnection>();
+
+  if (error) throw new ProviderRevocationRetryableError(provider, "provider_unavailable");
+  if (!data) return { provider, status: "already_invalid", httpStatus: 204 };
+
+  const accessToken = decryptToken(data.access_token_enc);
+  const refreshToken = data.refresh_token_enc ? decryptToken(data.refresh_token_enc) : null;
+  let url: string;
+  let headers: Record<string, string> = {
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+  let body: URLSearchParams | undefined;
+
+  if (provider === "google") {
+    url = "https://oauth2.googleapis.com/revoke";
+    body = new URLSearchParams({ token: refreshToken ?? accessToken });
+  } else if (provider === "fitbit") {
+    url = "https://api.fitbit.com/oauth2/revoke";
+    headers = { ...headers, Authorization: `Bearer ${accessToken}` };
+    body = new URLSearchParams({ token: refreshToken ?? accessToken });
+  } else {
+    // Oura's current documentation defines access_token as a URL parameter.
+    url = `https://api.ouraring.com/oauth/revoke?${new URLSearchParams({ access_token: accessToken })}`;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, { method: "POST", headers, body, redirect: "error" });
+  } catch {
+    throw new ProviderRevocationRetryableError(provider, "network");
+  }
+
+  if (response.ok) return { provider, status: "revoked", httpStatus: response.status };
+  if (response.status === 429) {
+    throw new ProviderRevocationRetryableError(provider, "rate_limited");
+  }
+  if (response.status >= 500) {
+    throw new ProviderRevocationRetryableError(provider, "provider_unavailable");
+  }
+
+  // These endpoints document 400/401 for an already-invalid credential. Any
+  // other rejection does not prove that the remote grant is gone, so preserve
+  // the encrypted local credential and keep deletion/disconnect fail-closed.
+  if (response.status === 400 || response.status === 401) {
+    return { provider, status: "already_invalid", httpStatus: response.status };
+  }
+  throw new ProviderRevocationRetryableError(provider, "provider_rejected");
+}
+
 /**
  * Returns a currently-valid access token for the user/provider, refreshing
  * via the provider's refresh endpoint when expired. Returns null when the
@@ -61,6 +146,7 @@ export async function getValidAccessToken(
   userId: string,
   provider: Provider
 ): Promise<string | null> {
+  assertProcessorEnabled(provider);
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("oauth_connections")
@@ -119,7 +205,10 @@ async function refreshTokens(provider: Provider, refreshToken: string): Promise<
     headers.Authorization = `Basic ${Buffer.from(creds).toString("base64")}`;
   } else {
     body.set("client_id", (provider === "oura" ? env.OURA_CLIENT_ID : env.GOOGLE_CLIENT_ID) ?? "");
-    body.set("client_secret", (provider === "oura" ? env.OURA_CLIENT_SECRET : env.GOOGLE_CLIENT_SECRET) ?? "");
+    body.set(
+      "client_secret",
+      (provider === "oura" ? env.OURA_CLIENT_SECRET : env.GOOGLE_CLIENT_SECRET) ?? ""
+    );
   }
 
   // Retry transient failures (network error, 5xx, 429, 408) with a short
@@ -129,12 +218,19 @@ async function refreshTokens(provider: Provider, refreshToken: string): Promise<
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     let res: Response;
     try {
-      res = await fetch(TOKEN_ENDPOINTS[provider], { method: "POST", headers, body });
+      res = await fetch(TOKEN_ENDPOINTS[provider], {
+        method: "POST",
+        headers,
+        body,
+        redirect: "error",
+        signal: AbortSignal.timeout(30_000),
+      });
     } catch (err) {
-      console.error(
-        `[oauth] ${provider} token refresh network error (attempt ${attempt}):`,
-        err instanceof Error ? err.message : "unknown"
-      );
+      safeLog("error", "oauth.refresh_network_error", {
+        provider,
+        attempt,
+        errorClass: errorClass(err),
+      });
       if (attempt < MAX_ATTEMPTS) {
         await sleep(500 * attempt);
         continue;
@@ -162,7 +258,7 @@ async function refreshTokens(provider: Provider, refreshToken: string): Promise<
     }
 
     const transient = res.status >= 500 || res.status === 429 || res.status === 408;
-    console.error(`[oauth] ${provider} token refresh failed with status ${res.status}`);
+    safeLog("warn", "oauth.refresh_rejected", { provider, httpStatus: res.status });
     if (transient && attempt < MAX_ATTEMPTS) {
       await sleep(500 * attempt);
       continue;

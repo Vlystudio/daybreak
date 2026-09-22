@@ -1,3 +1,5 @@
+import { GROCERY_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Refrigerator, CalendarRange, ListChecks, Tag, ChevronRight } from "lucide-react";
 import { requireUser } from "@/lib/auth";
@@ -39,16 +41,19 @@ const SECTIONS = [
   },
 ] as const;
 
-export const metadata = { title: "Grocery · Daybreak" };
+export const metadata = { title: "Grocery" };
 
 export default async function GroceryPage() {
+  if (!GROCERY_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 
   const [{ data: settings }, { data: stores }, { data: userStores }] = await Promise.all([
     supabase
       .from("grocery_settings")
-      .select("weekly_budget, household_size, max_stores_per_trip, max_distance_miles, favorites, dislikes, allergies")
+      .select(
+        "weekly_budget, household_size, max_stores_per_trip, max_distance_miles, favorites, dislikes, allergies"
+      )
       .eq("user_id", user.id)
       .maybeSingle<GrocerySettings>(),
     supabase
@@ -70,7 +75,7 @@ export default async function GroceryPage() {
     <div className="mx-auto w-full max-w-3xl space-y-5">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Grocery</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Plan meals, track what&apos;s in your kitchen, and shop for less.
         </p>
       </div>
@@ -81,16 +86,18 @@ export default async function GroceryPage() {
           return (
             <StaggerItem key={section.href} className="h-full">
               <Link href={section.href} className="block h-full">
-                <Card className="hover-lift h-full transition-colors hover:bg-accent/50">
+                <Card className="hover-lift hover:bg-accent/50 h-full transition-colors">
                   <CardContent className="flex items-center gap-3 py-4">
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${section.tint}`}>
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${section.tint}`}
+                    >
                       <Icon className="h-5 w-5" aria-hidden />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="font-medium">{section.label}</p>
-                      <p className="text-sm text-muted-foreground">{section.blurb}</p>
+                      <p className="text-muted-foreground text-sm">{section.blurb}</p>
                     </div>
-                    <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                    <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
                   </CardContent>
                 </Card>
               </Link>

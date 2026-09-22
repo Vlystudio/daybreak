@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 /**
  * Fixed-window rate limiter backed by Postgres (works across serverless
@@ -43,7 +44,7 @@ export async function rateLimit(
     // Default is fail-OPEN: a database blip shouldn't take the whole app down.
     // But cost- or security-sensitive limits opt into fail-CLOSED so an attacker
     // who can induce an infra error can't use that to bypass the limit.
-    console.error(`[rate-limit] backend error (failClosed=${failClosed}):`, err);
+    safeLog("error", "rate_limit.backend_error", { failClosed, errorClass: errorClass(err) });
     if (failClosed) return { ok: false, retryAfterSeconds: 30 };
     return { ok: true };
   }

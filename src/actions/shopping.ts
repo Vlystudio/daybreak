@@ -1,5 +1,7 @@
 "use server";
 
+import { GROCERY_ENABLED, GROCERY_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -7,10 +9,19 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
-import { productPriceSchema, shoppingListItemSchema, type ProductPriceInput, type ShoppingListItemInput, type ShoppingItemStatus, SHOPPING_ITEM_STATUSES } from "@/lib/grocery";
+import {
+  productPriceSchema,
+  shoppingListItemSchema,
+  type ProductPriceInput,
+  type ShoppingListItemInput,
+  type ShoppingItemStatus,
+  SHOPPING_ITEM_STATUSES,
+} from "@/lib/grocery";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 async function householdId(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  if (!SOCIAL_FEATURES_ENABLED) return null;
   const { data } = await supabase
     .from("household_members")
     .select("household_id")
@@ -21,12 +32,14 @@ async function householdId(supabase: SupabaseClient, userId: string): Promise<st
 
 // ── Community price entry ────────────────────────────────────────────────────
 export async function addProductPrice(input: ProductPriceInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many entries — try again shortly." };
 
   const parsed = productPriceSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid price" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid price" };
   const d = parsed.data;
   if (d.salePrice != null && d.salePrice > d.price) {
     return { ok: false, error: "Sale price can't be higher than the regular price." };
@@ -75,6 +88,7 @@ export async function addProductPrice(input: ProductPriceInput): Promise<ActionR
 export async function createShoppingList(
   title?: string
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
@@ -96,11 +110,16 @@ export async function createShoppingList(
 }
 
 export async function deleteShoppingList(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   const user = await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid list" };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("shopping_lists").delete().eq("id", id).eq("user_id", user.id);
+  const { error } = await supabase
+    .from("shopping_lists")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
   if (error) return { ok: false, error: "Couldn't delete the list." };
 
   revalidatePath("/grocery/lists");
@@ -108,9 +127,11 @@ export async function deleteShoppingList(id: string): Promise<ActionResult> {
 }
 
 export async function addShoppingListItem(input: ShoppingListItemInput): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   await requireUser();
   const parsed = shoppingListItemSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid item" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid item" };
   const d = parsed.data;
 
   const supabase = await createClient();
@@ -127,7 +148,11 @@ export async function addShoppingListItem(input: ShoppingListItemInput): Promise
   return { ok: true };
 }
 
-export async function setShoppingItemStatus(id: string, status: ShoppingItemStatus): Promise<ActionResult> {
+export async function setShoppingItemStatus(
+  id: string,
+  status: ShoppingItemStatus
+): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid item" };
   if (!SHOPPING_ITEM_STATUSES.includes(status)) return { ok: false, error: "Invalid status" };
@@ -146,6 +171,7 @@ export async function setShoppingItemStatus(id: string, status: ShoppingItemStat
 }
 
 export async function removeShoppingListItem(id: string): Promise<ActionResult> {
+  if (!GROCERY_ENABLED) return { ok: false, error: GROCERY_DISABLED_ERROR };
   await requireUser();
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Invalid item" };
 

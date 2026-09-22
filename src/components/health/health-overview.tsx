@@ -24,7 +24,15 @@ import type { HealthUnderstandingResult } from "@/lib/health/types";
  * Overview answers four questions in five seconds: How am I doing? What changed?
  * How confident is Daybreak? What's worth attention? Summary first, charts later.
  */
-export function HealthOverview({ understanding }: { understanding: HealthUnderstandingResult }) {
+export function HealthOverview({
+  understanding,
+  aiAvailable = false,
+  cloudSyncAvailable = false,
+}: {
+  understanding: HealthUnderstandingResult;
+  aiAvailable?: boolean;
+  cloudSyncAvailable?: boolean;
+}) {
   const router = useRouter();
   const [analysis, setAnalysis] = useState<HealthAnalysis | null>(null);
   const [analyzing, startAnalyze] = useTransition();
@@ -37,18 +45,26 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
 
   function analyze() {
     startAnalyze(async () => {
-      const res = await analyzeHealth();
-      if (res.ok) setAnalysis(res.analysis);
-      else toast.error(res.error);
+      try {
+        const res = await analyzeHealth();
+        if (res.ok) setAnalysis(res.analysis);
+        else toast.error(res.error);
+      } catch {
+        toast.error("Couldn't analyze right now. Please try again.");
+      }
     });
   }
   function sync() {
     startSync(async () => {
-      const res = await syncNow();
-      if (res.ok) {
-        toast.success("Synced your latest data.");
-        router.refresh();
-      } else toast.error(res.error);
+      try {
+        const res = await syncNow();
+        if (res.ok) {
+          toast.success("Synced your latest data.");
+          router.refresh();
+        } else toast.error(res.error);
+      } catch {
+        toast.error("Couldn't sync. Check your connection and try again.");
+      }
     });
   }
 
@@ -56,6 +72,11 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
   const sleep = RECOVERY_DISPLAY[summary.sleepStatus];
   const activity = ACTIVITY_DISPLAY[summary.activityStatus];
   const stress = STRESS_DISPLAY[summary.stressStatus];
+
+  const latestDate = understanding.dailySignals.reduce(
+    (latest, s) => (s.value != null && s.date > latest ? s.date : latest),
+    ""
+  );
 
   const tiles = [
     {
@@ -90,7 +111,7 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
             <p className="text-sm">
               <span className="font-medium">No tracker connected.</span>{" "}
               <span className="text-muted-foreground">
-                Connect Oura or Apple Health for recovery, sleep, and activity insights.
+                Connect Apple Health in Settings for recovery, sleep, and activity insights.
               </span>
             </p>
             <Button asChild size="sm">
@@ -102,15 +123,20 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
         </Card>
       )}
 
-      {/* Today at a glance */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-muted-foreground text-sm font-semibold">Today at a glance</h2>
+      <p className="text-muted-foreground text-xs">
+        {latestDate
+          ? `Latest reading: ${latestDate}. Sync to check for newer data.`
+          : "No readings yet. Start with a check-in or connect a tracker."}
+      </p>
+      {/* Summary can include older readings; the latest date above stays explicit. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-muted-foreground text-sm font-semibold">Your health at a glance</h2>
         <div className="flex items-center gap-2">
           <ConfidenceBadge
             confidence={dataQuality.overallConfidence}
             reasons={dataQuality.warnings}
           />
-          {hasWearable && (
+          {hasWearable && cloudSyncAvailable && (
             <Button variant="ghost" size="sm" onClick={sync} disabled={syncing}>
               {syncing ? "Syncing…" : "Sync"}
             </Button>
@@ -145,45 +171,47 @@ export function HealthOverview({ understanding }: { understanding: HealthUnderst
       )}
 
       {/* AI explanation — secondary to the deterministic understanding above. */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="text-honey h-4 w-4" aria-hidden /> What your data suggests
-          </CardTitle>
-          <Button variant="secondary" size="sm" onClick={analyze} disabled={analyzing}>
-            {analyzing ? "Analyzing…" : analysis ? "Refresh analysis" : "Analyze my trends"}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {analysis ? (
-            <div className="space-y-3">
-              <p className="text-sm">{analysis.summary}</p>
-              {analysis.insights.length > 0 && (
-                <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
-                  {analysis.insights.map((i, idx) => (
-                    <li key={idx}>{i}</li>
-                  ))}
-                </ul>
-              )}
-              {analysis.suggestions.length > 0 && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {analysis.suggestions.map((sg, idx) => (
-                    <div key={idx} className="bg-muted/50 rounded-xl p-3">
-                      <p className="text-sm font-medium">{sg.title}</p>
-                      <p className="text-muted-foreground mt-0.5 text-sm">{sg.body}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              A plain-language read of your fused trends — it explains the patterns above and may
-              suggest small, practical changes. It&apos;s a summary, not a diagnosis.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {aiAvailable && (
+        <Card>
+          <CardHeader className="flex-col gap-3 space-y-0 pb-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="text-honey h-4 w-4" aria-hidden /> What your data suggests
+            </CardTitle>
+            <Button variant="secondary" size="sm" onClick={analyze} disabled={analyzing}>
+              {analyzing ? "Analyzing…" : analysis ? "Refresh analysis" : "Analyze my trends"}
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {analysis ? (
+              <div className="space-y-3">
+                <p className="text-sm">{analysis.summary}</p>
+                {analysis.insights.length > 0 && (
+                  <ul className="text-muted-foreground list-inside list-disc space-y-1 text-sm">
+                    {analysis.insights.map((i, idx) => (
+                      <li key={idx}>{i}</li>
+                    ))}
+                  </ul>
+                )}
+                {analysis.suggestions.length > 0 && (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {analysis.suggestions.map((sg, idx) => (
+                      <div key={idx} className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-sm font-medium">{sg.title}</p>
+                        <p className="text-muted-foreground mt-0.5 text-sm">{sg.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                A plain-language read of your fused trends — it explains the patterns above and may
+                suggest small, practical changes. It&apos;s a summary, not a diagnosis.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-muted-foreground text-xs">
         Daybreak surfaces patterns in your own data, not medical advice. For anything that concerns

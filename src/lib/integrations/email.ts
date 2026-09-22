@@ -1,12 +1,8 @@
 import "server-only";
 import { Resend } from "resend";
 import { serverEnv, integrationsAvailable } from "@/env";
-
-/**
- * Transactional email via Resend (https://resend.com). A thin wrapper so call
- * sites don't touch the SDK directly. No-ops (returns false) when RESEND_API_KEY
- * isn't configured, so the rest of the app keeps working without email set up.
- */
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 
 let client: Resend | null = null;
 function resend(): Resend {
@@ -19,13 +15,13 @@ export interface SendEmailInput {
   subject: string;
   html: string;
   text?: string;
-  /** List-Unsubscribe target (a URL); adds the one-click unsubscribe headers. */
   unsubscribeUrl?: string;
 }
 
+/** Transactional email wrapper; addresses and content are never logged. */
 export async function sendEmail(input: SendEmailInput): Promise<boolean> {
-  if (!integrationsAvailable.resend()) {
-    console.warn("[email] RESEND_API_KEY not set — skipping send to", input.to);
+  if (!integrationsAvailable.resend() || !isProcessorEnabled("resend")) {
+    safeLog("warn", "email.provider_not_configured");
     return false;
   }
 
@@ -46,12 +42,14 @@ export async function sendEmail(input: SendEmailInput): Promise<boolean> {
         : {}),
     });
     if (error) {
-      console.error("[email] send failed:", error);
+      safeLog("error", "email.send_rejected", {
+        errorClass: error.name ?? "provider_error",
+      });
       return false;
     }
     return true;
-  } catch (err) {
-    console.error("[email] send threw:", err);
+  } catch (reason) {
+    safeLog("error", "email.send_failed", { errorClass: errorClass(reason) });
     return false;
   }
 }

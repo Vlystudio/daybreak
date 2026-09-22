@@ -1,49 +1,27 @@
 "use client";
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
-import { Camera, Loader2, Trash2 } from "lucide-react";
+import { useState, useTransition, type ReactNode } from "react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { uploadAvatar, removeAvatar } from "@/actions/settings";
+import { reencodeImageFile } from "@/lib/image-reencode";
 
-/** Center-crop a file to a square JPEG data URL. */
-function toSquareDataUrl(file: File, size = 256): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2;
-      const sy = (img.height - side) / 2;
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("bad image"));
-    };
-    img.src = url;
-  });
-}
-
-export function AvatarUploader({ avatarUrl, fallback }: { avatarUrl: string | null; fallback: ReactNode }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+export function AvatarUploader({
+  avatarUrl,
+  fallback,
+}: {
+  avatarUrl: string | null;
+  fallback: ReactNode;
+}) {
   const [busy, setBusy] = useState(false);
   const [, startTransition] = useTransition();
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function handleFile(file: File) {
     setBusy(true);
     try {
-      const dataUrl = await toSquareDataUrl(file);
+      const dataUrl = await reencodeImageFile(file, { squareSize: 256, quality: 0.82 });
       const result = await uploadAvatar({ imageDataUrl: dataUrl });
       if (result.ok) toast.success("Picture updated.");
       else toast.error(result.error);
@@ -77,13 +55,22 @@ export function AvatarUploader({ avatarUrl, fallback }: { avatarUrl: string | nu
         )}
       </span>
       <div className="flex flex-col gap-1.5">
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
-        <Button size="sm" variant="secondary" disabled={busy} onClick={() => fileRef.current?.click()}>
-          <Camera aria-hidden />
-          {avatarUrl ? "Change photo" : "Upload photo"}
-        </Button>
+        <PhotoCaptureField
+          onFile={handleFile}
+          busy={busy}
+          label={avatarUrl ? "Change photo" : "Upload photo"}
+          variant="secondary"
+          size="sm"
+          fileName="avatar.jpg"
+        />
         {avatarUrl && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={remove} className="text-muted-foreground">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={remove}
+            className="text-muted-foreground"
+          >
             <Trash2 aria-hidden />
             Remove
           </Button>

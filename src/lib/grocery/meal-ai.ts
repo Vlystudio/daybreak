@@ -3,6 +3,8 @@ import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { openaiClient, logUsage } from "@/lib/integrations/openai";
 import { aiErrorLog } from "@/lib/integrations/ai-boundary";
+import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
+import type { AiDataCategory } from "@/lib/integrations/ai-consent";
 
 /**
  * AI meal-plan generation via strict structured outputs. The model returns a
@@ -79,9 +81,12 @@ HARD RULES:
 - "onSale" is a list of grocery items discounted at the person's local stores this week. Where it fits their tastes and constraints, prefer recipes built around the FOOD items in this list to save money — ignore any non-food entries. Don't compromise variety, balance, allergies, or dislikes to chase a sale.`;
 
 export async function generateMealPlanContent(
+  permit: AiProcessingPermit,
   ctx: MealPlanContext
 ): Promise<MealPlanContent | null> {
-  const client = openaiClient();
+  const requiredCategories: AiDataCategory[] = ["basic", "tasks", "profile"];
+  if (ctx.nutrition) requiredCategories.push("health");
+  const client = await openaiClient(permit, "meal_plan", requiredCategories);
   if (!client) return null;
 
   const user = `Create a ${ctx.durationDays}-day meal plan. Context: ${JSON.stringify(ctx)}. Provide exactly ${ctx.durationDays} day entries (day_index 0..${ctx.durationDays - 1}).`;

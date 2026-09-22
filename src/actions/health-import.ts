@@ -8,8 +8,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 
 /**
- * Import daily health metrics from a CSV exported elsewhere (Apple Health via
- * Shortcuts, Health Connect, Garmin, etc.). Writes to health_metrics via the
+ * Import daily health metrics from a compatible CSV exported elsewhere. Writes to health_metrics via the
  * service role — scoped to the signed-in user — since that table is sync-owned.
  * Existing values for a date are preserved unless the row provides them.
  */
@@ -45,10 +44,12 @@ export async function importHealthMetrics(rows: ImportRow[]): Promise<ImportResu
   const user = await requireUser();
 
   const limited = await rateLimit(`sync:${user.id}`, RATE_LIMITS.sync);
-  if (!limited.ok) return { ok: false, error: "You've imported a lot recently — try again shortly." };
+  if (!limited.ok)
+    return { ok: false, error: "You've imported a lot recently — try again shortly." };
 
   if (!Array.isArray(rows) || rows.length === 0) return { ok: false, error: "No rows to import." };
-  if (rows.length > 2000) return { ok: false, error: "That's a lot of rows — split it under 2000." };
+  if (rows.length > 2000)
+    return { ok: false, error: "That's a lot of rows — split it under 2000." };
 
   const clean: Record<string, number | string>[] = [];
   for (const raw of rows) {
@@ -71,7 +72,9 @@ export async function importHealthMetrics(rows: ImportRow[]): Promise<ImportResu
   if (clean.length === 0) return { ok: false, error: "No recognizable metric columns found." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("health_metrics").upsert(clean, { onConflict: "user_id,date" });
+  const { error } = await admin
+    .from("health_metrics")
+    .upsert(clean, { onConflict: "user_id,date" });
   if (error) return { ok: false, error: "Couldn't import that data." };
 
   await audit(user.id, "health.imported", { metadata: { rows: clean.length } });

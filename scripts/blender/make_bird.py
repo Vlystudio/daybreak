@@ -8,13 +8,13 @@
 #
 #   blender --background --factory-startup --python make_bird.py -- <id> <out_root> <render_dir> [fast]
 
-import bpy, bmesh, sys, os, math, json
+import bpy, bmesh, sys, os, math, json, tempfile
 from mathutils import Vector
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 SPECIES = argv[0] if len(argv) > 0 else "cedar_waxwing"
 OUT_ROOT = argv[1] if len(argv) > 1 else "public/assets/birds3d"
-RENDER_DIR = argv[2] if len(argv) > 2 else "C:/Users/benma/AppData/Local/Temp/bird3d"
+RENDER_DIR = argv[2] if len(argv) > 2 else os.path.join(tempfile.gettempdir(), "bird3d")
 FAST = len(argv) > 3 and argv[3] == "fast"
 PARAMS_FILE = os.path.join(os.path.dirname(__file__), "params.json")
 

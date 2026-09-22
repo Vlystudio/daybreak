@@ -10,11 +10,15 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { uuidSchema } from "@/lib/validation";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_DISABLED_ERROR, SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 const createSchema = z.object({
   title: z.string().trim().min(1, "Name your challenge").max(100),
   metric: z.enum(["steps", "active_calories", "habits", "protein"]),
-  lengthDays: z.coerce.number().int().refine((n) => [7, 14, 30].includes(n), { message: "Pick a length" }),
+  lengthDays: z.coerce
+    .number()
+    .int()
+    .refine((n) => [7, 14, 30].includes(n), { message: "Pick a length" }),
   friendIds: z.array(z.string().uuid()).min(1, "Invite at least one friend").max(20),
 });
 
@@ -24,12 +28,14 @@ export async function createCompetition(input: {
   lengthDays: number;
   friendIds: string[];
 }): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Slow down a moment." };
 
   const parsed = createSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid challenge" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid challenge" };
   const d = parsed.data;
 
   const supabase = await createClient();
@@ -42,7 +48,9 @@ export async function createCompetition(input: {
   const friendSet = new Set(
     (friendships ?? []).map((f) => (f.requester_id === user.id ? f.addressee_id : f.requester_id))
   );
-  const invited = Array.from(new Set(d.friendIds.filter((id) => friendSet.has(id) && id !== user.id)));
+  const invited = Array.from(
+    new Set(d.friendIds.filter((id) => friendSet.has(id) && id !== user.id))
+  );
   if (invited.length === 0) return { ok: false, error: "Pick friends you're connected with." };
 
   const start = format(new Date(), "yyyy-MM-dd");
@@ -51,7 +59,14 @@ export async function createCompetition(input: {
   const admin = createAdminClient();
   const { data: comp, error } = await admin
     .from("competitions")
-    .insert({ creator_id: user.id, title: d.title, metric: d.metric, start_date: start, end_date: end, status: "active" })
+    .insert({
+      creator_id: user.id,
+      title: d.title,
+      metric: d.metric,
+      start_date: start,
+      end_date: end,
+      status: "active",
+    })
     .select("id")
     .single<{ id: string }>();
   if (error || !comp) return { ok: false, error: "Couldn't create the challenge." };
@@ -66,14 +81,18 @@ export async function createCompetition(input: {
     return { ok: false, error: "Couldn't set up the challenge." };
   }
 
-  await audit(user.id, "competition.created", { metadata: { metric: d.metric, participants: rows.length } });
+  await audit(user.id, "competition.created", {
+    metadata: { metric: d.metric, participants: rows.length },
+  });
   revalidatePath("/friends");
   return { ok: true };
 }
 
 export async function joinCompetition(competitionId: string): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
-  if (!uuidSchema.safeParse(competitionId).success) return { ok: false, error: "Invalid challenge" };
+  if (!uuidSchema.safeParse(competitionId).success)
+    return { ok: false, error: "Invalid challenge" };
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -92,8 +111,10 @@ export async function joinCompetition(competitionId: string): Promise<ActionResu
 }
 
 export async function declineCompetition(competitionId: string): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
-  if (!uuidSchema.safeParse(competitionId).success) return { ok: false, error: "Invalid challenge" };
+  if (!uuidSchema.safeParse(competitionId).success)
+    return { ok: false, error: "Invalid challenge" };
 
   const supabase = await createClient();
   const { error } = await supabase

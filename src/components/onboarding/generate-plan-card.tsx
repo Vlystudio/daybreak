@@ -2,13 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { generatePlan, generateTodayPlan, clearPlan } from "@/actions/plan";
 
-export function GeneratePlanCard({ ready }: { ready: boolean }) {
+export function GeneratePlanCard({
+  ready,
+  aiAllowed = false,
+  aiAvailable = false,
+}: {
+  ready: boolean;
+  aiAllowed?: boolean;
+  aiAvailable?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -31,7 +40,6 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
       const res = await generateTodayPlan();
       if (res.ok) {
         toast.success("Today's plan is ready.");
-        router.push("/dashboard");
         router.refresh();
       } else {
         toast.error(res.error);
@@ -59,32 +67,69 @@ export function GeneratePlanCard({ ready }: { ready: boolean }) {
 
   return (
     <Card className="bg-sunrise border-none text-[#5a3d1a]">
-      <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <CardContent className="space-y-3 p-5">
         <div>
           <h2 className="flex items-center gap-2 font-semibold">
-            <Sparkles className="h-4 w-4" aria-hidden /> Smart plan
+            <Sparkles className="h-4 w-4" aria-hidden />{" "}
+            {aiAvailable ? "Smart plan" : "Your routine"}
           </h2>
           <p className="mt-1 max-w-md text-sm opacity-80">
-            {ready
-              ? "Plan today rebuilds just today; Generate my plan builds your whole scope. Either way, today auto-refreshes each morning from your latest Oura sleep/energy and the day's weather."
-              : "Answer the questions below and save first, then come back here to generate your plan."}
+            {!aiAvailable
+              ? "Keep your daily preferences in one place, then add events around what matters to you."
+              : !ready
+                ? "Set your daily rhythm to get a suggested plan. You can also add events yourself."
+                : !aiAllowed
+                  ? "AI planning is optional. Review your AI data choices in Settings, or add events yourself."
+                  : "Make space for your day. Generate suggestions around your routine, then adjust them here. Replanning replaces today's suggested blocks."}
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap justify-end gap-2">
-          <Button
-            onClick={clearClick}
-            disabled={!ready || pending}
-            variant={confirmingClear ? "destructive" : "outline"}
-          >
-            {confirmingClear ? "Tap to confirm" : "Clear"}
-          </Button>
-          <Button onClick={planToday} disabled={!ready || pending} variant="secondary">
-            Plan today
-          </Button>
-          <Button onClick={run} disabled={!ready || pending} className="shadow-soft">
-            {pending ? "Planning…" : "Generate my plan"}
-          </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {ready && aiAllowed ? (
+            <Button onClick={planToday} disabled={pending}>
+              {pending ? "Planning…" : "Plan today"}
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href={!ready || !aiAvailable ? "/onboarding" : "/settings#ai-data-use"}>
+                {!ready
+                  ? "Set up my routine"
+                  : !aiAvailable
+                    ? "Edit my routine"
+                    : "Review AI data choices"}
+              </Link>
+            </Button>
+          )}
+          {ready && aiAvailable && (
+            <Link
+              href="/onboarding"
+              className="inline-flex min-h-11 items-center text-sm underline"
+            >
+              Plan preferences
+            </Link>
+          )}
         </div>
+        {ready && (
+          <details className="text-sm">
+            <summary className="min-h-11 cursor-pointer py-3">More planning options</summary>
+            <p className="mb-3 opacity-80">
+              Plan ahead using your saved scope, or remove all AI-planned blocks from your schedule.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {aiAllowed && (
+                <Button onClick={run} disabled={pending} variant="secondary">
+                  Plan ahead
+                </Button>
+              )}
+              <Button
+                onClick={clearClick}
+                disabled={pending}
+                variant={confirmingClear ? "destructive" : "outline"}
+              >
+                {confirmingClear ? "Confirm removal" : "Clear planned blocks"}
+              </Button>
+            </div>
+          </details>
+        )}
       </CardContent>
     </Card>
   );

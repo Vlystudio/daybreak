@@ -13,6 +13,8 @@ import { mapWithConcurrency } from "@/lib/concurrency";
 import { audit } from "@/lib/audit";
 import { verifyCronAuth } from "@/lib/security/cron-auth";
 import { integrationsAvailable } from "@/env";
+import { GROCERY_ENABLED } from "@/lib/features";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 export const maxDuration = 300;
 
@@ -40,12 +42,12 @@ export async function GET(request: NextRequest) {
   }
 
   // Refresh the shared grocery-deal catalog once for everyone (global, not per-user).
-  if (integrationsAvailable.groceryDeals()) {
+  if (GROCERY_ENABLED && integrationsAvailable.groceryDeals()) {
     try {
       await importGroceryDeals();
       await notifyFavoriteDeals();
     } catch (err) {
-      console.error("[cron] grocery deal import failed:", err);
+      safeLog("error", "cron.grocery_deal_import_failed", { errorClass: errorClass(err) });
     }
   }
 
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
     if (r.status === "fulfilled") synced++;
     else {
       failed++;
-      console.error("[cron] morning sync failed for a user:", r.reason);
+      safeLog("error", "cron.morning_sync_user_failed", { errorClass: errorClass(r.reason) });
     }
   }
 

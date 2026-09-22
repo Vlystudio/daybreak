@@ -1,0 +1,58 @@
+name: Database Runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      destructive_ack:
+        description: Type I_ACKNOWLEDGE_THIS_IS_AN_ISOLATED_DISPOSABLE_TEST_DATABASE
+        required: true
+        type: string
+      credential_approval:
+        description: Type I_APPROVE_THIS_CREDENTIAL_FOR_ISOLATED_DESTRUCTIVE_DATABASE_TESTS
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-runtime-isolated-test
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: isolated-database-tests
+    env:
+      DAYBREAK_DB_TEST_MODE: isolated-remote
+      DAYBREAK_DB_TEST_PROJECT_REF: ${{ vars.DAYBREAK_DB_TEST_PROJECT_REF }}
+      DAYBREAK_DB_TEST_ALLOWED_PROJECT_REFS: ${{ vars.DAYBREAK_DB_TEST_ALLOWED_PROJECT_REFS }}
+      DAYBREAK_DB_TEST_ALLOWED_DATABASES: ${{ vars.DAYBREAK_DB_TEST_ALLOWED_DATABASES }}
+      DAYBREAK_DB_TEST_EXPECTED_ROLE: ${{ vars.DAYBREAK_DB_TEST_EXPECTED_ROLE }}
+      DAYBREAK_DB_TEST_APPLICATION_ORIGIN: ${{ vars.DAYBREAK_DB_TEST_APPLICATION_ORIGIN }}
+      DAYBREAK_DB_TEST_PRODUCTION_PROJECT_REF: ${{ vars.DAYBREAK_DB_TEST_PRODUCTION_PROJECT_REF }}
+      DAYBREAK_DB_TEST_DESTRUCTIVE_ACK: ${{ inputs.destructive_ack }}
+      DAYBREAK_DB_TEST_CREDENTIAL_APPROVAL: ${{ inputs.credential_approval }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.DAYBREAK_DB_TEST_SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.DAYBREAK_DB_TEST_SUPABASE_DB_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run test:db:preflight:remote
+      - run: npm run test:db:remote
+
+      - name: Upload sanitized database evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-runtime-evidence-${{ github.sha }}
+          path: docs/launch-readiness/evidence/database/fresh-and-upgrade-test.json
+          if-no-files-found: error
+          retention-days: 14

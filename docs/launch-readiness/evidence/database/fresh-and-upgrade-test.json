@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 3,
+  "generatedAt": "2026-09-22T19:19:10.570Z",
+  "commit": "e1db3e49f1dd84316c4a55214e19a02a53bc5494",
+  "mode": "local",
+  "databaseIdentity": {
+    "kind": "disposable local Supabase",
+    "projectRefFingerprint": null,
+    "databaseName": "postgres",
+    "applicationOrigin": "local",
+    "credentialSource": "local Supabase defaults"
+  },
+  "supabaseCli": "2.108.0",
+  "status": "pass",
+  "freshInitialization": {
+    "status": "pass",
+    "resets": 2
+  },
+  "duplicate0021AndRepresentativeUpgrades": {
+    "status": "pass",
+    "results": [
+      {
+        "scenario": "neither",
+        "status": "pass"
+      },
+      {
+        "scenario": "ai-cache-only",
+        "status": "pass"
+      },
+      {
+        "scenario": "subjective-only",
+        "status": "pass"
+      },
+      {
+        "scenario": "both",
+        "status": "pass"
+      },
+      {
+        "scenario": "partial-subjective",
+        "status": "pass"
+      },
+      {
+        "scenario": "canonical-already-applied",
+        "status": "pass"
+      },
+      {
+        "scenario": "representative-pre-eligibility",
+        "status": "pass"
+      },
+      {
+        "scenario": "pre-durable-deletion-job",
+        "status": "pass"
+      }
+    ],
+    "historicalHashes": {
+      "0021_ai_cache.sql": "035e2248d136837511175bc18421aabc1f5482dcefe00ece79eec34f50f17312",
+      "0021_subjective_checkins.sql": "81d5e33bfb16ac22c17e5129321ca020606f16b2570b18df6105fd7ce3f447fb"
+    }
+  },
+  "pgTapAndRuntimeSecurity": {
+    "status": "pass",
+    "executions": 2,
+    "suites": [
+      "RLS and cross-user isolation",
+      "adult eligibility and existing-user legal gating",
+      "AI consent, permit replay, and health authorization",
+      "privacy rights and retention",
+      "account deletion database behavior",
+      "runtime trigger, RPC, Storage metadata, and privilege surface"
+    ]
+  },
+  "verificationBoundaries": {
+    "postgresql": "pass - migrations, fixtures, pgTAP, RLS, triggers, and RPCs",
+    "supabaseAuth": "pass for auth-schema triggers and synthetic Auth rows; Auth HTTP/provider configuration not exercised",
+    "supabaseStorage": "pass for storage metadata, bucket migration, and SQL authorization; Storage HTTP/object-provider cleanup not exercised",
+    "stagingApplication": "not exercised - end-to-end deletion retries, session rejection, and application orchestration require isolated staging execution",
+    "externalProviders": "not exercised - OAuth/provider invalidation requires dedicated non-production credentials"
+  },
+  "productionAccessed": false,
+  "sensitiveData": false
+}

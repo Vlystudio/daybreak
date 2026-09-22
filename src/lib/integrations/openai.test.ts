@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
-import { inputHash } from "@/lib/integrations/openai";
+import { afterEach, describe, it, expect, vi } from "vitest";
+import { inputHash, openaiClient } from "@/lib/integrations/openai";
+import type { AiProcessingPermit } from "@/lib/integrations/ai-permit";
 
 describe("inputHash", () => {
   it("is stable for identical input", () => {
@@ -12,5 +13,17 @@ describe("inputHash", () => {
 
   it("returns a 64-char hex SHA-256 digest", () => {
     expect(inputHash({ x: 1 })).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("server-side AI consent boundary", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("cannot initialize a model client without a server-issued permit", async () => {
+    const outbound = vi.spyOn(globalThis, "fetch");
+    await expect(
+      openaiClient(undefined as unknown as AiProcessingPermit, "morning_briefing")
+    ).rejects.toThrow(/consent permit is required/i);
+    expect(outbound).not.toHaveBeenCalled();
   });
 });

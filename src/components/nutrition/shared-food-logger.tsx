@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { analyzeFoodPhoto, logFood } from "@/actions/intake";
+import { reencodeImageFile } from "@/lib/image-reencode";
 
 type Meal = "breakfast" | "lunch" | "dinner" | "snack";
 const MEALS: Meal[] = ["breakfast", "lunch", "dinner", "snack"];
@@ -22,34 +23,18 @@ function guessMeal(): Meal {
   return "snack";
 }
 
-function blobToDataUrl(blob: Blob, maxDim = 1024): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("bad image"));
-    };
-    img.src = url;
-  });
-}
-
 export function SharedFoodLogger() {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "ready" | "none">("loading");
   const [preview, setPreview] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ meal: guessMeal(), description: "", calories: "", protein: "", carbs: "", fat: "" });
+  const [draft, setDraft] = useState({
+    meal: guessMeal(),
+    description: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+  });
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -64,7 +49,7 @@ export function SharedFoodLogger() {
         }
         const blob = await res.blob();
         await cache.delete("shared-image");
-        const dataUrl = await blobToDataUrl(blob);
+        const dataUrl = await reencodeImageFile(blob, { maxDim: 1024, quality: 0.7 });
         if (cancelled) return;
         setPreview(dataUrl);
         const result = await analyzeFoodPhoto({ imageDataUrl: dataUrl });
@@ -121,7 +106,7 @@ export function SharedFoodLogger() {
   if (status === "loading") {
     return (
       <Card>
-        <CardContent className="flex items-center gap-3 py-8 text-sm text-muted-foreground">
+        <CardContent className="text-muted-foreground flex items-center gap-3 py-8 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Reading your photo…
         </CardContent>
       </Card>
@@ -132,7 +117,10 @@ export function SharedFoodLogger() {
     return (
       <Card>
         <CardContent className="space-y-3 py-8 text-center">
-          <p className="text-sm text-muted-foreground">No shared photo found. Share a meal photo to Daybreak, or log it from the Nutrition page.</p>
+          <p className="text-muted-foreground text-sm">
+            No shared photo found. Share a meal photo to Daybreak, or log it from the Nutrition
+            page.
+          </p>
           <Button onClick={() => router.push("/nutrition")} size="sm">
             Go to Nutrition
           </Button>
@@ -156,7 +144,9 @@ export function SharedFoodLogger() {
               onClick={() => setDraft((d) => ({ ...d, meal: m }))}
               className={cn(
                 "rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors",
-                draft.meal === m ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"
+                draft.meal === m
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border text-muted-foreground"
               )}
             >
               {m}
@@ -171,7 +161,9 @@ export function SharedFoodLogger() {
         <div className="grid grid-cols-4 gap-2">
           {(["calories", "protein", "carbs", "fat"] as const).map((key) => (
             <div key={key}>
-              <Label className="text-[11px] capitalize text-muted-foreground">{key === "calories" ? "kcal" : key}</Label>
+              <Label className="text-muted-foreground text-[11px] capitalize">
+                {key === "calories" ? "kcal" : key}
+              </Label>
               <Input
                 inputMode="numeric"
                 value={draft[key]}

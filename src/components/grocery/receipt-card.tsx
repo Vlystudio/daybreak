@@ -1,44 +1,23 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { Camera, Loader2, Trash2, Plus, Wallet } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Trash2, Plus, Wallet } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { analyzeReceiptPhoto, logPurchase, deletePurchase } from "@/actions/grocery";
+import { reencodeImageFile } from "@/lib/image-reencode";
 
 export interface PurchaseRow {
   id: string;
   store: string | null;
   purchased_on: string;
   total: number;
-}
-
-function fileToDataUrl(file: File, maxDim = 1400): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("bad image"));
-    };
-    img.src = url;
-  });
 }
 
 export function ReceiptCard({
@@ -50,7 +29,6 @@ export function ReceiptCard({
   weeklyBudget: number | null;
   recent: PurchaseRow[];
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<{
     store: string;
@@ -65,13 +43,10 @@ export function ReceiptCard({
   const pct = weeklyBudget ? Math.min(100, Math.round((weeklySpend / weeklyBudget) * 100)) : 0;
   const over = weeklyBudget != null && weeklySpend > weeklyBudget;
 
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function scanPhoto(file: File) {
     setScanning(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await reencodeImageFile(file, { maxDim: 1400, quality: 0.8 });
       const result = await analyzeReceiptPhoto({ imageDataUrl: dataUrl });
       if (!result.ok) return toast.error(result.error);
       const r = result.receipt;
@@ -150,9 +125,6 @@ export function ReceiptCard({
           )}
         </div>
 
-        {/* No `capture` attr — see nutrition-view: forcing the live camera crashes
-            the iOS WKWebView host app; the plain picker is robust. */}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
         {draft ? (
           <div className="bg-muted/30 space-y-2 rounded-xl border p-3">
             <div className="grid grid-cols-2 gap-2">
@@ -192,16 +164,17 @@ export function ReceiptCard({
           </div>
         ) : (
           <div className="flex gap-2">
-            <Button
+            <PhotoCaptureField
+              onFile={scanPhoto}
+              busy={scanning}
+              label="Scan receipt"
+              busyLabel="Reading…"
               variant="secondary"
               size="sm"
               className="flex-1"
-              disabled={scanning}
-              onClick={() => fileRef.current?.click()}
-            >
-              {scanning ? <Loader2 className="animate-spin" aria-hidden /> : <Camera aria-hidden />}
-              {scanning ? "Reading…" : "Scan receipt"}
-            </Button>
+              fileName="receipt.jpg"
+              maxDim={1400}
+            />
             <Button variant="ghost" size="sm" onClick={startManual}>
               <Plus aria-hidden /> Manual
             </Button>

@@ -16,7 +16,13 @@ import type { Profile } from "@/lib/types";
 
 type FormValues = z.infer<typeof profileSchema>;
 
-export function ProfileForm({ profile }: { profile: Profile | null }) {
+export function ProfileForm({
+  profile,
+  cityAvailable = false,
+}: {
+  profile: Profile | null;
+  cityAvailable?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
 
   const form = useForm<FormValues>({
@@ -42,9 +48,7 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
     <Card>
       <CardHeader>
         <CardTitle>Profile</CardTitle>
-        <CardDescription>
-          Your name personalizes your briefing; your city powers the weather card.
-        </CardDescription>
+        <CardDescription>Personalize your name and a few words about yourself.</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -52,7 +56,7 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
             <Label htmlFor="displayName">Name</Label>
             <Input id="displayName" autoComplete="name" {...form.register("displayName")} />
             {errors.displayName && (
-              <p role="alert" className="text-sm text-destructive">
+              <p role="alert" className="text-destructive text-sm">
                 {errors.displayName.message}
               </p>
             )}
@@ -66,15 +70,19 @@ export function ProfileForm({ profile }: { profile: Profile | null }) {
               placeholder="A short line about you — your vibe, your goals, anything."
               {...form.register("bio")}
             />
-            <p className="text-xs text-muted-foreground">Shown on your profile. Up to 160 characters.</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="city">City</Label>
-            <Input id="city" placeholder="Copenhagen" {...form.register("city")} />
-            <p className="text-xs text-muted-foreground">
-              Used only to fetch local weather and set your timezone.
+            <p className="text-muted-foreground text-xs">
+              Shown on your profile. Up to 160 characters.
             </p>
           </div>
+          {cityAvailable && (
+            <div className="space-y-1.5">
+              <Label htmlFor="city">City</Label>
+              <Input id="city" placeholder="Copenhagen" {...form.register("city")} />
+              <p className="text-muted-foreground text-xs">
+                Used only to fetch local weather and set your timezone.
+              </p>
+            </div>
+          )}
           <Button type="submit" disabled={pending}>
             {pending ? "Saving…" : "Save changes"}
           </Button>

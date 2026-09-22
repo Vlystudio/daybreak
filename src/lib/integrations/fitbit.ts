@@ -2,6 +2,7 @@ import "server-only";
 import { serverEnv, publicEnv } from "@/env";
 import { getValidAccessToken, type TokenSet } from "@/lib/integrations/tokens";
 import type { DailyMetrics } from "@/lib/integrations/oura";
+import { assertProcessorEnabled } from "@/lib/privacy/processors";
 
 /**
  * Fitbit Web API (OAuth2). https://dev.fitbit.com/build/reference/web-api/
@@ -17,6 +18,15 @@ const API_BASE = "https://api.fitbit.com";
 export const FITBIT_REDIRECT_PATH = "/api/oauth/fitbit/callback";
 const SCOPES = "sleep heartrate activity profile";
 
+function fitbitFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  assertProcessorEnabled("fitbit");
+  return fetch(input, {
+    ...init,
+    redirect: "error",
+    signal: init.signal ?? AbortSignal.timeout(30_000),
+  });
+}
+
 function basicAuthHeader(): string {
   const env = serverEnv();
   const creds = `${env.FITBIT_CLIENT_ID ?? ""}:${env.FITBIT_CLIENT_SECRET ?? ""}`;
@@ -24,6 +34,7 @@ function basicAuthHeader(): string {
 }
 
 export function fitbitAuthorizeUrl(state: string): string {
+  assertProcessorEnabled("fitbit");
   const env = serverEnv();
   const params = new URLSearchParams({
     response_type: "code",
@@ -36,7 +47,7 @@ export function fitbitAuthorizeUrl(state: string): string {
 }
 
 export async function exchangeFitbitCode(code: string): Promise<TokenSet> {
-  const res = await fetch(TOKEN_URL, {
+  const res = await fitbitFetch(TOKEN_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -75,7 +86,7 @@ export function fitbitRefreshAuthHeader(): string {
 
 async function fitbitGet<T>(accessToken: string, path: string): Promise<T | null> {
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fitbitFetch(`${API_BASE}${path}`, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (!res.ok) return null;

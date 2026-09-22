@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Flame, Plus, Repeat, X, Pencil, Sparkles } from "lucide-react";
+import { feedback } from "@/lib/ui/haptics";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -169,41 +170,57 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
   }
 
   function toggle(h: HabitStatus) {
-    if (!h.doneToday) setBurst((b) => b + 1); // celebrate completing
+    if (pending) return;
     startTransition(async () => {
-      const r = await toggleHabitToday(h.id);
-      if (!r.ok) toast.error(r.error);
+      try {
+        const r = await toggleHabitToday(h.id);
+        if (!r.ok) toast.error(r.error);
+        else {
+          feedback("success");
+          if (!h.doneToday) setBurst((b) => b + 1);
+        }
+      } catch {
+        toast.error("Couldn't update this habit. Please try again.");
+      }
     });
   }
   function remove(id: string) {
     startTransition(async () => {
-      const r = await archiveHabit(id);
-      if (!r.ok) toast.error(r.error);
+      try {
+        const r = await archiveHabit(id);
+        if (!r.ok) toast.error(r.error);
+      } catch {
+        toast.error("Couldn't archive this habit. Please try again.");
+      }
     });
   }
   function save() {
     const trimmed = name.trim();
     if (!trimmed) return;
     startTransition(async () => {
-      const r =
-        formMode === "add"
-          ? await createHabit({
-              name: trimmed,
-              emoji: emoji || undefined,
-              color,
-              targetPerWeek: target,
-            })
-          : await updateHabit({
-              id: formMode as string,
-              name: trimmed,
-              emoji: emoji || undefined,
-              color,
-              targetPerWeek: target,
-            });
-      if (r.ok) {
-        setFormMode(null);
-        reset();
-      } else toast.error(r.error);
+      try {
+        const r =
+          formMode === "add"
+            ? await createHabit({
+                name: trimmed,
+                emoji: emoji || undefined,
+                color,
+                targetPerWeek: target,
+              })
+            : await updateHabit({
+                id: formMode as string,
+                name: trimmed,
+                emoji: emoji || undefined,
+                color,
+                targetPerWeek: target,
+              });
+        if (r.ok) {
+          setFormMode(null);
+          reset();
+        } else toast.error(r.error);
+      } catch {
+        toast.error("Couldn't save. Your changes are still here.");
+      }
     });
   }
 
@@ -243,13 +260,17 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
             {formMode === "add" && (
               <>
                 <div>
-                  <label className="text-muted-foreground mb-1 block text-[11px] font-medium">
+                  <label
+                    htmlFor="habit-preset"
+                    className="text-muted-foreground mb-1 block text-[11px] font-medium"
+                  >
                     Pick a common one
                   </label>
                   <select
+                    id="habit-preset"
                     value=""
                     onChange={(e) => applyPreset(e.target.value)}
-                    className="border-input bg-background h-9 w-full rounded-lg border px-2 text-sm"
+                    className="border-input bg-background h-11 w-full rounded-lg border px-2 text-sm"
                   >
                     <option value="" disabled>
                       Choose from hygiene, health, movement…
@@ -274,6 +295,7 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
             )}
             <Input
               autoFocus
+              aria-label="Habit name"
               placeholder="Habit name, e.g. Drink water"
               value={name}
               maxLength={80}
@@ -289,7 +311,7 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
                   aria-pressed={emoji === e}
                   aria-label={`Emoji ${e}`}
                   className={cn(
-                    "rounded-lg px-1.5 py-1 text-base transition-colors",
+                    "min-h-11 min-w-11 rounded-lg px-1.5 py-1 text-base transition-colors",
                     emoji === e ? "bg-primary/15" : "hover:bg-accent"
                   )}
                 >
@@ -297,7 +319,7 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
                 </button>
               ))}
             </div>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex gap-1.5" role="group" aria-label="Color">
                 {COLORS.map((c) => (
                   <button
@@ -307,7 +329,7 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
                     aria-label={c.key}
                     aria-pressed={color === c.key}
                     className={cn(
-                      "h-6 w-6 rounded-full border-2",
+                      "h-11 w-11 rounded-full border-2",
                       c.dot,
                       color === c.key ? "border-foreground/50" : "border-transparent"
                     )}
@@ -375,7 +397,7 @@ export function HabitsCard({ habits }: { habits: HabitStatus[] }) {
                 aria-pressed={h.doneToday}
                 aria-label={`${h.doneToday ? "Undo" : "Complete"} ${h.name}`}
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                   h.doneToday
                     ? cn(c.ring, c.fill, "text-white")
                     : cn("border-muted-foreground/30 text-transparent", c.hover)

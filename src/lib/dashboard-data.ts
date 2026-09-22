@@ -3,6 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchWeather, type WeatherSnapshot } from "@/lib/integrations/weather";
 import { computeHabitStatus } from "@/lib/habits";
+import { SOCIAL_FEATURES_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
+import {
+  hasCurrentAiConsentDecision,
+  type AiConsentPreferences,
+} from "@/lib/integrations/ai-consent";
+import { availableIntegrations as integrationsAvailable } from "@/lib/integrations/availability";
+import { localToday as todayInTimezone, zonedToUtc } from "@/lib/tz";
 import type {
   Profile,
   HealthMetric,
@@ -29,6 +36,7 @@ export interface DashboardData {
   weather: WeatherSnapshot | null;
   calendarSync: CalendarSyncSettings | null;
   onboardingCompleted: boolean;
+  canGenerateBriefing: boolean;
   adherence: { total: number; done: number; streak: number };
   todayCheckin: SubjectiveCheckin | null;
   todayNutrition: { calories: number; protein: number; count: number } | null;
@@ -49,14 +57,19 @@ function isoDate(d: Date): string {
 export async function loadDashboardData(userId: string): Promise<DashboardData> {
   const supabase = await createClient();
 
-  const todayStr = isoDate(new Date());
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .maybeSingle<Profile>();
+  const timezone = profile?.timezone || "UTC";
+  const todayStr = todayInTimezone(timezone);
   const twoWeeksAgo = isoDate(new Date(Date.now() - 14 * 86_400_000));
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+  const tomorrowStr = isoDate(new Date(new Date(`${todayStr}T12:00:00Z`).getTime() + 86_400_000));
+  const dayStart = zonedToUtc(todayStr, "00:00", timezone);
+  const dayEnd = zonedToUtc(tomorrowStr, "00:00", timezone);
 
   const [
-    { data: profile },
     { data: metrics },
     { data: summary },
     { data: events },
@@ -72,7 +85,6 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     { data: habitLogRows },
     { data: nudgeRows },
   ] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", userId).maybeSingle<Profile>(),
     supabase
       .from("health_metrics")
       .select(
@@ -112,9 +124,11 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .maybeSingle<CalendarSyncSettings>(),
     supabase
       .from("user_preferences")
-      .select("onboarding_completed")
+      .select(
+        "onboarding_completed, allow_ai_basic_processing, ai_consent_version, ai_consent_updated_at, ai_consent_expires_at"
+      )
       .eq("user_id", userId)
-      .maybeSingle<{ onboarding_completed: boolean }>(),
+      .maybeSingle<AiConsentPreferences & { onboarding_completed: boolean }>(),
     supabase
       .from("schedule_events")
       .select("starts_at, ends_at, completed_at")
@@ -128,12 +142,14 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .order("date", { ascending: false })
       .limit(1)
       .maybeSingle<SubjectiveCheckin>(),
-    supabase
-      .from("food_logs")
-      .select("date, calories, protein_g")
-      .eq("user_id", userId)
-      .gte("date", isoDate(new Date(Date.now() - 86_400_000)))
-      .returns<{ date: string; calories: number | null; protein_g: number | null }[]>(),
+    NUTRITION_ENABLED
+      ? supabase
+          .from("food_logs")
+          .select("date, calories, protein_g")
+          .eq("user_id", userId)
+          .gte("date", isoDate(new Date(Date.now() - 86_400_000)))
+          .returns<{ date: string; calories: number | null; protein_g: number | null }[]>()
+      : Promise.resolve({ data: null }),
     supabase
       .from("evening_reviews")
       .select("date, day_rating, went_well, to_improve, tomorrow_intention")
@@ -161,13 +177,15 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
       .is("read_at", null)
       .order("created_at", { ascending: false })
       .limit(10)
-      .returns<{ id: string; from_user_id: string; kind: "cheer" | "reminder"; message: string | null }[]>(),
+      .returns<
+        { id: string; from_user_id: string; kind: "cheer" | "reminder"; message: string | null }[]
+      >(),
   ]);
 
   // Household: resolve member display names (admin client, scoped to the
   // household this user verifiably belongs to).
   let household: HouseholdInfo | null = null;
-  if (membership?.households) {
+  if (SOCIAL_FEATURES_ENABLED && membership?.households) {
     const admin = createAdminClient();
     const { data: members } = await admin
       .from("household_members")
@@ -203,14 +221,21 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
 
   const allEvents = events ?? [];
   const todayEvents = allEvents.filter((e) => e.user_id === userId);
-  const householdEvents = allEvents.filter((e) => e.user_id !== userId);
+  const householdEvents = SOCIAL_FEATURES_ENABLED
+    ? allEvents.filter((e) => e.user_id !== userId)
+    : [];
 
   const todayMetric = (metrics ?? []).find((m) => m.date === todayStr) ?? null;
 
   // Adherence over the last 7 days, plus a current daily streak.
   const tz = profile?.timezone || "UTC";
   const localDay = (d: Date) =>
-    new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: tz,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
   const week = weekEvents ?? [];
   const pastEvents = week.filter((e) => new Date(e.ends_at).getTime() <= Date.now());
   const doneCount = pastEvents.filter((e) => e.completed_at != null).length;
@@ -240,7 +265,7 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
   );
 
   // Resolve nudge sender names (admin read, scoped to the senders only).
-  const nudgeList = nudgeRows ?? [];
+  const nudgeList = SOCIAL_FEATURES_ENABLED ? (nudgeRows ?? []) : [];
   const nudgeNames = new Map<string, string>();
   if (nudgeList.length) {
     const admin = createAdminClient();
@@ -280,6 +305,10 @@ export async function loadDashboardData(userId: string): Promise<DashboardData> 
     weather,
     calendarSync: calendarSync ?? null,
     onboardingCompleted: prefs?.onboarding_completed ?? false,
+    canGenerateBriefing:
+      integrationsAvailable.openai() &&
+      hasCurrentAiConsentDecision(prefs) &&
+      prefs?.allow_ai_basic_processing === true,
     adherence,
     todayCheckin: todayCheckin ?? null,
     todayNutrition,

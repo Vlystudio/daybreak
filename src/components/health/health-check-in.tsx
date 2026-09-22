@@ -21,10 +21,12 @@ export function HealthCheckIn({
   conversation,
   hasData,
   selfReport,
+  aiAvailable = false,
 }: {
   todayCheckin: SubjectiveCheckin | null;
   conversation: { id: string; messages: CheckinMessage[] } | null;
   hasData: boolean;
+  aiAvailable?: boolean;
   selfReport: {
     today: string;
     weight: WeightPoint[];
@@ -34,9 +36,9 @@ export function HealthCheckIn({
 }) {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className={`grid gap-4 ${aiAvailable ? "lg:grid-cols-2" : ""}`}>
         <CheckinCard checkin={todayCheckin} />
-        <HealthCheckin initial={conversation} hasData={hasData} />
+        {aiAvailable && <HealthCheckin initial={conversation} hasData={hasData} />}
       </div>
       <SelfReportTrends
         today={selfReport.today}

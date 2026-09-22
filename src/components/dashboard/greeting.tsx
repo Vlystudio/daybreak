@@ -57,12 +57,12 @@ export function Greeting({
           <img
             src={avatarUrl}
             alt=""
-            className="h-12 w-12 shrink-0 rounded-full object-cover shadow-soft ring-2 ring-card"
+            className="shadow-soft ring-card h-12 w-12 shrink-0 rounded-full object-cover ring-2"
           />
         )}
         <div>
-          <p className="text-sm font-medium text-muted-foreground">{dateLabel}</p>
-          <h1 className="mt-0.5 text-3xl font-semibold tracking-tight sm:text-4xl">
+          <p className="text-muted-foreground text-xs font-medium">{dateLabel}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
             {greetingFor(hour)}
             {name ? `, ${name}` : ""}.
           </h1>

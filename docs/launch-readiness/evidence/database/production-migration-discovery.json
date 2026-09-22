@@ -1,0 +1,505 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-22T19:53:34.776Z",
+  "mode": "server-enforced read-only discovery",
+  "source": "operator-supplied sanitized snapshot",
+  "productionWritesPerformed": false,
+  "target": {
+    "projectRefSha256": "251A29A08D4DFB03"
+  },
+  "repositoryExpectations": {
+    "supabaseCli": "2.108.0",
+    "activeMigrations": [
+      {
+        "version": "0001",
+        "file": "0001_init.sql",
+        "sha256": "E51F7834E4F54809C9249D6B893AB5E0D817A073E7665DB950A362C0A51A72FA"
+      },
+      {
+        "version": "0002",
+        "file": "0002_planning.sql",
+        "sha256": "621FC595FDF7555AD282EDBAA3FB8596F5F1231BA2E785B577E253AB70511EAA"
+      },
+      {
+        "version": "0003",
+        "file": "0003_smart_plan.sql",
+        "sha256": "E4E8313423F1AD27603D058C1C0CB1045D4B427910D07DE0F453FBAF0E7416CC"
+      },
+      {
+        "version": "0004",
+        "file": "0004_fitness.sql",
+        "sha256": "4A39DFC5368096504089494EEE85321662A543AE3F2044E6E4D70F7265F00D4C"
+      },
+      {
+        "version": "0005",
+        "file": "0005_meals.sql",
+        "sha256": "217A4FF9539E2CA208CF38B1AC12F33B5F1B385166B05F49F0639365F0649EE8"
+      },
+      {
+        "version": "0006",
+        "file": "0006_work_hours.sql",
+        "sha256": "B91C8A5401038B39686A2F223643EF1D9ECBF05CD995D7FCD93B652323E51053"
+      },
+      {
+        "version": "0007",
+        "file": "0007_plan_tracking.sql",
+        "sha256": "727C65D58D7040C7223A431D67D050EB7B93FA8E11A39F6240E5F5E6EC728470"
+      },
+      {
+        "version": "0008",
+        "file": "0008_event_completion.sql",
+        "sha256": "A6C91BAED43EA928C78E5564842BCAEB99513034EDD3E4A45753A8530EC345CA"
+      },
+      {
+        "version": "0009",
+        "file": "0009_fitness_engine.sql",
+        "sha256": "F258347F4A934076F90B6A061B33CA3FE6F24AC86B15806F810DD044542FFF33"
+      },
+      {
+        "version": "0010",
+        "file": "0010_plan_workout_link.sql",
+        "sha256": "7E2F6C584180329213F59380A828EE1E68FD72C5DEA108F54F5EF1B6BEB70498"
+      },
+      {
+        "version": "0011",
+        "file": "0011_grocery.sql",
+        "sha256": "250CDB0DC30CFA0B387EAFE675AA72C52BD862FE32B5A0E78CDC4E3F924DFFDD"
+      },
+      {
+        "version": "0012",
+        "file": "0012_day_window.sql",
+        "sha256": "0026904ED2A826009936CD196B81B424380B54B570AD32297068ED572ED83708"
+      },
+      {
+        "version": "0013",
+        "file": "0013_auto_plan.sql",
+        "sha256": "757DC083AD9AE7D9C8847A274BD90A08241DA19A4D64689DBC7B073E97592DCE"
+      },
+      {
+        "version": "0014",
+        "file": "0014_meal_recipe.sql",
+        "sha256": "4B4129C6DE7AA5F275E3CC265A884392631B02AA86CC912A0CE0980F350BAA0A"
+      },
+      {
+        "version": "0015",
+        "file": "0015_oura_expanded.sql",
+        "sha256": "001151DA5EF5430FCAA01758EF763D12348594AD41090984303124C19208F3AF"
+      },
+      {
+        "version": "0016",
+        "file": "0016_health_checkin.sql",
+        "sha256": "F5F2566C50E106B5E5B086D1EC6606197C7C71EAC2387C41200FB1E467B2B28A"
+      },
+      {
+        "version": "0017",
+        "file": "0017_friends.sql",
+        "sha256": "69E9B4874C838ABAEE6BE70D63332DCE51E30FBA8D057695E90EDBCE12896162"
+      },
+      {
+        "version": "0018",
+        "file": "0018_competitions.sql",
+        "sha256": "5E8D349D90161746E50CA20E396F4539F10CC52E8D7DA92782D318DA1EFFAD51"
+      },
+      {
+        "version": "0019",
+        "file": "0019_calendar_export.sql",
+        "sha256": "BBFA7DFEB4912E1AA321335D77F32B454AB63309D1E2F24C3B2043EEB2BBD665"
+      },
+      {
+        "version": "0020",
+        "file": "0020_notifications.sql",
+        "sha256": "5A040B353799B04A8790BD46D116CD8A9BFAAA7E02AF5CD32D77CFE3161531FB"
+      },
+      {
+        "version": "0021",
+        "file": "0021_reconciled_legacy_bodies.sql",
+        "sha256": "B32E214465C82913BC25EAD98CFE9972D3790C44A0A90A7C9C621F072D7C63E9"
+      },
+      {
+        "version": "0022",
+        "file": "0022_intake_logging.sql",
+        "sha256": "0FC051BA0CA9011F7EF9BD51F545532B27BFF4456E60039086B0A079BE9A0834"
+      },
+      {
+        "version": "0023",
+        "file": "0023_evening_review.sql",
+        "sha256": "ADCB90F71CD1D4001F8A20CD934AF1DF0C96A4511057F2C69707059B2737478E"
+      },
+      {
+        "version": "0024",
+        "file": "0024_habits.sql",
+        "sha256": "9DE798E5831E96225411C22BB3015CC656801DD28A1683111975FB7FBCF39A67"
+      },
+      {
+        "version": "0025",
+        "file": "0025_goals.sql",
+        "sha256": "E58986B30AE17716E8712EA87EA0C577596FFB01A202F93F12A76DF71ADF2D6A"
+      },
+      {
+        "version": "0026",
+        "file": "0026_fitbit_provider.sql",
+        "sha256": "25DBCBE82B922752B907EF1AA0C993A4B0E433CEB7F0B0C0B94C646A2AADA21A"
+      },
+      {
+        "version": "0027",
+        "file": "0027_push_subscriptions.sql",
+        "sha256": "F1111B89FFD3DA9EF1A6037E96A7720AAE77C43CDC9638DF55047DC1FEE0D673"
+      },
+      {
+        "version": "0028",
+        "file": "0028_nudges.sql",
+        "sha256": "317617647265622F2AF536E5CEC1A62B80B005CB629B60DE73106B6A4BCDD5A9"
+      },
+      {
+        "version": "0029",
+        "file": "0029_grocery_deals_import.sql",
+        "sha256": "382763C7FBD36540589F7DB336CDACB69FC488DE8AD216D153739FC123CF1CFB"
+      },
+      {
+        "version": "0030",
+        "file": "0030_grocery_purchases.sql",
+        "sha256": "ECCF1CE1EC7312A3C753C20EC7E9732EA70AADFD6E8A7FDD55C429C4EEBDBD13"
+      },
+      {
+        "version": "0031",
+        "file": "0031_reminders.sql",
+        "sha256": "2CF02CCA078E19F4E4B85936697F309F03932E3C4B3951272942E365AA4EE5CD"
+      },
+      {
+        "version": "0032",
+        "file": "0032_competition_metrics.sql",
+        "sha256": "A4472ACF8FD89C0B37DFE5160CBC50EC99025B97DB5A0E44A1443AB7F7D07C8B"
+      },
+      {
+        "version": "0033",
+        "file": "0033_game.sql",
+        "sha256": "1F15DFCB4F290DFAF15F8F4167F0D9D09F424A230A43F64DCEB09FBA22CAF377"
+      },
+      {
+        "version": "0034",
+        "file": "0034_photo_birds.sql",
+        "sha256": "F3B81757CBB6CB8B78EBC2BD8169162F25666A095E32F8415AF7C9FF79F1401C"
+      },
+      {
+        "version": "0035",
+        "file": "0035_profile_personalization.sql",
+        "sha256": "90480E368B05B2A8B3B526C008F1FABEBDA5D00584A706FA9D0AC3F7455F1625"
+      },
+      {
+        "version": "0036",
+        "file": "0036_profile_avatars.sql",
+        "sha256": "9E95DE693D23B3FF0259565973198C8252CE9197C17A75AA89E425BE07D3B520"
+      },
+      {
+        "version": "0037",
+        "file": "0037_starter_eggs.sql",
+        "sha256": "C49D8FE425EE26D067447852342BBF0A0F573BD54220ED14A7AF487142E19E46"
+      },
+      {
+        "version": "0038",
+        "file": "0038_shop_feeding.sql",
+        "sha256": "FBC5C0BBC2391CE431E858822C1EB79112E6CCF9BD81375574228D8A95304965"
+      },
+      {
+        "version": "0039",
+        "file": "0039_cosmetics_breeding.sql",
+        "sha256": "824E4A6B6DBFBDEC3E7F9C8DEDDC08CC97B8936A951C92814C70FBB5FB63D0C3"
+      },
+      {
+        "version": "0040",
+        "file": "0040_bird_house.sql",
+        "sha256": "D767A0C12592DFA4FCD364C798C5D63C4C985115836A4041C9647DE262FD0697"
+      },
+      {
+        "version": "0041",
+        "file": "0041_apple_health.sql",
+        "sha256": "A457E70F539C4B0FA08E8A62BC55C46C5E5727D3BA8633B5FB5D5B2C18824E57"
+      },
+      {
+        "version": "0042",
+        "file": "0042_health_observations.sql",
+        "sha256": "F15DBC53BFD0F7E41925CAF7293ED64902D04BF6D80A3DD0E0EB7625133B27FB"
+      },
+      {
+        "version": "0043",
+        "file": "0043_health_observations_hardening.sql",
+        "sha256": "6E2D2F6C04F2B91CAE0D7D9A0FA4288E66D6030A2ADFB0ABCBDBDAC7FF37E9A9"
+      },
+      {
+        "version": "0044",
+        "file": "0044_health_observations_rls_lockdown.sql",
+        "sha256": "9F2D0272163AA3FEDE2E4C2C5DA37EA981F90C0A58EF2363419084D32B94CE2D"
+      },
+      {
+        "version": "0045",
+        "file": "0045_game_economy_rpcs.sql",
+        "sha256": "75266A9F8AE43C571FF1F241DB0B4727264BCFA82D402AD81851ADC0A55292B5"
+      },
+      {
+        "version": "0046",
+        "file": "0046_ai_consent.sql",
+        "sha256": "E1F00E5B888C0D543A70E039B870B963F0E92DA584DC5BE29DB9EE798962D47F"
+      },
+      {
+        "version": "0047",
+        "file": "0047_launch_privacy_controls.sql",
+        "sha256": "90BD9E8A9511422ACC507E261B621499E3234EEB5A80A7D647D05724234D23D9"
+      },
+      {
+        "version": "0048",
+        "file": "0048_reconcile_0021.sql",
+        "sha256": "EC1AFBF213255E5ABDD1B8DF821FC17E24795705C5055826440AC3357859FAE1"
+      },
+      {
+        "version": "0049",
+        "file": "0049_adult_eligibility_and_legal_acceptance.sql",
+        "sha256": "491C6A290272D04CCFBE51117BBD00FF9E20250FC094EDC205C505D8D78641B3"
+      },
+      {
+        "version": "0050",
+        "file": "0050_durable_account_deletion.sql",
+        "sha256": "E8D1B0E4307F3445C372B17CEAB561E16B25C5676B4E7D304B675D2C4BEA9AC9"
+      },
+      {
+        "version": "0051",
+        "file": "0051_ai_consent_and_permits.sql",
+        "sha256": "8FDC4DE5B42FA211590FE478C6BCAB7DB8E132B775EF2BA90A43309ABC45B41E"
+      },
+      {
+        "version": "0052",
+        "file": "0052_privacy_rights_and_retention.sql",
+        "sha256": "61698CD11C763C271D053F28341A84191756C6913F8C8C740E9A84B6BCE76EA3"
+      },
+      {
+        "version": "0053",
+        "file": "0053_birth_year_data_minimization.sql",
+        "sha256": "6B26BB5B97C5A4D0A47C07E35E2A47430AFF74B06D515CE80905A4009DD085A1"
+      },
+      {
+        "version": "0054",
+        "file": "0054_explicit_api_table_privileges.sql",
+        "sha256": "7BDC8055E0387772BF7CDB7DF5C1C507A42926DCAB1988203FB9A598F7FF77DF"
+      },
+      {
+        "version": "0055",
+        "file": "0055_harden_public_function_access.sql",
+        "sha256": "1DAE52D4E0684E88B0ED3C496D473EF015635C783AFAC4A1A1F74E6B1B3C03D3"
+      }
+    ],
+    "historicalDuplicate0021": [
+      {
+        "file": "0021_ai_cache.sql",
+        "sha256": "035E2248D136837511175BC18421AABC1F5482DCEFE00ECE79EEC34F50F17312"
+      },
+      {
+        "file": "0021_subjective_checkins.sql",
+        "sha256": "81D5E33BFB16AC22C17E5129321CA020606F16B2570B18DF6105FD7CE3F447FB"
+      }
+    ],
+    "laterDependencies": [
+      {
+        "file": "0048_reconcile_0021.sql",
+        "terms": ["subjective_checkins", "input_hash"]
+      },
+      {
+        "file": "0049_adult_eligibility_and_legal_acceptance.sql",
+        "terms": ["subjective_checkins"]
+      }
+    ]
+  },
+  "observed": {
+    "schemaVersion": 1,
+    "transactionReadOnly": true,
+    "migrationHistory": [
+      {
+        "version": "20260922145052",
+        "name": "launch_forward_0047_through_0054_20260922",
+        "checksum": null
+      },
+      {
+        "version": "20260922192005",
+        "name": "harden_public_function_access",
+        "checksum": null
+      }
+    ],
+    "legacy0021Effects": {
+      "dailySummariesInputHash": true,
+      "fitnessPlansInputHash": true,
+      "subjectiveCheckins": {
+        "exists": true,
+        "rls": true,
+        "forceRls": false,
+        "columns": [
+          {
+            "name": "id",
+            "type": "uuid",
+            "nullable": "NO"
+          },
+          {
+            "name": "user_id",
+            "type": "uuid",
+            "nullable": "NO"
+          },
+          {
+            "name": "date",
+            "type": "date",
+            "nullable": "NO"
+          },
+          {
+            "name": "mood",
+            "type": "smallint",
+            "nullable": "YES"
+          },
+          {
+            "name": "energy",
+            "type": "smallint",
+            "nullable": "YES"
+          },
+          {
+            "name": "stress",
+            "type": "smallint",
+            "nullable": "YES"
+          },
+          {
+            "name": "soreness",
+            "type": "smallint",
+            "nullable": "YES"
+          },
+          {
+            "name": "note",
+            "type": "text",
+            "nullable": "YES"
+          },
+          {
+            "name": "created_at",
+            "type": "timestamp with time zone",
+            "nullable": "NO"
+          },
+          {
+            "name": "updated_at",
+            "type": "timestamp with time zone",
+            "nullable": "NO"
+          }
+        ],
+        "constraints": [
+          {
+            "name": "subjective_checkins_energy_check",
+            "type": "c",
+            "definition": "CHECK (((energy >= 1) AND (energy <= 5)))"
+          },
+          {
+            "name": "subjective_checkins_mood_check",
+            "type": "c",
+            "definition": "CHECK (((mood >= 1) AND (mood <= 5)))"
+          },
+          {
+            "name": "subjective_checkins_note_check",
+            "type": "c",
+            "definition": "CHECK ((char_length(note) <= 500))"
+          },
+          {
+            "name": "subjective_checkins_pkey",
+            "type": "p",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "name": "subjective_checkins_soreness_check",
+            "type": "c",
+            "definition": "CHECK (((soreness >= 1) AND (soreness <= 5)))"
+          },
+          {
+            "name": "subjective_checkins_stress_check",
+            "type": "c",
+            "definition": "CHECK (((stress >= 1) AND (stress <= 5)))"
+          },
+          {
+            "name": "subjective_checkins_user_id_date_key",
+            "type": "u",
+            "definition": "UNIQUE (user_id, date)"
+          },
+          {
+            "name": "subjective_checkins_user_id_fkey",
+            "type": "f",
+            "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+          }
+        ],
+        "policies": [
+          {
+            "name": "eligible accounts only",
+            "permissive": "RESTRICTIVE",
+            "roles": ["authenticated"],
+            "command": "ALL"
+          },
+          {
+            "name": "subjective_checkins: insert own",
+            "permissive": "PERMISSIVE",
+            "roles": ["public"],
+            "command": "INSERT"
+          },
+          {
+            "name": "subjective_checkins: read own",
+            "permissive": "PERMISSIVE",
+            "roles": ["public"],
+            "command": "SELECT"
+          },
+          {
+            "name": "subjective_checkins: update own",
+            "permissive": "PERMISSIVE",
+            "roles": ["public"],
+            "command": "UPDATE"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "subjective_checkins_pkey",
+            "definition": "CREATE UNIQUE INDEX subjective_checkins_pkey ON public.subjective_checkins USING btree (id)"
+          },
+          {
+            "name": "subjective_checkins_user_date_idx",
+            "definition": "CREATE INDEX subjective_checkins_user_date_idx ON public.subjective_checkins USING btree (user_id, date DESC)"
+          },
+          {
+            "name": "subjective_checkins_user_id_date_key",
+            "definition": "CREATE UNIQUE INDEX subjective_checkins_user_id_date_key ON public.subjective_checkins USING btree (user_id, date)"
+          }
+        ],
+        "triggers": [
+          {
+            "name": "touch_subjective_checkins",
+            "definition": "CREATE TRIGGER touch_subjective_checkins BEFORE UPDATE ON public.subjective_checkins FOR EACH ROW EXECUTE FUNCTION touch_updated_at()"
+          }
+        ]
+      }
+    },
+    "dependencies": {
+      "views": [],
+      "triggers": [
+        {
+          "schema": "public",
+          "table": "subjective_checkins",
+          "name": "touch_subjective_checkins"
+        }
+      ]
+    }
+  },
+  "checksumComparison": {
+    "observedChecksumsAvailable": false,
+    "note": "The production migration ledger does not expose checksums; schema effects are used for duplicate-0021 classification."
+  },
+  "classification": {
+    "state": "both_legacy_bodies_or_canonical_0021",
+    "aiCacheComplete": true,
+    "subjectiveCheckinsComplete": true,
+    "forwardReconciliationApplied": false,
+    "repositoryHeadApplied": false,
+    "partialState": false,
+    "reconciliationNeeded": true,
+    "safeNextStep": "prepare a reviewed backup-backed forward migration plan; do not repair history"
+  },
+  "sanitization": {
+    "connectionStringStored": false,
+    "credentialStored": false,
+    "hostnameStored": false,
+    "userDataQueried": false
+  }
+}

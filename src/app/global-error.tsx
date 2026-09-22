@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import { safeLog } from "@/lib/security/safe-logger";
 
 /**
  * Last-resort boundary for a crash in the root layout itself (where the normal
@@ -17,7 +18,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     Sentry.captureException(error);
-    console.error("[global] fatal error:", error.digest ?? error.message);
+    safeLog("error", "ui.global_error", { digest: error.digest ?? "none" });
   }, [error]);
 
   return (

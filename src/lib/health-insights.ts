@@ -1,7 +1,7 @@
 import type { HealthMetric } from "@/lib/types";
 
 /**
- * Deterministic trend + "heads-up" analysis over Oura daily metrics. Pure
+ * Deterministic trend + "heads-up" analysis over normalized daily metrics. Pure
  * functions, no AI — instant and free, so they power the always-on flags.
  * Framed as general wellness guidance, never medical advice.
  */
@@ -55,8 +55,10 @@ export function metricStat(metrics: HealthMetric[], key: MetricKey): MetricStat 
   const latest = series.length ? series[series.length - 1] : null;
   const avg7 = mean(series.slice(-7));
   const avg30 = mean(series.slice(-30));
-  const deltaPct = avg7 != null && avg30 != null && avg30 !== 0 ? ((avg7 - avg30) / avg30) * 100 : null;
-  const direction = deltaPct == null ? "flat" : deltaPct > 2 ? "up" : deltaPct < -2 ? "down" : "flat";
+  const deltaPct =
+    avg7 != null && avg30 != null && avg30 !== 0 ? ((avg7 - avg30) / avg30) * 100 : null;
+  const direction =
+    deltaPct == null ? "flat" : deltaPct > 2 ? "up" : deltaPct < -2 ? "down" : "flat";
 
   return { latest, avg7, avg30, deltaPct, direction };
 }
@@ -80,7 +82,7 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
       severity: up >= 6 ? "alert" : "watch",
       title: `Resting heart rate is up ~${Math.round(up)} bpm`,
       detail:
-        "Your 7-day average sits above your monthly baseline. An elevated resting HR can follow poor sleep, stress, alcohol, or a coming illness — a lighter day and extra rest is wise.",
+        "Your 7-day average sits above your monthly baseline. This can reflect sleep, stress, alcohol, training load, or normal variation. Consider a lighter day if that matches how you feel.",
     });
   }
 
@@ -97,7 +99,8 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
       id: "hrv-up",
       severity: "good",
       title: `HRV is trending up ${Math.round(hrv.deltaPct)}%`,
-      detail: "Your recovery capacity is improving — a good window to push a little harder if you feel like it.",
+      detail:
+        "Your recovery capacity is improving — a good window to push a little harder if you feel like it.",
     });
   }
 
@@ -106,7 +109,8 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
       id: "readiness-low",
       severity: readiness.latest < 50 ? "alert" : "watch",
       title: `Readiness is low today (${Math.round(readiness.latest)})`,
-      detail: "Your body is signaling it needs recovery. Favor light movement, hydration, and an early night.",
+      detail:
+        "Your body is signaling it needs recovery. Favor light movement, hydration, and an early night.",
     });
   }
 
@@ -125,7 +129,8 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
       id: "sleep-eff",
       severity: "watch",
       title: `Sleep efficiency is ${Math.round(sleepEff.avg7)}%`,
-      detail: "You're spending a fair bit of time in bed awake. A calmer wind-down and a cooler, darker room often help.",
+      detail:
+        "You're spending a fair bit of time in bed awake. A calmer wind-down and a cooler, darker room often help.",
     });
   }
 
@@ -135,7 +140,7 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
       severity: Math.abs(temp.latest) >= 0.8 ? "alert" : "watch",
       title: `Body temperature is ${temp.latest > 0 ? "above" : "below"} your baseline`,
       detail:
-        "A notable shift in skin temperature can precede illness or reflect your cycle, alcohol, or a warm room. Keep an eye on how you feel.",
+        "A notable shift can reflect your cycle, alcohol, room temperature, measurement variation, or other factors. Keep an eye on how you feel.",
     });
   }
 
@@ -172,7 +177,11 @@ export function computeHeadsUp(metrics: HealthMetric[]): HeadsUp[] {
     });
   }
 
-  if (readiness.avg7 != null && readiness.avg7 >= 80 && !flags.some((f) => f.severity === "alert")) {
+  if (
+    readiness.avg7 != null &&
+    readiness.avg7 >= 80 &&
+    !flags.some((f) => f.severity === "alert")
+  ) {
     flags.push({
       id: "readiness-good",
       severity: "good",

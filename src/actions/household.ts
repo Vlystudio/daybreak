@@ -7,6 +7,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { audit } from "@/lib/audit";
 import { householdCreateSchema, householdJoinSchema } from "@/lib/validation";
 import type { ActionResult } from "@/actions/schedule";
+import { SOCIAL_DISABLED_ERROR, SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 
 /**
  * Household membership uses the admin client because creating/joining spans
@@ -15,13 +16,15 @@ import type { ActionResult } from "@/actions/schedule";
  */
 
 export async function createHousehold(input: { name: string }): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
   if (!limited.ok) return { ok: false, error: "Too many changes — try again shortly." };
 
   const parsed = householdCreateSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid name" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid name" };
 
   const admin = createAdminClient();
 
@@ -54,13 +57,15 @@ export async function createHousehold(input: { name: string }): Promise<ActionRe
 }
 
 export async function joinHousehold(input: { inviteCode: string }): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`household-join:${user.id}`, { limit: 5, windowSeconds: 600 });
   if (!limited.ok) return { ok: false, error: "Too many attempts — wait a few minutes." };
 
   const parsed = householdJoinSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid code" };
+  if (!parsed.success)
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid code" };
 
   const admin = createAdminClient();
 
@@ -90,6 +95,7 @@ export async function joinHousehold(input: { inviteCode: string }): Promise<Acti
 }
 
 export async function leaveHousehold(): Promise<ActionResult> {
+  if (!SOCIAL_FEATURES_ENABLED) return { ok: false, error: SOCIAL_DISABLED_ERROR };
   const user = await requireUser();
 
   const admin = createAdminClient();
@@ -113,7 +119,10 @@ export async function leaveHousehold(): Promise<ActionResult> {
       .eq("user_id", user.id);
   }
 
-  await audit(user.id, "household.left", { entity: "household", entityId: membership.household_id });
+  await audit(user.id, "household.left", {
+    entity: "household",
+    entityId: membership.household_id,
+  });
   revalidatePath("/dashboard");
   revalidatePath("/settings");
   return { ok: true };

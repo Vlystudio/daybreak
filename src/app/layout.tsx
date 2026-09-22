@@ -51,6 +51,9 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col">
         <script
           nonce={nonce}
+          // Browsers conceal the nonce attribute after parsing. Keep the CSP
+          // nonce intact while ignoring that expected hydration-only difference.
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html:
               "try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}",

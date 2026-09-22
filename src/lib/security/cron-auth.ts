@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { serverEnv } from "@/env";
 import { matchCronSecret } from "./cron-auth-core";
+import { safeLog } from "./safe-logger";
 
 /**
  * Shared bearer auth for Vercel-Cron and admin routes.
@@ -45,9 +46,11 @@ export function verifyCronAuth(request: NextRequest, routeName: string): CronAut
   const matched = matchCronSecret(presented, acceptedSecrets());
 
   if (matched === -1) {
-    console.warn(
-      `[security] cron/admin auth denied route=${routeName} hasHeader=${header.length > 0} ip=${hashIp(request)}`
-    );
+    safeLog("warn", "security.cron_auth_denied", {
+      route: routeName,
+      hasHeader: header.length > 0,
+      ipHash: hashIp(request),
+    });
     return { ok: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
   return { ok: true, viaPrevious: matched > 0 };

@@ -6,7 +6,6 @@ function prefs(over: Partial<UserPreferences> = {}): UserPreferences {
   return {
     height_in: 70,
     weight_lb: 180,
-    birth_year: 1990,
     sex: "male",
     activity_level: "moderate",
     fitness_goal: "maintain",

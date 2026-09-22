@@ -73,6 +73,9 @@ export const METRIC_DISPLAY: Partial<Record<HealthMetricName, MetricDisplay>> = 
   },
   sleep_efficiency: { label: "Sleep efficiency", color: "var(--sage)", unit: "%" },
   sleep_score: { label: "Sleep score", color: "var(--sky)" },
+  deep_sleep_min: { label: "Deep sleep", color: "var(--sky)", unit: "min" },
+  rem_sleep_min: { label: "REM sleep", color: "var(--sky)", unit: "min" },
+  light_sleep_min: { label: "Light sleep", color: "var(--sky)", unit: "min" },
   respiratory_rate: {
     label: "Respiratory rate",
     color: "var(--sage)",
@@ -125,5 +128,10 @@ export function metricSeries(signals: DailyHealthSignal[], metric: HealthMetricN
   const tf = METRIC_DISPLAY[metric]?.transform ?? ((n: number) => n);
   return signals
     .filter((s) => s.metric === metric && typeof s.value === "number" && Number.isFinite(s.value))
-    .map((s) => ({ day: format(parseISO(s.date), "MMM d"), value: tf(s.value as number) }));
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((s) => ({
+      day: format(parseISO(s.date), "MMM d"),
+      date: s.date,
+      value: tf(s.value as number),
+    }));
 }

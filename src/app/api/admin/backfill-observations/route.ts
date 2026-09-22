@@ -1,19 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
-import { verifyCronAuth } from "@/lib/security/cron-auth";
+import { verifyAdminAuth } from "@/lib/security/admin-auth";
 import {
   backfillObservationsForAllUsers,
   backfillObservationsForUser,
 } from "@/lib/health/backfill-observations";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 /**
  * Admin-only, one-time backfill of health_observations from the legacy tables.
- * POST-only and gated by the shared cron/admin bearer auth (constant-time,
- * rotation-aware). Insert-only + idempotent, so re-running is safe.
+ * POST-only and gated by the dedicated admin bearer credential. Insert-only +
+ * idempotent, so re-running is safe.
  *
  * SAFE BY DEFAULT: a bare request is a DRY RUN. To actually write, pass an
  * explicit `?dryRun=false` (or `?write=1`).
@@ -41,7 +42,7 @@ const paramsSchema = z
   });
 
 export async function POST(request: NextRequest) {
-  const auth = verifyCronAuth(request, "admin.backfill_observations");
+  const auth = verifyAdminAuth(request, "admin.backfill_observations");
   if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
@@ -69,7 +70,6 @@ export async function POST(request: NextRequest) {
       await audit(null, "admin.backfill_observations", {
         metadata: {
           scope: "user",
-          userId,
           dryRun: isDryRun,
           planned: result.planned,
           inserted: result.inserted,
@@ -97,10 +97,7 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ ok: true, dryRun: isDryRun, ...summary });
   } catch (err) {
-    console.error(
-      "[admin] backfill-observations failed:",
-      err instanceof Error ? err.message : "unknown"
-    );
+    safeLog("error", "admin.observation_backfill_failed", { errorClass: errorClass(err) });
     return NextResponse.json({ error: "Backfill failed" }, { status: 500 });
   }
 }

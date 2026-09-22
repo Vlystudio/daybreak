@@ -1,4 +1,10 @@
-# Daybreak — Launch & Security Readiness
+# Daybreak — historical launch/security checklist
+
+> This checklist predates the Sections 1–8 implementation and is retained for
+> context. Current status comes from
+> `npm run verify:app-store-sections-1-8`,
+> `docs/launch-readiness/sections-1-8-baseline.md`, and the evidence directories.
+> Any unchecked or stale statement below must not override those sources.
 
 This is the single source of truth for getting Daybreak from "working" to "safe to launch
 publicly / submit to the App Store." Daybreak stores **special-category health data**, so this

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { uuidSchema } from "@/lib/validation";
+import { NUTRITION_ENABLED, NUTRITION_DISABLED_ERROR } from "@/lib/features";
 import type { ActionResult } from "@/actions/schedule";
 
 const createSchema = z.object({
@@ -21,6 +22,9 @@ export async function createReminder(input: z.input<typeof createSchema>): Promi
 
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Pick a reminder and a time." };
+  if (!NUTRITION_ENABLED && parsed.data.kind === "log_food") {
+    return { ok: false, error: NUTRITION_DISABLED_ERROR };
+  }
   if (parsed.data.kind === "custom" && !parsed.data.message?.length) {
     return { ok: false, error: "Add a message for a custom reminder." };
   }
@@ -43,7 +47,9 @@ export async function toggleReminder(id: string, enabled: boolean): Promise<Acti
   if (!uuidSchema.safeParse(id).success) return { ok: false, error: "Unknown reminder" };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("reminders").update({ enabled }).eq("id", id).eq("user_id", user.id);
+  let query = supabase.from("reminders").update({ enabled }).eq("id", id).eq("user_id", user.id);
+  if (!NUTRITION_ENABLED && enabled) query = query.neq("kind", "log_food");
+  const { error } = await query;
   if (error) return { ok: false, error: "Couldn't update that reminder." };
 
   revalidatePath("/settings");

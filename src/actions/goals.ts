@@ -1,5 +1,7 @@
 "use server";
 
+import { NUTRITION_ENABLED, NUTRITION_DISABLED_ERROR } from "@/lib/features";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
@@ -14,10 +16,14 @@ const createSchema = z.object({
   /** Current and target in display units: lb for weight, % for body fat. */
   currentDisplay: z.number().positive().max(2000),
   targetDisplay: z.number().positive().max(2000),
-  targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  targetDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
 
 export async function createGoal(input: z.input<typeof createSchema>): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
 
   const limited = await rateLimit(`mutation:${user.id}`, RATE_LIMITS.mutation);
@@ -60,6 +66,7 @@ export async function createGoal(input: z.input<typeof createSchema>): Promise<A
 }
 
 export async function deleteGoal(id: string): Promise<ActionResult> {
+  if (!NUTRITION_ENABLED) return { ok: false, error: NUTRITION_DISABLED_ERROR };
   const user = await requireUser();
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "Unknown goal" };
 

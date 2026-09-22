@@ -34,7 +34,9 @@ function ItemList({ title, items }: { title: string; items: WorkoutItem[] }) {
   if (!items || items.length === 0) return null;
   return (
     <div>
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</p>
+      <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+        {title}
+      </p>
       <ul className="space-y-1.5 text-sm">
         {items.map((it, i) => (
           <li key={i} className="flex justify-between gap-3">
@@ -42,7 +44,7 @@ function ItemList({ title, items }: { title: string; items: WorkoutItem[] }) {
               {it.exercise_name}
               {it.notes && <span className="text-muted-foreground"> — {it.notes}</span>}
             </span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">
+            <span className="text-muted-foreground shrink-0 tabular-nums">
               {it.sets}×{it.reps}
               {it.rest_seconds ? ` · ${it.rest_seconds}s` : ""}
             </span>
@@ -62,25 +64,27 @@ function WorkoutDetail({ workout, onLog }: { workout: UserWorkout; onLog: () => 
           <CardTitle className="text-base">{p.workout_title}</CardTitle>
           <div className="flex items-center gap-1.5">
             {workout.status === "completed" && <Badge variant="sage">Done</Badge>}
-            {p.intensity && <Badge variant={intensityVariant[p.intensity] ?? "honey"}>{p.intensity}</Badge>}
+            {p.intensity && (
+              <Badge variant={intensityVariant[p.intensity] ?? "honey"}>{p.intensity}</Badge>
+            )}
           </div>
         </div>
-        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <p className="text-muted-foreground flex items-center gap-2 text-xs">
           <Clock className="h-3.5 w-3.5" aria-hidden /> ~{p.estimated_duration_minutes} min ·{" "}
           {format(parseISO(workout.created_at), "MMM d")}
         </p>
-        {p.reasoning_summary && <p className="text-sm text-foreground/90">{p.reasoning_summary}</p>}
+        {p.reasoning_summary && <p className="text-foreground/90 text-sm">{p.reasoning_summary}</p>}
       </CardHeader>
       <CardContent className="space-y-4">
         <ItemList title="Warm-up" items={p.warmup} />
         <ItemList title="Workout" items={p.main_workout} />
         <ItemList title="Cool-down" items={p.cooldown} />
         {p.safety_notes?.length > 0 && (
-          <div className="rounded-lg border border-border p-3 text-sm">
+          <div className="border-border rounded-lg border p-3 text-sm">
             <p className="mb-1 flex items-center gap-1.5 font-medium">
-              <ShieldAlert className="h-4 w-4 text-muted-foreground" aria-hidden /> Safety
+              <ShieldAlert className="text-muted-foreground h-4 w-4" aria-hidden /> Safety
             </p>
-            <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+            <ul className="text-muted-foreground list-disc space-y-0.5 pl-5">
               {p.safety_notes.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
@@ -89,8 +93,10 @@ function WorkoutDetail({ workout, onLog }: { workout: UserWorkout; onLog: () => 
         )}
         {p.progression_next_time?.length > 0 && (
           <div className="text-sm">
-            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Next time</p>
-            <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">
+            <p className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
+              Next time
+            </p>
+            <ul className="text-muted-foreground list-disc space-y-0.5 pl-5">
               {p.progression_next_time.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
@@ -102,7 +108,7 @@ function WorkoutDetail({ workout, onLog }: { workout: UserWorkout; onLog: () => 
             <CheckCircle2 className="h-4 w-4" aria-hidden /> Log this workout
           </Button>
         )}
-        <p className="text-xs text-muted-foreground/70">{FITNESS_DISCLAIMER}</p>
+        <p className="text-muted-foreground/70 text-xs">{FITNESS_DISCLAIMER}</p>
       </CardContent>
     </Card>
   );
@@ -228,7 +234,7 @@ export function WorkoutsView({
             <Sparkles className="h-4 w-4" aria-hidden /> Generate today&apos;s workout
           </h2>
           <p className="text-sm opacity-80">
-            Built from your goal, equipment, limitations, and recent Oura recovery.
+            Built from your goal, equipment, limitations, and available recent recovery signals.
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm">
@@ -239,7 +245,7 @@ export function WorkoutsView({
                 max={120}
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-24 bg-card/80"
+                className="bg-card/80 w-24"
               />
             </label>
             <label className="min-w-[180px] flex-1 text-sm">
@@ -261,7 +267,7 @@ export function WorkoutsView({
       {blocked && (
         <Card className="border-destructive/40">
           <CardContent className="flex gap-3 p-4 text-sm">
-            <ShieldAlert className="h-5 w-5 shrink-0 text-destructive" aria-hidden />
+            <ShieldAlert className="text-destructive h-5 w-5 shrink-0" aria-hidden />
             <p>{blocked}</p>
           </CardContent>
         </Card>
@@ -276,7 +282,7 @@ export function WorkoutsView({
           </CardHeader>
           <CardContent className="space-y-3">
             <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Perceived effort (1–10)</span>
+              <span className="text-muted-foreground mb-1 block">Perceived effort (1–10)</span>
               <Input
                 type="number"
                 min={1}
@@ -329,15 +335,24 @@ export function WorkoutsView({
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {equipment.length === 0 && <p className="text-sm text-muted-foreground">Bodyweight only for now.</p>}
+              {equipment.length === 0 && (
+                <p className="text-muted-foreground text-sm">Bodyweight only for now.</p>
+              )}
               {equipment.map((eq) => (
                 <span
                   key={eq.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-accent/50 px-3 py-1 text-sm"
+                  className="border-border bg-accent/50 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm"
                 >
                   {eq.name}
-                  <button type="button" onClick={() => removeEquip(eq.id)} aria-label={`Remove ${eq.name}`}>
-                    <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => removeEquip(eq.id)}
+                    aria-label={`Remove ${eq.name}`}
+                  >
+                    <X
+                      className="text-muted-foreground hover:text-foreground h-3.5 w-3.5"
+                      aria-hidden
+                    />
                   </button>
                 </span>
               ))}
@@ -368,15 +383,22 @@ export function WorkoutsView({
               </Button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {limits.length === 0 && <p className="text-sm text-muted-foreground">None noted.</p>}
+              {limits.length === 0 && <p className="text-muted-foreground text-sm">None noted.</p>}
               {limits.map((l) => (
                 <span
                   key={l.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-accent/50 px-3 py-1 text-sm"
+                  className="border-border bg-accent/50 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm"
                 >
                   {l.description}
-                  <button type="button" onClick={() => removeLimit(l.id)} aria-label={`Remove ${l.description}`}>
-                    <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" aria-hidden />
+                  <button
+                    type="button"
+                    onClick={() => removeLimit(l.id)}
+                    aria-label={`Remove ${l.description}`}
+                  >
+                    <X
+                      className="text-muted-foreground hover:text-foreground h-3.5 w-3.5"
+                      aria-hidden
+                    />
                   </button>
                 </span>
               ))}
@@ -392,7 +414,7 @@ export function WorkoutsView({
             <CardTitle className="text-base">Recent workouts</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="divide-y divide-border">
+            <ul className="divide-border divide-y">
               {history.map((w) => (
                 <li key={w.id}>
                   <button
@@ -403,13 +425,15 @@ export function WorkoutsView({
                       setBlocked(null);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 py-2.5 text-left text-sm hover:text-primary",
+                      "hover:text-primary flex w-full items-center justify-between gap-3 py-2.5 text-left text-sm",
                       workout?.id === w.id && "text-primary"
                     )}
                   >
                     <span className="truncate">{w.title}</span>
-                    <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-                      {w.status === "completed" && <CheckCircle2 className="h-3.5 w-3.5 text-primary" aria-hidden />}
+                    <span className="text-muted-foreground flex shrink-0 items-center gap-2 text-xs">
+                      {w.status === "completed" && (
+                        <CheckCircle2 className="text-primary h-3.5 w-3.5" aria-hidden />
+                      )}
                       {format(parseISO(w.created_at), "MMM d")}
                     </span>
                   </button>

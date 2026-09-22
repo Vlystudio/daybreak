@@ -1,0 +1,15 @@
+.git
+.next
+node_modules
+build
+.env*
+.secrets
+.supabase-token
+.resend-token
+supabase/.temp
+.supabase/.temp
+*.pem
+*.p12
+*.mobileprovision
+ios
+android

@@ -1,5 +1,7 @@
 import "server-only";
 import { serverEnv } from "@/env";
+import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 
 /**
  * Weather. Uses WeatherAPI.com (https://www.weatherapi.com) when
@@ -158,6 +160,8 @@ async function fetchFromWeatherApi(
   try {
     const res = await fetch(`https://api.weatherapi.com/v1/forecast.json?${params}`, {
       next: { revalidate: 900 },
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) return null;
 
@@ -180,7 +184,7 @@ async function fetchFromWeatherApi(
       precipitationChance: fc.day.daily_chance_of_rain ?? null,
     };
   } catch (err) {
-    console.error("[weather] WeatherAPI fetch failed:", err);
+    safeLog("error", "weather.primary_fetch_failed", { errorClass: errorClass(err) });
     return null;
   }
 }
@@ -193,7 +197,8 @@ async function fetchFromOpenMeteo(
     latitude: String(latitude),
     longitude: String(longitude),
     current: "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m",
-    daily: "temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max",
+    daily:
+      "temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max,precipitation_probability_max",
     temperature_unit: "fahrenheit",
     wind_speed_unit: "mph",
     timezone: "auto",
@@ -203,6 +208,8 @@ async function fetchFromOpenMeteo(
   try {
     const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
       next: { revalidate: 900 },
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) return null;
 
@@ -239,7 +246,7 @@ async function fetchFromOpenMeteo(
       precipitationChance: json.daily.precipitation_probability_max[0] ?? null,
     };
   } catch (err) {
-    console.error("[weather] Open-Meteo fetch failed:", err);
+    safeLog("error", "weather.fallback_fetch_failed", { errorClass: errorClass(err) });
     return null;
   }
 }
@@ -249,24 +256,35 @@ export async function fetchWeather(
   longitude: number
 ): Promise<WeatherSnapshot | null> {
   const apiKey = serverEnv().WEATHER_API_KEY;
-  if (apiKey) {
+  if (apiKey && isProcessorEnabled("weatherapi")) {
     const result = await fetchFromWeatherApi(latitude, longitude, apiKey);
     if (result) return result;
     // WeatherAPI failed — fall back to the key-less provider so the card still renders.
   }
-  return fetchFromOpenMeteo(latitude, longitude);
+  return isProcessorEnabled("open_meteo") ? fetchFromOpenMeteo(latitude, longitude) : null;
 }
 
 /** Geocode a city name to coordinates (Open-Meteo geocoding, also key-free). */
 export async function geocodeCity(
   city: string
 ): Promise<{ latitude: number; longitude: number; name: string; timezone: string } | null> {
+  if (!isProcessorEnabled("open_meteo")) return null;
   const params = new URLSearchParams({ name: city, count: "1", language: "en", format: "json" });
   try {
-    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+    const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, {
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
+    });
     if (!res.ok) return null;
     const json = (await res.json()) as {
-      results?: { latitude: number; longitude: number; name: string; timezone: string; admin1?: string; country?: string }[];
+      results?: {
+        latitude: number;
+        longitude: number;
+        name: string;
+        timezone: string;
+        admin1?: string;
+        country?: string;
+      }[];
     };
     const hit = json.results?.[0];
     if (!hit) return null;

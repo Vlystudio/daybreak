@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-22T19:43:53.910Z",
+  "commit": "8dcefe98dca38448732e9106c42deb4b0249adc6",
+  "codemagicBuildId": "6ab2d9aa7d9842ce8feacad5",
+  "source": "Authenticated Codemagic Validate release archive log, read through browser UI",
+  "sourceUrl": "https://codemagic.io/app/6a3ec7fa81a721539762b2ab/build/6ab2d9aa7d9842ce8feacad5?open-step=build-step-16",
+  "workflow": "ios-app-store-candidate",
+  "reportedWorkflowLabel": "ios-healthkit",
+  "archive": {
+    "fileName": "App_vswuwfru.xcarchive",
+    "modifiedAt": "2026-09-22T19:43:44.735Z"
+  },
+  "ipa": {
+    "fileName": "App.ipa",
+    "sha256": "7d74a226e472e06f9e20e497ec39f281c3333e9f5ffbfc6ffd6c7e8ee2582a22"
+  },
+  "dSYM": {
+    "fileName": "Cordova.framework.dSYM"
+  },
+  "application": {
+    "bundleId": "app.daybreak.mobile",
+    "version": "1.0.0",
+    "buildNumber": "30"
+  },
+  "signing": {
+    "team": "masked by Codemagic",
+    "identity": "Apple Distribution: Benyamin Mahmoodi (masked)",
+    "provisioningProfile": "Daybreak App Store",
+    "provisioningProfileExpiration": "2027-06-26T20:14:31Z"
+  },
+  "verified": {
+    "codeSignature": true,
+    "embeddedProvisioningProfile": true,
+    "entitlements": true,
+    "healthKitEntitlement": true,
+    "privacyManifestInArchive": true,
+    "bundleIdentifier": true,
+    "versionAndBuildNumber": true,
+    "appTransportSecurity": true,
+    "iconDeclaration": true,
+    "launchScreenDeclaration": true,
+    "dSYMExists": true,
+    "unexpectedEntitlementsAbsent": true,
+    "exportComplianceDeclaration": true
+  },
+  "notVerifiedByThisArtifact": [
+    "Xcode Organizer privacy report",
+    "App Store Connect upload and processing",
+    "TestFlight installation",
+    "physical-device behavior"
+  ],
+  "sanitized": true
+}

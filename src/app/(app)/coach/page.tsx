@@ -1,12 +1,15 @@
+import { COACH_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { CoachTabs } from "@/components/coach/coach-tabs";
 import type { FitnessPlan } from "@/lib/planning";
 import type { UserWorkout } from "@/lib/fitness";
 
-export const metadata = { title: "Coach · Daybreak" };
+export const metadata = { title: "Coach" };
 
 export default async function CoachPage() {
+  if (!COACH_ENABLED) notFound();
   const user = await requireUser();
   const supabase = await createClient();
 
@@ -66,7 +69,7 @@ export default async function CoachPage() {
     <div className="mx-auto w-full max-w-3xl">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Coach</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Your training, nutrition, and meals in one place.
         </p>
       </div>

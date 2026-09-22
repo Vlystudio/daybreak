@@ -169,19 +169,20 @@ protection"**; set **Minimum password length** ≥ 10; require at least lower+up
 **Where**: Vercel → Project → **Settings → Environment Variables** (Production scope).
 These must all be present (the app validates them at boot):
 
-| Variable                                                                        | Notes                                                |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                                                      | your Supabase URL                                    |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                                 | anon key (safe public)                               |
-| `NEXT_PUBLIC_APP_URL`                                                           | the production URL (used for OAuth redirects)        |
-| `SUPABASE_SERVICE_ROLE_KEY`                                                     | **secret** — server only                             |
-| `TOKEN_ENCRYPTION_KEY`                                                          | 32-byte base64 — **never rotate casually** (see 2.3) |
-| `CRON_SECRET`                                                                   | protects the cron endpoints                          |
-| `OPENAI_API_KEY`                                                                |                                                      |
-| `RESEND_API_KEY`, `EMAIL_FROM`                                                  | email                                                |
-| `OURA_*`, `GOOGLE_*`, `FITBIT_*`                                                | OAuth (only those you use)                           |
-| `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`                             | web push                                             |
-| `WEATHER_API_KEY`, `SPOONACULAR_API_KEY`, `LOGMEAL_API_KEY`, `GROCERYTRACKER_*` | optional                                             |
+| Variable                                                                        | Notes                                                                    |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_SUPABASE_URL`                                                      | your Supabase URL                                                        |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`                                                 | anon key (safe public)                                                   |
+| `NEXT_PUBLIC_APP_URL`                                                           | the production URL (used for OAuth redirects)                            |
+| `SUPABASE_SERVICE_ROLE_KEY`                                                     | **secret** — server only                                                 |
+| `TOKEN_ENCRYPTION_KEY`                                                          | 32-byte base64 — **never rotate casually** (see 2.3)                     |
+| `CRON_SECRET`                                                                   | protects the cron endpoints                                              |
+| `ADMIN_ACTION_SECRET`                                                           | protects high-impact admin/support actions; do not reuse the cron secret |
+| `OPENAI_API_KEY`                                                                |                                                                          |
+| `RESEND_API_KEY`, `EMAIL_FROM`                                                  | email                                                                    |
+| `OURA_*`, `GOOGLE_*`, `FITBIT_*`                                                | OAuth (only those you use)                                               |
+| `VAPID_PRIVATE_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`                             | web push                                                                 |
+| `WEATHER_API_KEY`, `SPOONACULAR_API_KEY`, `LOGMEAL_API_KEY`, `GROCERYTRACKER_*` | optional                                                                 |
 
 - [ ] All required vars present in Production (and Preview, if you preview-deploy).
 
@@ -296,19 +297,21 @@ for unauthenticated traffic (login, signup, OAuth start).
 
 **Why**: proves no user can read another user's health data. This is the single most
 important safety check.
-**Steps** (one-time setup):
+**Steps**:
 
-1. Install the Supabase test helpers (https://github.com/usebasejump/supabase-test-helpers)
-   into your local/test DB (see `supabase/tests/README.md`).
-2. Run them:
+1. Choose the disposable local mode or provision the guarded isolated-remote
+   project in `docs/database-runtime-testing.md`. The SQL fixtures are
+   self-contained; do not install third-party test helpers.
+2. Run the selected mode:
 
    ```bash
-   supabase start
-   npm run test:db          # runs supabase/tests/*.sql via pgTAP
+   npm run test:db:local    # Docker/local Supabase
+   npm run test:db:remote   # explicitly authorized isolated Supabase project
    ```
 
-3. Confirm all isolation assertions pass. The CI workflow already runs typecheck/lint/unit
-   tests; add `npm run test:db` to CI once you have a DB step in the pipeline.
+3. Confirm both clean initializations, every upgrade fixture, and both complete
+   pgTAP passes succeed. The manual protected GitHub workflow is
+   `.github/workflows/database-runtime.yml`.
 
 - [ ] RLS tests pass locally. Wired into CI.
 

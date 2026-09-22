@@ -58,29 +58,21 @@ export interface HealthKitPlugin {
 
 const HealthKit = registerPlugin<HealthKitPlugin>("HealthKit");
 
-// Long-tail quantity types worth storing beyond the mapped daily metrics. The
-// native plugin can aggregate any quantity type; add freely.
-const EXTRA_QUANTITY_TYPES = [
-  "HKQuantityTypeIdentifierHeartRate",
-  "HKQuantityTypeIdentifierBloodGlucose",
-  "HKQuantityTypeIdentifierBloodPressureSystolic",
-  "HKQuantityTypeIdentifierBloodPressureDiastolic",
-  "HKQuantityTypeIdentifierBodyTemperature",
-  "HKQuantityTypeIdentifierFlightsClimbed",
-  "HKQuantityTypeIdentifierAppleStandTime",
-  "HKQuantityTypeIdentifierWalkingHeartRateAverage",
-];
+// V1 requests only metrics that are visibly surfaced in Daybreak. Broad medical
+// categories (glucose, blood pressure, temperature) and unused long-tail types
+// are intentionally excluded even though the native bridge can query them.
+export const HEALTHKIT_QUANTITY_TYPES = [...MAPPED_QUANTITY_TYPES];
 
-const ALL_QUANTITY_TYPES = [...new Set([...MAPPED_QUANTITY_TYPES, ...EXTRA_QUANTITY_TYPES])];
-
-const READ_TYPES = [
-  ...ALL_QUANTITY_TYPES,
+export const HEALTHKIT_READ_TYPES = [
+  ...HEALTHKIT_QUANTITY_TYPES,
   "HKCategoryTypeIdentifierSleepAnalysis",
   "HKWorkoutTypeIdentifier",
 ];
 
-const LAST_SYNC_KEY = "apple_health_last_sync";
+export const LAST_SYNC_KEY = "apple_health_last_sync";
+export const CONNECTED_KEY = "apple_health_connected";
 const CHUNK = 1500;
+export type HealthImportDays = 90 | 365;
 
 export function isNativeHealthKit(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
@@ -131,29 +123,49 @@ function batches<T>(arr: T[], size: number): T[][] {
 
 export type SyncResult =
   | { ok: true; days: number; workouts: number; samples: number }
-  | { ok: false; reason: "not-native" | "denied" | "error"; error?: string };
+  | { ok: false; reason: "not-native" | "not-connected" | "denied" | "error"; error?: string };
+
+export function initialHealthKitStart(end: Date, days: HealthImportDays = 90): Date {
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - days);
+  return start;
+}
+
+export async function clearHealthKitLocalState(): Promise<void> {
+  await Promise.all([
+    Preferences.remove({ key: LAST_SYNC_KEY }),
+    Preferences.remove({ key: CONNECTED_KEY }),
+  ]);
+}
 
 /**
  * Pull new HealthKit data and push it to the server. Incremental: only fetches
  * since the last successful sync (minus a small overlap for late-arriving data),
  * unless `full` forces a complete backfill. Safe to call on every app launch.
  */
-export async function syncHealthKit(opts: { full?: boolean } = {}): Promise<SyncResult> {
+export async function syncHealthKit(
+  opts: { authorize?: boolean; importDays?: HealthImportDays } = {}
+): Promise<SyncResult> {
   if (!isNativeHealthKit()) return { ok: false, reason: "not-native" };
 
   try {
     const avail = await HealthKit.isAvailable();
     if (!avail.available) return { ok: false, reason: "error", error: "HealthKit unavailable" };
 
-    const { granted } = await HealthKit.requestAuthorization({ read: READ_TYPES });
-    if (!granted) return { ok: false, reason: "denied" };
+    const connected = (await Preferences.get({ key: CONNECTED_KEY })).value === "true";
+    if (!connected && !opts.authorize) return { ok: false, reason: "not-connected" };
+
+    if (opts.authorize) {
+      const { granted } = await HealthKit.requestAuthorization({ read: HEALTHKIT_READ_TYPES });
+      if (!granted) return { ok: false, reason: "denied" };
+      await Preferences.set({ key: CONNECTED_KEY, value: "true" });
+    }
 
     const end = new Date();
     let start: Date;
     const stored = (await Preferences.get({ key: LAST_SYNC_KEY })).value;
-    if (opts.full || !stored) {
-      start = new Date(end);
-      start.setFullYear(start.getFullYear() - 5); // first run: backfill 5 years
+    if (!stored) {
+      start = initialHealthKitStart(end, opts.importDays ?? 90);
     } else {
       start = new Date(stored);
       start.setDate(start.getDate() - 3); // re-pull a few days to catch late edits
@@ -163,7 +175,7 @@ export async function syncHealthKit(opts: { full?: boolean } = {}): Promise<Sync
 
     const agg = new DailyAggregator();
 
-    for (const type of ALL_QUANTITY_TYPES) {
+    for (const type of HEALTHKIT_QUANTITY_TYPES) {
       try {
         const { points } = await HealthKit.queryDailyQuantity({
           type,

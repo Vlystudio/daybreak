@@ -10,6 +10,7 @@ import { StatsStrip } from "@/components/game/stats-strip";
 import { AchievementsCard } from "@/components/profile/achievements-card";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Profile } from "@/lib/types";
+import { availableIntegrations } from "@/lib/integrations/availability";
 
 export const metadata = { title: "Profile" };
 export const dynamic = "force-dynamic";
@@ -65,7 +66,7 @@ export default async function ProfilePage() {
       />
       <AchievementsCard achievements={achievements} />
 
-      <ProfileForm profile={profile ?? null} />
+      <ProfileForm profile={profile ?? null} cityAvailable={availableIntegrations.citySearch()} />
       <AccentPicker current={profile?.accent ?? "sunrise"} />
       <AccountCard email={user.email ?? ""} />
     </div>

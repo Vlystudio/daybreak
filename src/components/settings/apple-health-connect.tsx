@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { Activity, Upload, RefreshCw } from "lucide-react";
+import { Activity, Upload, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { parseAppleHealthExport } from "@/lib/integrations/apple-health/parse";
-import { importAppleHealthChunk, finalizeAppleHealthImport } from "@/actions/apple-health-import";
+import {
+  importAppleHealthChunk,
+  finalizeAppleHealthImport,
+  disconnectAppleHealth,
+} from "@/actions/apple-health-import";
 import type { AppleHealthChunk } from "@/lib/integrations/apple-health/schema";
 
 /**
@@ -44,6 +48,9 @@ export function AppleHealthConnect({
   const [connected, setConnected] = useState(initialConnected);
   const [busy, setBusy] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [healthDisclosureOpen, setHealthDisclosureOpen] = useState(false);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [importDays, setImportDays] = useState<90 | 365>(90);
   const [progress, setProgress] = useState<{ label: string; fraction: number } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -55,15 +62,15 @@ export function AppleHealthConnect({
   }, []);
 
   // ── Native: one-tap connect + sync ─────────────────────────────────────────
-  async function nativeSync(full: boolean) {
+  async function nativeSync(authorize: boolean) {
     setBusy(true);
     try {
       const { syncHealthKit } = await import("@/lib/integrations/apple-health/healthkit.client");
-      const result = await syncHealthKit({ full });
+      const result = await syncHealthKit({ authorize, importDays });
       if (result.ok) {
         setConnected(true);
         toast.success(
-          full
+          authorize
             ? `Connected — imported ${result.days} day${result.days === 1 ? "" : "s"} of Health data.`
             : "Apple Health is up to date."
         );
@@ -71,9 +78,34 @@ export function AppleHealthConnect({
         toast.error("Permission denied. Enable Daybreak in Settings → Privacy → Health.");
       } else if (result.reason === "not-native") {
         toast.error("Open Daybreak in the iPhone app to connect Apple Health.");
+      } else if (result.reason === "not-connected") {
+        toast.error("Connect Apple Health before syncing.");
       } else {
         toast.error(result.error ?? "Couldn't sync Apple Health.");
       }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnect(removeData: boolean) {
+    setBusy(true);
+    try {
+      const result = await disconnectAppleHealth({ deleteData: removeData });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      const { clearHealthKitLocalState } =
+        await import("@/lib/integrations/apple-health/healthkit.client");
+      await clearHealthKitLocalState();
+      setConnected(false);
+      setDisconnectOpen(false);
+      toast.success(
+        removeData
+          ? "Apple Health disconnected and imported data removed."
+          : "Apple Health disconnected."
+      );
     } finally {
       setBusy(false);
     }
@@ -158,12 +190,29 @@ export function AppleHealthConnect({
 
       {isNative ? (
         connected ? (
-          <Button variant="ghost" size="sm" disabled={busy} onClick={() => nativeSync(false)}>
-            <RefreshCw className={busy ? "animate-spin" : undefined} aria-hidden />
-            Sync now
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => nativeSync(false)}>
+              <RefreshCw className={busy ? "animate-spin" : undefined} aria-hidden />
+              Sync now
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={busy}
+              aria-label="Disconnect Apple Health"
+              onClick={() => setDisconnectOpen(true)}
+            >
+              <Unplug aria-hidden />
+            </Button>
+          </div>
         ) : (
-          <Button size="sm" disabled={busy} onClick={() => nativeSync(true)}>
+          <Button
+            id="apple-health-connect"
+            data-testid="apple-health-connect"
+            size="sm"
+            disabled={busy}
+            onClick={() => setHealthDisclosureOpen(true)}
+          >
             {busy ? "Connecting…" : "Connect"}
           </Button>
         )
@@ -176,6 +225,82 @@ export function AppleHealthConnect({
           {connected ? "Update" : "Connect"}
         </Button>
       )}
+
+      <Dialog
+        open={healthDisclosureOpen}
+        onOpenChange={(open) => !busy && setHealthDisclosureOpen(open)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect Apple Health</DialogTitle>
+            <DialogDescription>
+              Daybreak requests read-only access after you continue. It never writes to Apple
+              Health.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="text-muted-foreground space-y-3 text-sm">
+            <p>
+              Daybreak reads sleep, steps, walking distance, active and basal energy, HRV, resting
+              heart rate, respiratory rate, oxygen saturation, workouts, exercise time, weight, body
+              fat, and VO₂ max to show wellness trends and tailor planning.
+            </p>
+            <p>
+              Imported summaries are uploaded to Daybreak’s Supabase backend. Sending health context
+              to OpenAI is controlled by a separate optional consent in AI data use; connecting
+              Apple Health does not enable it.
+            </p>
+            <p>
+              You can revoke access in iOS Settings and disconnect or delete imported Apple Health
+              data here at any time.
+            </p>
+            <fieldset className="space-y-2">
+              <legend className="text-foreground font-medium">Initial import range</legend>
+              {[90, 365].map((days) => (
+                <label key={days} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="health-import-range"
+                    checked={importDays === days}
+                    onChange={() => setImportDays(days as 90 | 365)}
+                  />
+                  {days === 90 ? "Last 90 days (recommended)" : "Last year"}
+                </label>
+              ))}
+            </fieldset>
+          </div>
+          <Button
+            data-testid="apple-health-authorize"
+            id="apple-health-authorize"
+            disabled={busy}
+            onClick={async () => {
+              await nativeSync(true);
+              setHealthDisclosureOpen(false);
+            }}
+          >
+            {busy ? "Connecting…" : "Continue to Apple Health"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={disconnectOpen} onOpenChange={(open) => !busy && setDisconnectOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disconnect Apple Health?</DialogTitle>
+            <DialogDescription>
+              Future synchronization will stop and the local sync marker will be removed. You can
+              also revoke Health permission in iOS Settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button variant="destructive" disabled={busy} onClick={() => disconnect(true)}>
+              Disconnect and delete Apple Health data
+            </Button>
+            <Button variant="outline" disabled={busy} onClick={() => disconnect(false)}>
+              Disconnect and keep imported data
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dialogOpen} onOpenChange={(o) => !busy && setDialogOpen(o)}>
         <DialogContent>

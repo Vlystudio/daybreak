@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type { ScheduleEvent } from "@/lib/types";
 
 const HOUR_PX = 60;
-const MIN_BLOCK_PX = 40;
+const MIN_BLOCK_PX = 48;
 const GUTTER = "3.5rem"; // 56px: time labels + their padding
 
 /** A single-day vertical timeline. Events span their time; short events stay
@@ -171,7 +171,7 @@ function DayBlock({
       className={cn(
         "shadow-soft focus-visible:ring-ring absolute z-10 overflow-hidden rounded-xl border px-2 py-1 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none",
         editable ? "cursor-pointer" : "cursor-default",
-        done && "opacity-60"
+        done && "border-dashed"
       )}
       style={{
         top,

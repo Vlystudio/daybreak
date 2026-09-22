@@ -1,12 +1,13 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { Camera, Plus, Trash2, Droplets, Scale, Utensils, Sparkles, Loader2 } from "lucide-react";
+import { useState, useTransition } from "react";
+import { Plus, Trash2, Droplets, Scale, Utensils, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhotoCaptureField } from "@/components/ui/photo-capture-field";
 import { cn } from "@/lib/utils";
 import {
   analyzeFoodPhoto,
@@ -17,34 +18,11 @@ import {
 } from "@/actions/intake";
 import type { FoodLog, BodyMeasurement } from "@/lib/types";
 import type { FoodAnalysis } from "@/lib/integrations/food-vision";
+import { reencodeImageFile } from "@/lib/image-reencode";
 
 type Meal = "breakfast" | "lunch" | "dinner" | "snack";
 const MEALS: Meal[] = ["breakfast", "lunch", "dinner", "snack"];
 const KG_PER_LB = 0.45359237;
-
-/** Downscale an image file to a compact JPEG data URL for analysis. */
-function fileToDataUrl(file: File, maxDim = 1024): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("no canvas"));
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("bad image"));
-    };
-    img.src = url;
-  });
-}
 
 function macroLine(f: {
   calories: number | null;
@@ -116,7 +94,6 @@ function TotalsCard({
 }
 
 function FoodLogger() {
-  const fileRef = useRef<HTMLInputElement>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [draft, setDraft] = useState<{
     meal: Meal;
@@ -137,13 +114,10 @@ function FoodLogger() {
   });
   const [pending, startTransition] = useTransition();
 
-  async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file
-    if (!file) return;
+  async function analyzePhoto(file: File) {
     setAnalyzing(true);
     try {
-      const dataUrl = await fileToDataUrl(file);
+      const dataUrl = await reencodeImageFile(file, { maxDim: 1024, quality: 0.7 });
       const result = await analyzeFoodPhoto({ imageDataUrl: dataUrl });
       if (!result.ok) {
         toast.error(result.error);
@@ -213,21 +187,19 @@ function FoodLogger() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* No `capture` attr: forcing the live camera (capture="environment") makes
-            iOS WKWebView open an AV capture session on tap, which crashes the host
-            app. The plain picker (Photo Library / Take Photo) matches the working
-            avatar uploader and is robust. */}
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
-        <Button
-          type="button"
+        {/* On web (desktop/Android/iOS Safari/PWA) this opens an in-app live
+            camera; inside the native iOS shell it opens the OS picker (Photo
+            Library / Take Photo). Never uses capture="environment" — forcing the
+            camera on tap crashes stale iOS builds. */}
+        <PhotoCaptureField
+          onFile={analyzePhoto}
+          busy={analyzing}
+          label="Snap or upload a photo"
+          busyLabel="Analyzing photo…"
           variant="secondary"
           className="w-full"
-          disabled={analyzing}
-          onClick={() => fileRef.current?.click()}
-        >
-          {analyzing ? <Loader2 className="animate-spin" aria-hidden /> : <Camera aria-hidden />}
-          {analyzing ? "Analyzing photo…" : "Snap or upload a photo"}
-        </Button>
+          fileName="meal.jpg"
+        />
 
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Meal">
           {MEALS.map((m) => (

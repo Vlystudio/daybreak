@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Nest · Daybreak" };
+export const metadata = { title: "Nest" };
 export const dynamic = "force-dynamic";
 
 export default async function NestPage() {
