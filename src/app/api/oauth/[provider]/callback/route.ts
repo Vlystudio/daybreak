@@ -6,7 +6,8 @@ import { saveConnection } from "@/lib/integrations/tokens";
 import { OAUTH_PROVIDERS, OAUTH_PROVIDER_NAMES } from "@/lib/integrations/oauth-providers";
 import { syncWearableForUser, syncCalendarForUser, generateSummaryForUser } from "@/lib/sync";
 import { audit } from "@/lib/audit";
-import { publicEnv } from "@/env";
+import { integrationsAvailable, publicEnv } from "@/env";
+import { isProcessorEnabled } from "@/lib/privacy/processors";
 import { errorClass, safeLog } from "@/lib/security/safe-logger";
 
 const providerSchema = z.enum(OAUTH_PROVIDER_NAMES);
@@ -36,6 +37,10 @@ export async function GET(
     return NextResponse.redirect(new URL("/eligibility", publicEnv.NEXT_PUBLIC_APP_URL));
   }
 
+  if (!integrationsAvailable[provider]() || !isProcessorEnabled(provider)) {
+    return dashboardRedirect({ connect_error: "unavailable" });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   if (searchParams.get("error")) {
     return dashboardRedirect({ connect_error: "denied" });
@@ -45,17 +50,15 @@ export async function GET(
   const state = searchParams.get("state");
   const nonceCookie = request.cookies.get(`oauth_nonce_${provider}`)?.value;
 
+  if (!code || !state || !nonceCookie) {
+    return dashboardRedirect({ connect_error: "invalid_state" });
+  }
+
   // CSRF check: state must verify against our HMAC, belong to the signed-in
   // user, and carry the nonce we set when the flow started.
-  const statePayload = state ? verifyState(state) : null;
+  const statePayload = verifyState(state);
   const [stateUserId, stateNonce] = statePayload?.split(":") ?? [];
-  if (
-    !code ||
-    !statePayload ||
-    stateUserId !== user.id ||
-    !nonceCookie ||
-    stateNonce !== nonceCookie
-  ) {
+  if (!statePayload || stateUserId !== user.id || stateNonce !== nonceCookie) {
     return dashboardRedirect({ connect_error: "invalid_state" });
   }
 

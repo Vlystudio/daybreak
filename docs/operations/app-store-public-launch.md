@@ -110,3 +110,10 @@ archive manifest inventory and published disclosures were reconciled separately.
 - The production migration ledger contains the applied 0047–0054 bundle and 0055
   under timestamp versions. The legacy numeric-ledger verifier still reports a
   history-evidence gap; no production history was rewritten to satisfy it.
+- Follow-up welcome-page copy `5687acc` removes advertising for paused AI and
+  Google Calendar/weather features. Production deployment
+  `dpl_CZexkH6RbsrbfoMmGMkHSfyFbYBt` passed build/TypeScript and HTTP content checks
+  and was promoted. The signed native package is still build 30; its hosted
+  welcome page now accurately describes the launch. Product rating stays 7.2/10.
+- The disposable local Next.js port 3002 and `daybreak-local` Docker services were
+  stopped after successful tests; Docker retained its normal local backup.

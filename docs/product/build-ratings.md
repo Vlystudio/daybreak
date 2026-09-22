@@ -132,3 +132,12 @@ Store screenshots are pending. No score increase: this reduces launch
 risk, while the long Today screen, limited first-time-user research and product
 differentiation remain the main competitive weaknesses. This is a subjective
 product assessment, not a prediction of downloads, retention or App Store stars.
+
+## September 22 — welcome-page scope correction
+
+**7.2/10**, unchanged. Web source `5687acc`, deployment
+`dpl_CZexkH6RbsrbfoMmGMkHSfyFbYBt`, removes stale promises of AI briefings and
+Google Calendar/weather from the public welcome page. Core screens and native
+build 30 are unchanged. Targeted lint/format checks, the production build with
+TypeScript, and the deployed page-content check passed. This improves expectation
+setting; it does not add evidence of higher market competitiveness.
