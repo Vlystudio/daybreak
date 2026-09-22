@@ -14,7 +14,12 @@ function installedNotice(directory, manifest) {
   function collect(current, prefix = "") {
     for (const file of readdirSync(current, { withFileTypes: true })) {
       const relative = `${prefix}${file.name}`;
-      if (file.isFile() && /^(licen[cs]e|notice|copying)(?:[._-]|$)/i.test(file.name)) {
+      if (
+        file.isFile() &&
+        /^(licen[cs]e|notices?|copying|third[-_]party[-_](?:licen[cs]es?|notices?))(?:[._-]|$)/i.test(
+          file.name
+        )
+      ) {
         texts.push(`${relative}\n${readFileSync(path.join(current, file.name), "utf8").trim()}`);
       } else if (file.isDirectory() && file.name !== "node_modules") {
         collect(path.join(current, file.name), `${relative}/`);
@@ -85,6 +90,12 @@ for (const [relative, entry] of Object.entries(lock.packages)) {
   });
 }
 if (missing.length) throw new Error(`Missing full license notices: ${missing.join(", ")}`);
+for (const asset of supplements.filter((item) => item.asset)) {
+  sections.push({
+    identity: `Asset: ${asset.asset}`,
+    text: `Asset: ${asset.asset}\nSource: ${asset.source}\n\n${readFileSync(path.join(noticeRoot, asset.file), "utf8").trim()}`,
+  });
+}
 sections.sort((a, b) => a.identity.localeCompare(b.identity, "en"));
 mkdirSync(path.join(root, "public"), { recursive: true });
 writeFileSync(
