@@ -32,7 +32,14 @@ if len(test_file) != 1:
     raise RuntimeError("Expected one generated xctestrun")
 with open(test_file[0], "rb") as handle:
     plan = plistlib.load(handle)
-targets = [target for config in plan["TestConfigurations"] for target in config["TestTargets"]]
+if "TestConfigurations" in plan:
+    targets = [target for config in plan["TestConfigurations"] for target in config["TestTargets"]]
+else:
+    # Schemes without an .xctestplan can still emit the original dictionary
+    # format on Xcode 26. Only inject into actual test-bundle entries.
+    targets = [target for target in plan.values() if isinstance(target, dict) and target.get("TestBundlePath")]
+if len(targets) != 1 or "StoreScreenshots" not in targets[0]["TestBundlePath"]:
+    raise RuntimeError("Expected exactly the StoreScreenshots test bundle")
 for target in targets:
     target.setdefault("EnvironmentVariables", {}).update({key: os.environ[key] for key in ("DAYBREAK_REVIEW_EMAIL", "DAYBREAK_REVIEW_PASSWORD")})
 with open(test_file[0], "wb") as handle:
