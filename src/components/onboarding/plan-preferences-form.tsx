@@ -109,8 +109,8 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
             <p className="text-muted-foreground text-sm">
               Choose the hours you want to plan around. No wearable is required.
             </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="plan-wake">Wake up</Label>
                 <Input
                   id="plan-wake"
@@ -120,7 +120,7 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
                   onChange={(e) => setWakeTime(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="min-w-0 space-y-2">
                 <Label htmlFor="plan-sleep">Bedtime</Label>
                 <Input
                   id="plan-sleep"
@@ -171,8 +171,8 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
               </div>
             </fieldset>
             {workDays.length > 0 && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="plan-work-start">Start</Label>
                   <Input
                     id="plan-work-start"
@@ -182,7 +182,7 @@ export function PlanPreferencesForm({ initial }: { initial: UserPreferences | nu
                     onChange={(e) => setWorkStartTime(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <Label htmlFor="plan-work-end">End</Label>
                   <Input
                     id="plan-work-end"
