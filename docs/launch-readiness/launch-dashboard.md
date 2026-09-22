@@ -5,8 +5,9 @@
 Candidate **1.0.0 (30)** is processed by Apple, selected in the App Store version,
 and passed the owner's final installation/relaunch/screen/licenses check. The
 owner authorized submission and automatic release after approval. The listing is
-**Ready for Review**: Apple's Add for Review validator passed and build 30 is in
-the draft submission. Four inspected iPhone screenshots are saved in the correct
+**Waiting for Review**: Apple accepted build 30 on September 22 at 6:27 PM EDT,
+submission `fd3eb2e1-601e-4d43-b12a-5633e5a3194d`. Automatic release after approval
+is enabled; public availability is not yet verified. Four inspected iPhone screenshots are saved in the correct
 order, with Apple's 6.9-inch assets supplying the required 6.5-inch slot.
 
 See the [current work record](../operations/app-store-public-launch.md),
@@ -18,9 +19,10 @@ and [signed-archive evidence](evidence/08-apple-privacy/ios-archive.json).
   are verified. Release implementation has 361 tests plus passing TypeScript,
   lint, CI, Security and CodeQL checks.
 - iPhone capture exposed native time-input overflow. Fields now stack on narrow
-  screens, and date/time input sizing is normalized. A follow-up capture is checking
-  the final sizing; the preceding attempt stopped at login, so no visual pass is
-  claimed for that attempt. The synthetic account's ordinary backend login passes.
+  screens, and date/time input sizing is normalized. Capture run `35790969516`
+  passed normal UI sign-in and all six screens; all six images were inspected and
+  the time fields fit within their cards. Earlier intermittent capture sign-in
+  failures remain recorded; their exact cause was not established.
 - Plan setup now uses the same server-side AI availability check as Settings and
   Schedule. The live authenticated page contains daily/work-hour fields and Save,
   with the paused automatic-planning control absent. Calendar setup is no longer

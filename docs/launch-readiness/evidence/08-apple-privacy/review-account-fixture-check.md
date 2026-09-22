@@ -15,3 +15,8 @@ role, account bypass, schema change, personal account, or provider data was invo
 Credentials and the private account ID remain in the ignored build directory and
 Apple's private review fields. This correction does not change the four uploaded
 store screenshots, which show Today, Schedule, Check-in and Connections.
+
+Final simulator run `35790969516` signed in through the ordinary UI and captured
+the corrected Monday–Friday selection. An independent authenticated HTTP read of
+the live preferences page also passed. These checks used local-scope logout where
+applicable; no other test or owner session was globally revoked.

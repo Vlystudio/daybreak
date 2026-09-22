@@ -26,7 +26,8 @@ require the applicable confirmation; the App Privacy confirmation is recorded.
 - [x] Actual iPhone screenshots captured, visually inspected and uploaded.
       V1 is iPhone-only; exploratory iPad compatibility captures are not store assets.
 - [x] Apple's Add for Review validator passes; build 30 is in the Ready for Review draft.
-- [ ] Final Submit for Review action is confirmed.
+- [x] Final Submit for Review action is confirmed: September 22, 2026, 6:27 PM EDT.
+      Apple shows Waiting for Review, submission `fd3eb2e1-601e-4d43-b12a-5633e5a3194d`.
 - [ ] Apple approves the version and public U.S. availability is verified.
 
 The remaining broad evidence backlog is explicit in the

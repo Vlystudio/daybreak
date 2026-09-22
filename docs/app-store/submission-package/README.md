@@ -3,8 +3,9 @@
 This package records the free U.S.-only V1 candidate, **1.0.0 (30)**. Metadata,
 private review access/contact, screenshots, pricing, distribution and build are
 saved in App Store Connect. App Privacy is published with owner confirmation.
-Apple's Add for Review validator passed; the final Submit for Review action is
-pending. See [the current checklist](submission-checklist.md) and
+Apple accepted the submission on September 22 at 6:27 PM EDT and shows
+**Waiting for Review**. Automatic release after approval is enabled. See
+[the current checklist](submission-checklist.md) and
 [release record](../../operations/app-store-public-launch.md) for status updates.
 Bracketed contact/demo values are intentionally kept out of Git; actual values
 exist only in protected local storage and Apple's private fields.

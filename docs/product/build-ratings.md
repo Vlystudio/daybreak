@@ -158,8 +158,10 @@ input sizing after a second capture revealed remaining WebKit overflow.
 
 Verification: 361 tests in 52 files, TypeScript, lint, CI/Security/CodeQL and the
 production build passed. Six simulator screens passed before the final sizing
-correction; its visual verification is still in progress after a capture login
-failure. The owner's build-30 test remains recorded separately. No new physical
+correction; final run `35790969516` subsequently passed ordinary UI sign-in and
+all six screens. Visual inspection confirms the fields fit inside their cards.
+Earlier intermittent automated sign-in failures remain recorded with no proven
+root cause. The owner's build-30 test remains recorded separately. No new physical
 device test or native performance measurement is claimed for this hosted update.
 
 The improvement addresses a concrete small-screen layout defect. The score stays
@@ -174,3 +176,7 @@ calendar-setup copy. TypeScript, targeted lint, the six existing preference acti
 tests, production build and authenticated live-page content checks passed. It
 improves consistency of expectations without adding a new native binary or new
 evidence of product differentiation.
+
+Build 30 was submitted to Apple at 6:27 PM EDT on September 22 and is **Waiting
+for Review**, with automatic release enabled. The rating remains **7.2/10**;
+submission is a release milestone, not additional evidence of market success.

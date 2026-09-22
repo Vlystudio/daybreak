@@ -9,6 +9,11 @@ Launch scope: free, United States only; Today, Schedule, Health and account/priv
 controls. Keep the owner's residential address off public pages. Existing Apple
 record: Daybreak Companion, `6784789934`, `app.daybreak.mobile`.
 
+Current status: **Waiting for Review**. Apple accepted **1.0.0 (30)** on September
+22, 2026 at **6:27 PM EDT**, submission `fd3eb2e1-601e-4d43-b12a-5633e5a3194d`.
+Automatic release after approval is enabled for the free U.S.-only launch.
+Approval and public availability remain pending.
+
 ## Work record
 
 - Owner supplied the private App Review phone number and agreed to test on iPhone.
@@ -68,13 +73,15 @@ record: Daybreak Companion, `6784789934`, `app.daybreak.mobile`.
 - [x] Set free pricing and United States availability; verify release settings.
 - [x] Confirm artwork/content rights with the owner and review shipped licenses.
 - [x] Provision review access without exposing credentials or using personal health data.
-- [ ] Complete final privacy-manifest/report reconciliation and physical-iPhone checks.
-- [ ] Submit to Apple, handle review feedback, and verify public availability after approval.
+- [x] Reconcile archive manifest inventory/disclosures and record owner build-30 checks.
+- [ ] Obtain the broader Organizer report and exhaustive physical-device matrix evidence.
+- [x] Submit build 30 to Apple and verify Waiting for Review.
+- [ ] Handle actionable review feedback and verify public availability after approval.
 
 Build 28 is internal-only and cannot be submitted to the App Store. Build 29 has
 owner-reported device results. Build 30 contains the corrected privacy manifest
-and notices, and its final installation check passed. No version has been
-submitted to Apple review or published. The Organizer report remains unavailable;
+and notices, and its final installation check passed. Build 30 is submitted and
+Waiting for Review; it is not yet publicly available. The Organizer report remains unavailable;
 archive manifest inventory and published disclosures were reconciled separately.
 
 ## September 22 — build 30 and final listing preparation
@@ -135,7 +142,7 @@ archive manifest inventory and published disclosures were reconciled separately.
   build passed. Deployment `dpl_FG2qhjk81WsUaCFPYUCDtmWf42vn` returned HTTP 200 and
   was promoted. A limited last-20-minute error-log query returned zero records.
 - Apple's Add for Review validator passed after screenshot upload. Build 30 is in
-  a **Ready for Review** draft; the final Submit for Review action is still pending.
+  a **Ready for Review** draft at this stage; the final submission is recorded below.
 - Corrected the synthetic review fixture's numeric work-day values to the weekday
   names expected by the form, using that account's normal authenticated client and
   a scoped readback. No personal account or authorization rule was changed.
@@ -166,4 +173,17 @@ archive manifest inventory and published disclosures were reconciled separately.
   visible. The sampled deployment logs showed GET page loads but no login POST.
   This suggests a UI interaction issue but does not establish its cause. A further
   diagnostic run reports redacted static page labels, never field values or the
-  raw accessibility tree. Submission remains pending this investigation.
+  raw accessibility tree. Submission was held pending the next run.
+- Run `35790969516`, capture source `f1940ae`, passed the ordinary UI login and all
+  six screen checks against live runtime `c1cb521`. Strict 1320x2868 RGB/no-alpha
+  validation passed. All six screenshots were visually inspected: native time
+  fields fit within the cards, core screens render normally, and no credentials,
+  real health data or home address appear. The two prior intermittent login
+  failures were not reproduced; their exact cause remains unproven. No production
+  authentication change or bypass was used. The four uploaded listing images
+  retain their original capture provenance.
+- Clicked Submit for Review in the prepared Apple draft. Apple confirmed **1 Item
+  Submitted**, then **Waiting for Review**. The submission detail page identifies
+  build **1.0.0 (30)**, September 22 at **6:27 PM EDT**, and submission ID
+  `fd3eb2e1-601e-4d43-b12a-5633e5a3194d`. No new binding agreement appeared at this
+  step. Automatic release remains enabled. Approval/public availability are pending.
