@@ -12,9 +12,11 @@ import { generatePlan, generateTodayPlan, clearPlan } from "@/actions/plan";
 export function GeneratePlanCard({
   ready,
   aiAllowed = false,
+  aiAvailable = false,
 }: {
   ready: boolean;
   aiAllowed?: boolean;
+  aiAvailable?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -68,14 +70,17 @@ export function GeneratePlanCard({
       <CardContent className="space-y-3 p-5">
         <div>
           <h2 className="flex items-center gap-2 font-semibold">
-            <Sparkles className="h-4 w-4" aria-hidden /> Smart plan
+            <Sparkles className="h-4 w-4" aria-hidden />{" "}
+            {aiAvailable ? "Smart plan" : "Your routine"}
           </h2>
           <p className="mt-1 max-w-md text-sm opacity-80">
-            {!ready
-              ? "Set your daily rhythm to get a suggested plan. You can also add events yourself."
-              : !aiAllowed
-                ? "AI planning is optional. Review your AI data choices in Settings, or add events yourself."
-                : "Make space for your day. Generate suggestions around your routine, then adjust them here. Replanning replaces today's suggested blocks."}
+            {!aiAvailable
+              ? "Keep your daily preferences in one place, then add events around what matters to you."
+              : !ready
+                ? "Set your daily rhythm to get a suggested plan. You can also add events yourself."
+                : !aiAllowed
+                  ? "AI planning is optional. Review your AI data choices in Settings, or add events yourself."
+                  : "Make space for your day. Generate suggestions around your routine, then adjust them here. Replanning replaces today's suggested blocks."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -85,12 +90,16 @@ export function GeneratePlanCard({
             </Button>
           ) : (
             <Button asChild>
-              <Link href={!ready ? "/onboarding" : "/settings#ai-data-use"}>
-                {!ready ? "Set up my routine" : "Review AI data choices"}
+              <Link href={!ready || !aiAvailable ? "/onboarding" : "/settings#ai-data-use"}>
+                {!ready
+                  ? "Set up my routine"
+                  : !aiAvailable
+                    ? "Edit my routine"
+                    : "Review AI data choices"}
               </Link>
             </Button>
           )}
-          {ready && (
+          {ready && aiAvailable && (
             <Link
               href="/onboarding"
               className="inline-flex min-h-11 items-center text-sm underline"

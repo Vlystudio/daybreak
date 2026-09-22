@@ -10,7 +10,15 @@ import { savePushSubscription, deletePushSubscription } from "@/actions/push";
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
 
-export function NotificationsCard({ morningEmailEnabled }: { morningEmailEnabled: boolean }) {
+export function NotificationsCard({
+  morningEmailEnabled,
+  emailAvailable,
+  pushAvailable,
+}: {
+  morningEmailEnabled: boolean;
+  emailAvailable: boolean;
+  pushAvailable: boolean;
+}) {
   const [emailEnabled, setEmailEnabled] = useState(morningEmailEnabled);
   const [pending, startTransition] = useTransition();
 
@@ -18,7 +26,8 @@ export function NotificationsCard({ morningEmailEnabled }: { morningEmailEnabled
     setEmailEnabled(next);
     startTransition(async () => {
       const result = await setMorningEmailEnabled({ enabled: next });
-      if (result.ok) toast.success(next ? "Morning briefing email on." : "Morning briefing email off.");
+      if (result.ok)
+        toast.success(next ? "Morning briefing email on." : "Morning briefing email off.");
       else {
         setEmailEnabled(!next);
         toast.error(result.error ?? "Something went wrong.");
@@ -30,28 +39,30 @@ export function NotificationsCard({ morningEmailEnabled }: { morningEmailEnabled
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Mail className="h-4 w-4 text-primary" aria-hidden />
+          <Mail className="text-primary h-4 w-4" aria-hidden />
           Notifications
         </CardTitle>
         <CardDescription>How Daybreak reaches you</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">Morning briefing email</p>
-            <p className="text-xs text-muted-foreground">
-              Get your daily briefing in your inbox each morning, the moment it&apos;s ready.
-            </p>
+        {emailAvailable && (
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">Morning briefing email</p>
+              <p className="text-muted-foreground text-xs">
+                Get your daily briefing in your inbox each morning, the moment it&apos;s ready.
+              </p>
+            </div>
+            <Switch
+              checked={emailEnabled}
+              disabled={pending}
+              aria-label="Morning briefing email"
+              onCheckedChange={toggleEmail}
+            />
           </div>
-          <Switch
-            checked={emailEnabled}
-            disabled={pending}
-            aria-label="Morning briefing email"
-            onCheckedChange={toggleEmail}
-          />
-        </div>
+        )}
 
-        {VAPID_PUBLIC_KEY && <PushRow />}
+        {pushAvailable && VAPID_PUBLIC_KEY && <PushRow />}
       </CardContent>
     </Card>
   );
@@ -65,7 +76,11 @@ function PushRow() {
   useEffect(() => {
     let cancelled = false;
     async function detect() {
-      if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      if (
+        typeof window === "undefined" ||
+        !("serviceWorker" in navigator) ||
+        !("PushManager" in window)
+      ) {
         if (!cancelled) setSupported(false);
         return;
       }
@@ -140,10 +155,10 @@ function PushRow() {
     <div className="flex items-center justify-between gap-3 border-t pt-4">
       <div>
         <p className="flex items-center gap-1.5 text-sm font-medium">
-          <BellRing className="h-3.5 w-3.5 text-honey" aria-hidden />
+          <BellRing className="text-honey h-3.5 w-3.5" aria-hidden />
           Push notifications
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           A nudge on this device when your briefing and plan are ready.
         </p>
       </div>

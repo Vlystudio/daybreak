@@ -19,6 +19,7 @@ import { HouseholdCard } from "@/components/dashboard/household-card";
 import { Recommendations } from "@/components/dashboard/recommendations";
 import { FadeIn } from "@/components/motion";
 import { SOCIAL_FEATURES_ENABLED, NUTRITION_ENABLED } from "@/lib/features";
+import { availableIntegrations } from "@/lib/integrations/availability";
 
 export const metadata = { title: "Today" };
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ export default async function DashboardPage() {
   const data = await loadDashboardData(user.id);
 
   const firstName = (data.profile?.display_name ?? "").split(" ")[0];
+  const weatherAvailable = availableIntegrations.weather();
 
   return (
     <div className="space-y-6">
@@ -44,6 +46,7 @@ export default async function DashboardPage() {
       <SetupChecklist
         onboardingCompleted={data.onboardingCompleted}
         hasCity={Boolean(data.profile?.city)}
+        weatherAvailable={weatherAvailable}
       />
 
       {SOCIAL_FEATURES_ENABLED && <NudgesCard nudges={data.nudges} />}
@@ -86,10 +89,12 @@ export default async function DashboardPage() {
         <h2 id="daily-signals-title" className="section-heading">
           Your daily signals
         </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className={`grid gap-4 ${weatherAvailable ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
           <ReadinessCard today={data.today} metrics={data.metrics} />
           <SleepCard today={data.today} metrics={data.metrics} />
-          <WeatherCard weather={data.weather} city={data.profile?.city ?? null} />
+          {weatherAvailable && (
+            <WeatherCard weather={data.weather} city={data.profile?.city ?? null} />
+          )}
         </div>
       </section>
 

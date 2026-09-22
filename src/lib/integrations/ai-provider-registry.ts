@@ -31,6 +31,18 @@ export function assertAiProviderEnabled(providerId: RegisteredAiProvider): void 
   }
 }
 
+/** Use the same policy as the API boundary when advertising an AI feature. */
+export function isAiProviderEnabled(providerId: RegisteredAiProvider): boolean {
+  const provider = providers.get(providerId);
+  const environment = (process.env.NODE_ENV ?? "development") as Environment;
+  return Boolean(
+    provider &&
+    !provider.emergencyDisabled &&
+    provider.enabledEnvironments.includes(environment) &&
+    (environment !== "production" || provider.approvalStatus === "approved")
+  );
+}
+
 export function registeredAiProviderIds(): string[] {
   return [...providers.keys()].sort();
 }

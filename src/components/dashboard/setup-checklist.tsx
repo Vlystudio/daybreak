@@ -14,9 +14,11 @@ interface Step {
 export function SetupChecklist({
   onboardingCompleted,
   hasCity,
+  weatherAvailable = false,
 }: {
   onboardingCompleted: boolean;
   hasCity: boolean;
+  weatherAvailable?: boolean;
 }) {
   const steps: Step[] = [
     {
@@ -25,7 +27,9 @@ export function SetupChecklist({
       href: "/onboarding",
       cta: "Start",
     },
-    { label: "Set your city for weather", done: hasCity, href: "/settings", cta: "Add" },
+    ...(weatherAvailable
+      ? [{ label: "Set your city for weather", done: hasCity, href: "/profile", cta: "Add" }]
+      : []),
   ];
 
   const doneCount = steps.filter((s) => s.done).length;

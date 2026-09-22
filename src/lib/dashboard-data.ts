@@ -8,7 +8,7 @@ import {
   hasCurrentAiConsentDecision,
   type AiConsentPreferences,
 } from "@/lib/integrations/ai-consent";
-import { integrationsAvailable } from "@/env";
+import { availableIntegrations as integrationsAvailable } from "@/lib/integrations/availability";
 import { localToday as todayInTimezone, zonedToUtc } from "@/lib/tz";
 import type {
   Profile,

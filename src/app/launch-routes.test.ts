@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const { requireUser, notFound } = vi.hoisted(() => ({
   requireUser: vi.fn(() => {
@@ -24,6 +24,12 @@ const pages = [
 ] as const;
 
 describe("deferred routes", () => {
+  // Compile the route/component graphs once before timing the behavioral checks.
+  // Cold parallel transforms on Windows can exceed a test's five-second budget.
+  beforeAll(async () => {
+    await Promise.all(pages.map(([, load]) => load()));
+  }, 30_000);
+
   it.each(pages)("blocks direct access to %s before loading account data", async (_name, load) => {
     const pageModule = await load();
     const render = pageModule.default as (props: { params: Promise<{ id: string }> }) => unknown;

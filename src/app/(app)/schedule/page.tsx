@@ -6,7 +6,7 @@ import { SOCIAL_FEATURES_ENABLED } from "@/lib/features";
 import { GeneratePlanCard } from "@/components/onboarding/generate-plan-card";
 import { hasCurrentAiConsentDecision } from "@/lib/integrations/ai-consent";
 import type { UserPreferences } from "@/lib/planning";
-import { integrationsAvailable } from "@/env";
+import { availableIntegrations as integrationsAvailable } from "@/lib/integrations/availability";
 
 export const metadata = { title: "Schedule" };
 export const dynamic = "force-dynamic";
@@ -51,6 +51,7 @@ export default async function SchedulePage() {
       planningControls={
         <GeneratePlanCard
           ready={prefs?.onboarding_completed === true}
+          aiAvailable={integrationsAvailable.openai()}
           aiAllowed={
             integrationsAvailable.openai() &&
             hasCurrentAiConsentDecision(prefs) &&

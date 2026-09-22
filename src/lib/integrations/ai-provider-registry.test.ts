@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertAiProviderEnabled,
   registeredAiProviderIds,
+  isAiProviderEnabled,
 } from "@/lib/integrations/ai-provider-registry";
 
 describe("AI provider registry", () => {
@@ -15,11 +16,13 @@ describe("AI provider registry", () => {
     vi.stubEnv("NODE_ENV", "test");
     expect(() => assertAiProviderEnabled("openai")).not.toThrow();
     expect(() => assertAiProviderEnabled("logmeal")).not.toThrow();
+    expect(isAiProviderEnabled("openai")).toBe(true);
   });
 
   it("blocks production until external approval is recorded", () => {
     vi.stubEnv("NODE_ENV", "production");
     expect(() => assertAiProviderEnabled("openai")).toThrow(/not enabled|approval/i);
     expect(() => assertAiProviderEnabled("logmeal")).toThrow(/not enabled|approval/i);
+    expect(isAiProviderEnabled("openai")).toBe(false);
   });
 });

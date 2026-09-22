@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { loadDashboardData } from "@/lib/dashboard-data";
 import { createClient } from "@/lib/supabase/server";
-import { integrationsAvailable } from "@/env";
+import { availableIntegrations as integrationsAvailable } from "@/lib/integrations/availability";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { RemindersCard } from "@/components/settings/reminders-card";
 import { HealthImportCard } from "@/components/settings/health-import-card";
@@ -59,13 +59,23 @@ export default async function SettingsPage() {
     ]);
   const aiConsent = aiConsentFromPrefs(aiPrefs);
   const morningEmailEnabled = notif?.morning_email_enabled ?? true;
-  const pushAvailable = Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY);
+  const pushAvailable = integrationsAvailable.push();
+  const aiAvailable = integrationsAvailable.openai();
+  const emailAvailable = integrationsAvailable.resend();
 
   // Provider registry → per-user state for the health-sources overview.
   const connectedProviders = new Set<string>(data.connections.map((c) => c.provider));
   const fitbitConfigured = integrationsAvailable.fitbit();
   // The registry contains only supported V1 sources.
-  const healthSources = HEALTH_PROVIDERS.filter((p) => p.status === "active").map((p) => {
+  const healthSources = HEALTH_PROVIDERS.filter(
+    (p) =>
+      p.status === "active" &&
+      (p.id === "manual" ||
+        p.id === "apple_health" ||
+        connectedProviders.has(p.id) ||
+        (p.id === "oura" && integrationsAvailable.oura()) ||
+        (p.id === "fitbit" && fitbitConfigured))
+  ).map((p) => {
     const connected =
       p.id === "apple_health"
         ? Boolean(appleImport)
@@ -97,7 +107,7 @@ export default async function SettingsPage() {
               <span>
                 <span className="block text-sm font-medium">Profile &amp; personalization</span>
                 <span className="text-muted-foreground block text-xs">
-                  Name, city, accent theme, account
+                  Name, photo, accent theme and account
                 </span>
               </span>
             </span>
@@ -106,12 +116,22 @@ export default async function SettingsPage() {
         </Card>
       </Link>
 
-      <NotificationsCard morningEmailEnabled={morningEmailEnabled} />
-      <RemindersCard reminders={reminders ?? []} pushAvailable={pushAvailable} />
+      {(emailAvailable || pushAvailable) && (
+        <NotificationsCard
+          morningEmailEnabled={morningEmailEnabled}
+          emailAvailable={emailAvailable}
+          pushAvailable={pushAvailable}
+        />
+      )}
+      {(pushAvailable || Boolean(reminders?.length)) && (
+        <RemindersCard reminders={reminders ?? []} pushAvailable={pushAvailable} />
+      )}
       <CalendarSyncCard
         connections={data.connections}
         calendarSync={data.calendarSync}
         fitbitAvailable={integrationsAvailable.fitbit()}
+        ouraAvailable={integrationsAvailable.oura()}
+        googleAvailable={integrationsAvailable.google()}
         appleHealth={{
           connected: Boolean(appleImport),
           lastRangeEnd: appleImport?.range_end ?? null,
@@ -119,11 +139,14 @@ export default async function SettingsPage() {
       />
       <HealthImportCard />
       <HealthSourcesCard sources={healthSources} />
-      <AiDataUseCard
-        consent={aiConsent}
-        updatedAt={aiPrefs?.ai_consent_updated_at ?? null}
-        expiresAt={aiPrefs?.ai_consent_expires_at ?? null}
-      />
+      {(aiAvailable || Object.values(aiConsent).some(Boolean)) && (
+        <AiDataUseCard
+          consent={aiConsent}
+          available={aiAvailable}
+          updatedAt={aiPrefs?.ai_consent_updated_at ?? null}
+          expiresAt={aiPrefs?.ai_consent_expires_at ?? null}
+        />
+      )}
       {SOCIAL_FEATURES_ENABLED && <HouseholdCard household={data.household} householdEvents={[]} />}
 
       <Card>

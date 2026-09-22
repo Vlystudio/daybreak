@@ -5,6 +5,7 @@ import { HealthCommandCenter } from "@/components/health/health-command-center";
 import type { CheckinMessage } from "@/actions/health";
 import type { SubjectiveCheckin } from "@/lib/types";
 import { NUTRITION_ENABLED } from "@/lib/features";
+import { availableIntegrations } from "@/lib/integrations/availability";
 
 const KG_PER_LB = 0.45359237;
 const RANGE_DAYS = 120;
@@ -117,6 +118,8 @@ export default async function HealthPage() {
         </p>
       </div>
       <HealthCommandCenter
+        aiAvailable={availableIntegrations.openai()}
+        cloudSyncAvailable={availableIntegrations.oura() || availableIntegrations.fitbit()}
         understanding={understanding}
         todayCheckin={todayCheckin ?? null}
         conversation={conversation ?? null}

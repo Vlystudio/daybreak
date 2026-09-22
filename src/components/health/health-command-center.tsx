@@ -25,8 +25,12 @@ export function HealthCommandCenter({
   todayCheckin,
   conversation,
   selfReport,
+  aiAvailable = false,
+  cloudSyncAvailable = false,
 }: {
   understanding: HealthUnderstandingResult;
+  aiAvailable?: boolean;
+  cloudSyncAvailable?: boolean;
   todayCheckin: SubjectiveCheckin | null;
   conversation: { id: string; messages: CheckinMessage[] } | null;
   selfReport: {
@@ -59,7 +63,11 @@ export function HealthCommandCenter({
       </TabsList>
 
       <TabsContent value="overview">
-        <HealthOverview understanding={understanding} />
+        <HealthOverview
+          understanding={understanding}
+          aiAvailable={aiAvailable}
+          cloudSyncAvailable={cloudSyncAvailable}
+        />
       </TabsContent>
       <TabsContent value="trends">
         <HealthTrends understanding={understanding} />
@@ -69,6 +77,7 @@ export function HealthCommandCenter({
       </TabsContent>
       <TabsContent value="checkin">
         <HealthCheckIn
+          aiAvailable={aiAvailable}
           todayCheckin={todayCheckin}
           conversation={conversation}
           hasData={hasData}

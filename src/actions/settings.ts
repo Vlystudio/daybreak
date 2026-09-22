@@ -24,6 +24,7 @@ import {
   type AiConsentPreferences,
 } from "@/lib/integrations/ai-consent";
 import { errorClass, safeLog } from "@/lib/security/safe-logger";
+import { availableIntegrations } from "@/lib/integrations/availability";
 
 export async function updateProfile(input: ProfileInput): Promise<ActionResult> {
   const user = await requireUser();
@@ -36,7 +37,16 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid profile" };
   }
 
-  // Resolve city → coordinates/timezone server-side so weather works.
+  const supabase = await createClient();
+  // An unavailable weather provider must not prevent edits to name or bio.
+  const { data: existingProfile, error: profileError } = await supabase
+    .from("profiles")
+    .select("city, latitude, longitude")
+    .eq("id", user.id)
+    .maybeSingle<{ city: string | null; latitude: number | null; longitude: number | null }>();
+  if (profileError) return { ok: false, error: "Couldn't load your profile. Please try again." };
+
+  // Resolve changed cities only, preserving an existing city without a new external call.
   let location: {
     city: string | null;
     latitude: number | null;
@@ -47,7 +57,15 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
     latitude: null,
     longitude: null,
   };
-  if (parsed.data.city) {
+  if (parsed.data.city && parsed.data.city === existingProfile?.city) {
+    location = existingProfile;
+  } else if (parsed.data.city) {
+    if (!availableIntegrations.citySearch()) {
+      return {
+        ok: false,
+        error: "City search is currently unavailable. Your profile has not changed.",
+      };
+    }
     const geo = await geocodeCity(parsed.data.city);
     if (!geo) return { ok: false, error: "We couldn't find that city — try a nearby larger one." };
     location = {
@@ -58,7 +76,6 @@ export async function updateProfile(input: ProfileInput): Promise<ActionResult> 
     };
   }
 
-  const supabase = await createClient();
   const { error } = await supabase
     .from("profiles")
     .update({

@@ -45,10 +45,12 @@ export function AiDataUseCard({
   consent,
   updatedAt,
   expiresAt,
+  available = false,
 }: {
   consent: AiConsent;
   updatedAt: string | null;
   expiresAt: string | null;
+  available?: boolean;
 }) {
   const [state, setState] = useState<AiConsent>(consent);
   const [pending, startTransition] = useTransition();
@@ -77,13 +79,19 @@ export function AiDataUseCard({
           <Sparkles className="text-honey h-4 w-4" aria-hidden /> AI data use
         </CardTitle>
         <CardDescription>
-          OpenAI processes only the categories you allow for briefings, plans and health insights.
-          AI may be inaccurate and is not medical advice. Turning a category off invalidates
-          outstanding permits and future retries. Learn more in the{" "}
-          <Link href="/legal/ai" className="underline">
-            AI disclosure
-          </Link>
-          .
+          {!available ? (
+            "AI features are paused in this release. You can still revoke permissions you previously enabled."
+          ) : (
+            <>
+              OpenAI processes only the categories you allow for briefings, plans and health
+              insights. AI may be inaccurate and is not medical advice. Turning a category off
+              invalidates outstanding permits and future retries. Learn more in the{" "}
+              <Link href="/legal/ai" className="underline">
+                AI disclosure
+              </Link>
+              .
+            </>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -99,7 +107,7 @@ export function AiDataUseCard({
               id={`ai-consent-${row.key}`}
               data-testid={`ai-consent-${row.key}`}
               checked={state[row.key]}
-              disabled={pending}
+              disabled={pending || (!available && !state[row.key])}
               aria-label={`Send ${row.label.toLowerCase()} to an AI provider`}
               onCheckedChange={(value) => toggle(row.key, value)}
             />

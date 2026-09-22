@@ -85,6 +85,7 @@ export function RemindersCard({
           size="sm"
           onClick={() => setAdding((a) => !a)}
           aria-label="Add reminder"
+          disabled={!pushAvailable}
         >
           <Plus aria-hidden />
         </Button>
@@ -92,7 +93,7 @@ export function RemindersCard({
       <CardContent className="space-y-3">
         {!pushAvailable && (
           <p className="bg-muted/50 text-muted-foreground rounded-lg px-3 py-2 text-xs">
-            Turn on push notifications above to receive reminders.
+            Reminder delivery is paused in this release. You can still remove saved reminders.
           </p>
         )}
 
@@ -153,7 +154,7 @@ export function RemindersCard({
               <div className="flex items-center gap-2">
                 <Switch
                   checked={r.enabled}
-                  disabled={pending}
+                  disabled={pending || (!pushAvailable && !r.enabled)}
                   aria-label={`${labelFor(r.kind)} reminder`}
                   onCheckedChange={(v) => toggle(r.id, v)}
                 />
