@@ -18,6 +18,7 @@ group = project.main_group.new_group('StoreScreenshots', 'StoreScreenshots')
 target.source_build_phase.add_file_reference(group.new_file('DaybreakStoreScreenshots.swift'))
 target.build_configurations.each do |configuration|
   configuration.build_settings.merge!({
+    'PRODUCT_NAME' => '$(TARGET_NAME)',
     'PRODUCT_BUNDLE_IDENTIFIER' => 'app.daybreak.mobile.store-screenshots',
     'GENERATE_INFOPLIST_FILE' => 'YES',
     'SWIFT_VERSION' => '5.0',
