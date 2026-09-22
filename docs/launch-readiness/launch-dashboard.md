@@ -1,5 +1,50 @@
 # Daybreak launch dashboard
 
+## Current release status — September 22, 2026
+
+Candidate **1.0.0 (30)** is processed by Apple, selected in the App Store version,
+and passed the owner's final installation/relaunch/screen/licenses check. The
+owner authorized submission and automatic release after approval. The listing is
+still **Prepare for Submission**: the current Apple validator flags missing
+iPhone screenshots. Real simulator captures with a synthetic account are in progress.
+
+See the [current work record](../operations/app-store-public-launch.md),
+[build-30 device result](evidence/05-health-and-healthkit/owner-build-30-device-report.md)
+and [signed-archive evidence](evidence/08-apple-privacy/ios-archive.json).
+
+- Production web deployment `dpl_5GkcXXZJaeXf3Wu8FNC71AchQPPD` is live. Core
+  signed-in screens, public home-address removal and notices/Privacy HTTP checks
+  are verified. Release implementation has 352 tests plus passing TypeScript,
+  lint, CI, Security and CodeQL checks.
+- Database hardening passed two fresh resets, two runs of 112 SQL assertions and
+  eight upgrade scenarios. Production changes were verified. The timestamp
+  migration ledger still needs a baseline-aware tooling follow-up; no historical
+  entries were fabricated.
+- The actual isolated deletion workflow and fourteen local Auth checks passed.
+  Production Auth settings were read back separately. Tests do not establish
+  actual production SMTP delivery, full browser MFA/recovery, or external grant
+  revocation. No personal account was deleted.
+- Published App Privacy has 13 categories and explicit owner declaration approval.
+  The native manifest matches and includes Preferences reason `CA92.1`. Archive
+  manifest inventory was inspected; no Organizer report export is claimed.
+- Artwork authorship and a technical dependency-license assessment are recorded;
+  full dependency/font notices shipped. This is not an attorney opinion.
+- Metadata, review access/contact, age rating, content rights, free U.S.-only
+  pricing, DSA non-EU-distribution option and automatic release are saved.
+  Mac and Vision Pro availability are disabled.
+- Internal rating remains **7.2/10**. Stable-iOS coverage, the full device matrix
+  and first-time-user validation remain absent.
+
+The broad historical inventory below is retained as an evidence backlog. It is
+not a list of requirements imposed by Apple's submission validator. Paused AI,
+Grocery, Coach, Nutrition and new external connections remain unavailable pending
+their own reviews. Organization enrollment and paid agreements are not the chosen
+individual/free distribution path. No attorney, trademark, insurance or executed
+private processor-contract review is represented as complete; outstanding entries
+are not silently converted to passes by the narrowed release scope.
+
+## Historical inventory — superseded status snapshot
+
 September 22, 2026 scope update: the live web app now focuses on Today, Schedule and Health, with Grocery, Coach and Nutrition disabled. See [scope changes, verification and remaining release work](launch-scope-2026-09-22.md). See the [production release record](../operations/production-release-2026-09-22.md). Native, legal-review and exact-commit CI evidence gates remain separate.
 
 Last repository verification: 2026-07-29 (America/New_York). The portable database-runner candidate derives from pushed commit `957efd3f7a5243d236956c5f221f50d308521f84`; an isolated database run, final commit, and exact-commit CI remain required. `PASS` is repository or supplied-evidence proof, `BLOCKED` is not pass, and `N/A` requires the stated release-surface rationale.
