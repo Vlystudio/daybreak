@@ -140,7 +140,7 @@ workflows:
           : "${APP_STORE_APPLE_ID:?Missing numeric APP_STORE_APPLE_ID in appstore environment group}"
           : "${CM_ENV:?Codemagic CM_ENV file is unavailable}"
           [[ "$APP_STORE_APPLE_ID" =~ ^[0-9]+$ ]] || { echo "error: APP_STORE_APPLE_ID must be numeric" >&2; exit 1; }
-          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" --version-string "$APP_VERSION")"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID")"
           [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]] || { echo "error: App Store Connect did not return a numeric build number" >&2; exit 1; }
           CANDIDATE_BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
           printf 'CANDIDATE_BUILD_NUMBER=%s\n' "$CANDIDATE_BUILD_NUMBER" >> "$CM_ENV"
