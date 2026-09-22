@@ -29,7 +29,9 @@ final class DaybreakStoreScreenshots: XCTestCase {
         capture(app, "01-today")
 
         app.webViews.links["Schedule"].firstMatch.tap()
-        XCTAssertTrue(app.webViews.staticTexts["Your routine"].waitForExistence(timeout: 30), "Schedule routine section did not appear")
+        // Routine controls live inside a deliberately collapsed details section.
+        // Wait for the visible schedule action, without expanding optional tools.
+        XCTAssertTrue(app.webViews.buttons["Add"].firstMatch.waitForExistence(timeout: 30), "Schedule Add action did not appear")
         capture(app, "02-schedule")
 
         app.webViews.links["Health"].firstMatch.tap()
