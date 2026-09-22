@@ -76,7 +76,7 @@ workflows:
         name: Generate iOS platform
         script: |
           if [ ! -d ios ]; then
-            npx cap add ios
+            node scripts/capacitor-cli.mjs add ios
           fi
       - &prepare_native
         name: Inject HealthKit plugin, entitlements, Info.plist
@@ -85,7 +85,7 @@ workflows:
           HEALTH_DOMAIN="daybreak-one.vercel.app" bash scripts/ios-prepare.sh
       - &sync_capacitor
         name: Capacitor sync
-        script: npx cap sync ios
+        script: node scripts/capacitor-cli.mjs sync ios
       - &install_pods
         name: Install CocoaPods
         script: |

@@ -418,7 +418,7 @@ const codemagicRequirements = [
   "git diff --exit-code",
   "npm run migration:discover:static",
   "npm run release:verify-production",
-  "npx cap sync ios",
+  "node scripts/capacitor-cli.mjs sync ios",
   "xcode-project build-ipa",
   "scripts/ios-release-validate.sh",
   "submit_to_testflight: true",

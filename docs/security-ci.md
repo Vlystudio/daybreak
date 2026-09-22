@@ -28,6 +28,11 @@ The lockfile pins audited transitive releases through `package.json#overrides`:
 - `postcss@8.5.24` and `sharp@0.35.3` replace vulnerable versions bundled by
   Next 16.2.12.
 - `tar@7.5.22` replaces the vulnerable archive library under Capacitor CLI 6.
+  Invoke native commands through `node scripts/capacitor-cli.mjs`; this supplies
+  Capacitor 6's expected default-import alias for tar 7 in the CLI process.
+  The real iOS template extraction test covers the incompatibility that
+  `cap --version` and `cap doctor` alone did not detect. The patched tar version
+  and its extraction security checks remain in use.
 - `minimatch@10.2.6` and `brace-expansion@5.0.8` move the matching stack as a
   compatible pair; overriding only `brace-expansion` breaks older minimatch.
 
