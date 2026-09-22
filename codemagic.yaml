@@ -116,7 +116,9 @@ workflows:
           # so we use a distribution certificate + a portal-created profile (which
           # includes HealthKit), supplied as base64 env vars.
           printf '%s' "$CM_CERTIFICATE" | base64 --decode > /tmp/dist.p12
-          openssl pkcs12 -in /tmp/dist.p12 -passin env:CM_CERTIFICATE_PASSWORD -noout
+          # Existing Apple-exported PKCS#12 uses RC2 encryption. OpenSSL 3
+          # needs its legacy reader; certificate and signature checks stay on.
+          openssl pkcs12 -legacy -in /tmp/dist.p12 -passin env:CM_CERTIFICATE_PASSWORD -noout
           keychain add-certificates --certificate /tmp/dist.p12 --certificate-password "$CM_CERTIFICATE_PASSWORD"
           PROFILES_HOME="$HOME/Library/MobileDevice/Provisioning Profiles"
           mkdir -p "$PROFILES_HOME"
