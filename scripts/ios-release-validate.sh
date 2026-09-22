@@ -120,7 +120,7 @@ if [ -n "${IPA_PATH:-}" ]; then
   export IOS_EVIDENCE_OUTPUT="$EVIDENCE_OUTPUT"
   export IOS_EVIDENCE_COMMIT="${CM_COMMIT:-$(git rev-parse HEAD)}"
   export IOS_EVIDENCE_BUILD_ID="${CM_BUILD_ID:-}"
-  export IOS_EVIDENCE_WORKFLOW="ios-healthkit"
+  export IOS_EVIDENCE_WORKFLOW="${CM_WORKFLOW_ID:-ios-healthkit}"
   export IOS_EVIDENCE_ARCHIVE_PATH="$ARCHIVE_PATH"
   export IOS_EVIDENCE_IPA_PATH="$IPA_PATH"
   export IOS_EVIDENCE_DSYM_PATH="$DSYM_PATH"
