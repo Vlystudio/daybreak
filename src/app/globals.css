@@ -543,6 +543,11 @@ textarea {
 input[type="date"],
 input[type="datetime-local"],
 input[type="time"] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
