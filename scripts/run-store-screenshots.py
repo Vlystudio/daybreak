@@ -6,29 +6,38 @@ import os
 import pathlib
 import plistlib
 import subprocess
+import time
 
-def run(*args, capture=False):
-    return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE if capture else None).stdout
+def run(*args, capture=False, timeout=600):
+    # Commands contain no credentials. Environment variables and test plans are
+    # never printed. Bounded steps identify a stalled simulator service early.
+    label = " ".join(args[:3])
+    print("Starting: " + label, flush=True)
+    started = time.monotonic()
+    try:
+        return subprocess.run(args, check=True, text=True, stdout=subprocess.PIPE if capture else None, timeout=timeout).stdout
+    finally:
+        print(f"Finished: {label} ({time.monotonic() - started:.1f}s)", flush=True)
 
 device_name = os.environ["DAYBREAK_SCREENSHOT_DEVICE"]
 for key in ("DAYBREAK_REVIEW_EMAIL", "DAYBREAK_REVIEW_PASSWORD"):
     if not os.environ.get(key):
         raise RuntimeError("Missing synthetic review credentials")
-devices = json.loads(run("xcrun", "simctl", "list", "devices", "available", "--json", capture=True))["devices"]
-matches = [(runtime, d) for runtime, entries in devices.items() if runtime.endswith("iOS-26-0") for d in entries if d["name"] == device_name]
+devices = json.loads(run("xcrun", "simctl", "list", "devices", "available", "--json", capture=True, timeout=120))["devices"]
+matches = [(runtime, d) for runtime, entries in devices.items() if runtime.endswith("iOS-26-4") for d in entries if d["name"] == device_name]
 if len(matches) != 1:
-    raise RuntimeError("Expected one matching iOS 26.0 simulator")
+    raise RuntimeError("Expected one matching iOS 26.4 simulator")
 runtime, device = matches[0]
 udid = device["udid"]
 if device["state"] != "Booted":
-    run("xcrun", "simctl", "boot", udid)
-run("xcrun", "simctl", "bootstatus", udid, "-b")
+    run("xcrun", "simctl", "boot", udid, timeout=180)
+run("xcrun", "simctl", "bootstatus", udid, "-b", timeout=300)
 run("xcrun", "simctl", "ui", udid, "appearance", "light")
 run("xcrun", "simctl", "status_bar", udid, "override", "--time", "9:41", "--batteryState", "charged", "--batteryLevel", "100")
 destination = "platform=iOS Simulator,arch=arm64,id=" + udid
 # Apple Silicon simulator test runners need a valid local code signature. Ad-hoc
 # signing uses no Apple account, certificate or provisioning profile.
-run("xcodebuild", "build-for-testing", "-workspace", "ios/App/App.xcworkspace", "-scheme", "StoreScreenshots", "-configuration", "Debug", "-destination", destination, "-derivedDataPath", "build/store-derived", "CODE_SIGN_IDENTITY=-", "CODE_SIGNING_ALLOWED=YES", "-quiet")
+run("xcodebuild", "build-for-testing", "-workspace", "ios/App/App.xcworkspace", "-scheme", "StoreScreenshots", "-configuration", "Debug", "-destination", destination, "-derivedDataPath", "build/store-derived", "CODE_SIGN_IDENTITY=-", "CODE_SIGNING_ALLOWED=YES", "-quiet", timeout=900)
 test_file = glob.glob("build/store-derived/Build/Products/*.xctestrun")
 if len(test_file) != 1:
     raise RuntimeError("Expected one generated xctestrun")
@@ -47,8 +56,8 @@ for target in targets:
 with open(test_file[0], "wb") as handle:
     plistlib.dump(plan, handle)
 try:
-    run("xcodebuild", "test-without-building", "-xctestrun", test_file[0], "-destination", destination, "-resultBundlePath", "build/store-result.xcresult", "-parallel-testing-enabled", "NO", "-quiet")
-except subprocess.CalledProcessError:
+    run("xcodebuild", "test-without-building", "-xctestrun", test_file[0], "-destination", destination, "-resultBundlePath", "build/store-result.xcresult", "-parallel-testing-enabled", "NO", "-quiet", timeout=900)
+except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
     # Only emit the summary, never the raw result bundle or test environment.
     diagnostic = subprocess.run(("xcrun", "xcresulttool", "get", "test-results", "summary", "--path", "build/store-result.xcresult"), text=True, capture_output=True)
     safe_summary = diagnostic.stdout

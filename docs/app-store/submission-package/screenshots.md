@@ -19,7 +19,7 @@ English (U.S.), light appearance. Inspect each exported image before submission.
 | 5     | Plan preferences | Daily rhythm and optional working hours                  |
 | 6     | Settings         | Appearance, security and account controls                |
 
-Capture iPhone 16 Pro Max and iPad Pro 13-inch (M4) using the installed Xcode 26
+Capture iPhone 17 Pro Max and iPad Pro 13-inch (M5) using Xcode 26.4.1 / iOS 26.4
 simulator runtime. App Store Connect determines the accepted slots and dimensions.
 The workflow writes a manifest containing the source commit, run ID, device,
 runtime, origin, capture method and SHA-256 of every image. Only successful
